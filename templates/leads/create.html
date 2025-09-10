@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Crear Lead{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4">➕ Crear Lead</h2>
+
+  <form method="POST" action="{{ url_for('leads.create_lead') }}">
+    <div class="row">
+      <!-- Código -->
+      <div class="col-md-4 mb-3">
+        <label for="codigo" class="form-label">Código</label>
+        <input type="text" id="codigo" name="codigo" class="form-control" 
+               value="{{ codigo }}" readonly>
+      </div>
+
+      <!-- Fecha -->
+      <div class="col-md-4 mb-3">
+        <label for="fecha" class="form-label">Fecha</label>
+        <input type="date" id="fecha" name="fecha" class="form-control"
+               value="{{ fecha_hoy }}">
+      </div>
+    </div>
+
+    <div class="row">
+      <!-- Teléfono -->
+      <div class="col-md-4 mb-3">
+        <label for="telefono" class="form-label">Teléfono</label>
+        <input type="text" id="telefono" name="telefono" class="form-control">
+      </div>
+
+      <!-- RUC / DNI -->
+      <div class="col-md-4 mb-3">
+        <label for="ruc_dni" class="form-label">RUC / DNI</label>
+        <input type="text" id="ruc_dni" name="ruc_dni" class="form-control">
+      </div>
+
+      <!-- Nombre -->
+      <div class="col-md-4 mb-3">
+        <label for="nombre" class="form-label">Nombre completo</label>
+        <input type="text" id="nombre" name="nombre" class="form-control">
+      </div>
+    </div>
+
+    <div class="row">
+      <!-- Canal -->
+      <div class="col-md-6 mb-3">
+        <label for="canal_id" class="form-label">Canal</label>
+        <select name="canal_id" class="form-select" required>
+          <option value="">-- Seleccione un canal --</option>
+          {% for canal in canales %}
+            <option value="{{ canal.id }}">{{ canal.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Contacto -->
+      <div class="col-md-6 mb-3">
+        <label for="contacto" class="form-label">Contacto</label>
+        <input type="text" id="contacto" name="contacto" class="form-control">
+      </div>
+    </div>
+
+    <!-- Dirección -->
+    <div class="mb-3">
+      <label for="direccion" class="form-label">Dirección</label>
+      <input type="text" id="direccion" name="direccion" class="form-control">
+    </div>
+
+    <div class="row">
+      <div class="col-md-4 mb-3">
+        <label for="departamento" class="form-label">Departamento</label>
+        <input type="text" id="departamento" name="departamento" class="form-control">
+      </div>
+      <div class="col-md-4 mb-3">
+        <label for="provincia" class="form-label">Provincia</label>
+        <input type="text" id="provincia" name="provincia" class="form-control">
+      </div>
+      <div class="col-md-4 mb-3">
+        <label for="distrito" class="form-label">Distrito</label>
+        <input type="text" id="distrito" name="distrito" class="form-control">
+      </div>
+    </div>
+
+    <!-- Bien o Servicio -->
+    <div class="mb-3">
+      <label for="bien_servicio_id" class="form-label">Bien o Servicio</label>
+      <select name="bien_servicio_id" class="form-select" required>
+        <option value="">-- Seleccione un bien o servicio --</option>
+        {% for bs in bienes_servicios %}
+          <option value="{{ bs.id }}">{{ bs.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Email -->
+    <div class="mb-3">
+      <label for="email" class="form-label">Correo electrónico</label>
+      <input type="email" id="email" name="email" class="form-control">
+    </div>
+
+    <!-- Comentario -->
+    <div class="mb-3">
+      <label for="comentario" class="form-label">Comentario</label>
+      <textarea id="comentario" name="comentario" class="form-control" rows="3"></textarea>
+    </div>
+
+    <!-- Asignar a -->
+ <div class="form-group">
+  <label for="asignado_a">Asignado a:</label>
+  {% if es_asesor %}
+      <!-- El asesor ve su propio nombre, no puede cambiarlo -->
+      <input type="text" class="form-control" 
+             value="{{ asesores[0].nombre }}" readonly>
+      <input type="hidden" name="asignado_a" value="{{ asesores[0].id }}">
+  {% else %}
+      <!-- Admin/Gerente/RRHH pueden elegir al asesor -->
+      <select name="asignado_a" class="form-control">
+          <option value="">-- Seleccione un asesor --</option>
+          {% for asesor in asesores %}
+              <option value="{{ asesor.id }}">{{ asesor.nombre }}</option>
+          {% endfor %}
+      </select>
+  {% endif %}
+</div>
+
+    <!-- Botones -->
+    <div class="d-flex justify-content-between">
+      <a href="{{ url_for('leads.list_leads') }}" class="btn btn-secondary">⬅ Volver</a>
+      <button type="submit" class="btn btn-primary">💾 Guardar Lead</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

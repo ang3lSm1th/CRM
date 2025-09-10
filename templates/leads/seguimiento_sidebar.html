@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Leads en seguimiento{% endblock %}
+
+{% block content %}
+<div class="flex between">
+  <h2>Leads en seguimiento</h2>
+</div>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/buscador.css') }}">
+
+<form class="mb-3 d-flex" style="gap:.5rem;" onsubmit="return false;">
+  <input
+    type="text"
+    class="form-control live-search"
+    placeholder="Buscar en la tabla..."
+    id="q-seguimiento"
+    data-target="#tabla-seguimiento"
+    data-counter="#cnt-seguimiento"
+  >
+  <button
+    type="button"
+    class="btn btn-primary search-btn"
+    data-input="#q-seguimiento"
+  >Buscar</button>
+
+  <button
+    type="button"
+    class="btn btn-outline-secondary clear-btn"
+    data-input="#q-seguimiento"
+  >Limpiar</button>
+
+  <div class="text-muted" style="align-self:center;">
+    <small>Coincidencias: <span id="cnt-seguimiento">0</span></small>
+  </div>
+</form>
+
+<div class="table-container">
+  <table class="table" id="tabla-seguimiento">
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Fecha</th>
+        <th>Teléfono</th>
+        <th>RUC/DNI</th>
+        <th>Nombre</th>
+        <th>Canal</th>
+        <th>Contacto</th>
+        <th>Dirección</th>
+        <th>Departamento</th>
+        <th>Provincia</th>
+        <th>Distrito</th>
+        <th>Bien/Servicio</th>
+        <th>Email</th>
+        <th>Comentario</th>
+        <th>Asignado a</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in leads %}
+      <tr ondblclick="irSeguimiento('{{ l.codigo }}')" class="row-clickable">
+        <td>{{ l.codigo }}</td>
+        <td>{{ l.fecha }}</td>
+        <td>{{ l.telefono }}</td>
+        <td>{{ l.ruc_dni }}</td>
+        <td>{{ l.nombre }}</td>
+        <td>{{ l.canal }}</td>
+        <td>{{ l.contacto }}</td>
+        <td>{{ l.direccion }}</td>
+        <td>{{ l.departamento }}</td>
+        <td>{{ l.provincia }}</td>
+        <td>{{ l.distrito }}</td>
+        <td>{{ l.bien_servicio }}</td>
+        <td>{{ l.email }}</td>
+        <td>{{ l.comentario }}</td>
+        <td>{{ l.asignado_a }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="15" class="no-data">No hay leads en seguimiento.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  function irSeguimiento(codigo){
+    // Abre la vista de seguimiento y, si el usuario no ha elegido proceso aún,
+    // el <select> se marca por defecto en "Seguimiento"
+    window.location.href = "/leads/seguimiento/" + codigo + "?preset=seguimiento";
+  }
+</script>
+{% endblock %}

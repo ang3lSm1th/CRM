@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Leads cotizados{% endblock %}
+
+{% block content %}
+<div class="flex between">
+  <h2>Leads cotizados</h2>
+</div>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/buscador.css') }}">
+
+<form class="mb-3 d-flex" style="gap:.5rem;" onsubmit="return false;">
+  <input
+    type="text"
+    class="form-control live-search"
+    placeholder="Buscar en la tabla..."
+    id="q-cotizados"
+    data-target="#tabla-cotizados"
+    data-counter="#cnt-cotizados"
+  >
+  <button
+    type="button"
+    class="btn btn-primary search-btn"
+    data-input="#q-cotizados"
+  >Buscar</button>
+
+  <button
+    type="button"
+    class="btn btn-outline-secondary clear-btn"
+    data-input="#q-cotizados"
+  >Limpiar</button>
+
+  <div class="text-muted" style="align-self:center;">
+    <small>Coincidencias: <span id="cnt-cotizados">0</span></small>
+  </div>
+</form>
+
+<div class="table-container">
+  <table class="table" id="tabla-cotizados">
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Fecha</th>
+        <th>Teléfono</th>
+        <th>RUC/DNI</th>
+        <th>Nombre</th>
+        <th>Cotización</th>     {# 👈 después de Nombre #}
+        <th>Monto</th>
+        <th>Moneda</th>
+        <th>Canal</th>
+        <th>Contacto</th>
+        <th>Dirección</th>
+        <th>Departamento</th>
+        <th>Provincia</th>
+        <th>Distrito</th>
+        <th>Bien/Servicio</th>
+        <th>Email</th>
+        <th>Comentario</th>
+        <th>Asignado a</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in leads %}
+      <tr ondblclick="irSeguimiento('{{ l.codigo }}')" class="row-clickable">
+        <td>{{ l.codigo }}</td>
+        <td>{{ l.fecha }}</td>
+        <td>{{ l.telefono }}</td>
+        <td>{{ l.ruc_dni }}</td>
+        <td>{{ l.nombre }}</td>
+        <td>{{ l.cotizacion or '' }}</td>
+        <td>{{ l.monto is not none and ('{:,.2f}'.format(l.monto)) or '' }}</td>
+        <td>{{ l.moneda or '' }}</td>
+        <td>{{ l.canal }}</td>
+        <td>{{ l.contacto }}</td>
+        <td>{{ l.direccion }}</td>
+        <td>{{ l.departamento }}</td>
+        <td>{{ l.provincia }}</td>
+        <td>{{ l.distrito }}</td>
+        <td>{{ l.bien_servicio }}</td>
+        <td>{{ l.email }}</td>
+        <td>{{ l.comentario }}</td>
+        <td>{{ l.asignado_a }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="18" class="no-data">No hay leads cotizados.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  function irSeguimiento(codigo){
+    // Abre la vista de seguimiento y, si no hay valor aún, marca "Cotizado"
+    window.location.href = "/leads/seguimiento/" + codigo + "?preset=cotizado";
+  }
+</script>
+{% endblock %}

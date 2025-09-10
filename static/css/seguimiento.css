@@ -1,0 +1,314 @@
+/* ====== Scope ====== */
+.seguimiento{
+  --text:#0b1522;
+  --muted:#6b7280;
+  --border:#e5e7eb;
+  --primary:#0b3b82;
+  --primary-ghost:#e8eefb;
+  --success:#0b3b82;
+  --radius-pill:9999px;
+  --radius-lg:16px;
+  --shadow-1:0 6px 20px rgba(2,18,46,.08);
+}
+
+.seguimiento h2{font-weight:800;letter-spacing:.2px;color:#0f1e33}
+
+/* ====== Tabs ====== */
+.seguimiento .btn.btn-outline-primary{
+  border-radius:var(--radius-pill);
+  border-color:transparent;
+  background:var(--primary-ghost);
+  color:var(--primary);
+  font-weight:600;
+  padding:10px 16px;
+}
+.seguimiento .btn.btn-outline-primary:hover{filter:brightness(.98)}
+.seguimiento .btn.btn-primary{
+  border-radius:var(--radius-pill);
+  background:var(--primary);
+  border-color:var(--primary);
+  font-weight:700;
+  padding:10px 16px;
+  box-shadow:0 6px 14px rgba(11,59,130,.18);
+}
+
+/* ====== Grid 2 columnas ====== */
+.seguimiento .seguimiento-grid{
+  display:grid;
+  gap:26px;
+  grid-template-columns: 1fr 1fr;
+  align-items:start;
+}
+@media (max-width: 980px){
+  .seguimiento .seguimiento-grid{ grid-template-columns: 1fr; }
+}
+
+/* ====== Cards más grandes ====== */
+.seguimiento .card{
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-1);
+  background:#fff;
+  padding: 2rem;           /* antes era p-3 (~1rem). Ahora más grande */
+  min-height: 100%;        /* hace que se estiren en la grid */
+}
+
+/* ====== Ajustar grid para que las columnas se vean más anchas ====== */
+.seguimiento .seguimiento-grid{
+  display:grid;
+  gap:30px;
+  grid-template-columns: 1.2fr 1fr; /* izquierda más ancha que derecha */
+  align-items:start;
+}
+@media (max-width: 980px){
+  .seguimiento .seguimiento-grid{ grid-template-columns: 1fr; }
+}
+
+/* ====== Espacio extra entre label y select en “Canal de recepción” ====== */
+.seguimiento .control-line{
+  display:grid;
+  grid-template-columns: var(--label-col) 1fr;
+  gap:14px 20px;  /* aumenta el gap horizontal */
+  align-items:center;
+}
+
+/* Si solo quieres más aire en ese campo específico: */
+#sec-canal.control-line label{
+  margin-right: 20px;   /* extra separación solo ahí */
+}
+
+/* ====== Líneas de control: label izquierda / input derecha ====== */
+.seguimiento .control-line{
+  display:grid;
+  grid-template-columns: 210px 1fr; /* ancho de la columna de labels */
+  gap:12px 16px;
+  align-items:center;
+}
+@media (max-width: 640px){
+  .seguimiento .control-line{ grid-template-columns: 1fr; }
+}
+
+.seguimiento .form-label{
+  font-weight:700;
+  color:var(--text);
+  margin:0;
+}
+
+/* ====== Inputs "pill" ====== */
+.seguimiento .form-control,
+.seguimiento .form-select{
+  border-radius:var(--radius-pill);
+  border:1px solid var(--border);
+  height:38px;
+  padding:10px 20px 10px 10px; /* top right bottom left */
+  font-size:14px;
+  transition:border-color .15s ease,box-shadow .15s ease,background .15s ease;
+}
+.seguimiento .form-control:focus,
+.seguimiento .form-select:focus,
+.seguimiento textarea:focus{
+  border-color:#b6c7ef;
+  box-shadow:0 0 0 3px rgba(39,111,241,.12);
+}
+.seguimiento .form-control[readonly]{
+  background:#f7f8fb;
+  color:#8b95a7;
+}
+
+/* Textarea redondeada */
+.seguimiento textarea.form-control{
+  min-height:106px;
+  height:auto;
+  border-radius:22px;
+  padding:12px 16px;
+}
+.seguimiento .form-control::placeholder,
+.seguimiento textarea::placeholder{color:#a7afbd}
+
+/* ====== Botones ====== */
+.seguimiento .btn-success{
+  background:var(--success);
+  border-color:var(--success);
+  border-radius:var(--radius-pill);
+  font-weight:700;
+  padding:10px 18px;
+  box-shadow:0 6px 14px rgba(11,59,130,.18);
+}
+.seguimiento .btn-success.btn-sm{
+  padding:8px 16px; height:34px; font-size:14px;
+}
+.seguimiento .btn-success:hover{filter:brightness(1.03)}
+.seguimiento .btn:active{transform:translateY(1px)}
+
+/* ====== Buscador ====== */
+.seguimiento .live-search{border-radius:var(--radius-pill)}
+.seguimiento .search-btn{border-radius:var(--radius-pill);font-weight:700}
+.seguimiento .clear-btn{border-radius:var(--radius-pill);border-color:var(--border)}
+
+/* ====== Tabla ====== */
+/* ===== Tabla moderna con separadores visibles ===== */
+.seguimiento .table-modern{
+  border-collapse: separate !important; /* permite separar celdas */
+  border-spacing: 0;                    /* sin huecos entre celdas */
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;                     /* mantiene bordes redondeados */
+  font-size: 14px;
+}
+
+/* Encabezado */
+.seguimiento .table-modern thead th{
+  background: #dceeff;
+  color: #0f1e33;
+  font-weight: 800;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 14px;
+  position: sticky;     /* queda fijo si hay scroll */
+  top: 0;
+  z-index: 1;
+}
+
+/* Celdas */
+.seguimiento .table-modern tbody td{
+  padding: 10px 14px;
+  vertical-align: middle;
+  color: #18253a;
+  background: #fff;
+  border-bottom: 1px solid #edf0f6;   /* separador horizontal */
+  box-shadow: inset -1px 0 0 #edf0f6; /* separador vertical a la derecha */
+  white-space: nowrap;                 /* evita saltos feos */
+}
+
+/* Quita separador derecho en la última columna */
+.seguimiento .table-modern tbody td:last-child,
+.seguimiento .table-modern thead th:last-child{
+  box-shadow: none;
+}
+
+/* Zebra más sutil (refuerza striped de Bootstrap) */
+.seguimiento .table-modern tbody tr:nth-child(odd) td{
+  background: #fbfcff;
+}
+
+/* Hover */
+.seguimiento .table-modern tbody tr:hover td{
+  background: #f5f8ff;
+}
+
+/* Ajustes de columnas largas (comentario, etc.) */
+.seguimiento .table-modern td:nth-child(8){
+  white-space: normal;   /* permite varias líneas en Comentario */
+  word-break: break-word;
+}
+
+/* Pie “sin datos” */
+.seguimiento .table-modern .no-data{
+  background: #f8fafc !important;
+  border-radius: 0; /* ya está dentro de la tabla redondeada */
+}
+
+/* Compactación opcional en pantallas pequeñas */
+@media (max-width: 900px){
+  .seguimiento .table-modern{
+    font-size: 13px;
+  }
+  .seguimiento .table-modern thead th,
+  .seguimiento .table-modern tbody td{
+    padding: 10px 12px;
+  }
+}
+
+
+.seguimiento .no-data{
+  background:#f8fafc;
+  border-radius:12px;
+}
+
+/* === Tabs tipo píldora (usa el celeste de la barrita) === */
+.tab-nav{ display:flex; gap:12px; }
+.tab-pill{
+  display:inline-block;
+  padding:10px 16px;
+  border-radius:9999px;
+  font-weight:700;
+  border:1px solid transparent;
+  text-decoration:none;
+}
+.tab-pill.is-active{
+  background:#0b3b82;
+  color:#fff;
+  box-shadow:0 6px 14px rgba(11,59,130,.18);
+}
+.tab-pill:not(.is-active){
+  background:#dceeff;  /* color de la barrita */
+  color:#0b3b82;
+}
+
+/* Sidebar siempre por encima del buscador */
+.sidebar {
+  z-index: 1000;
+  background: #fff;   /* <- esto te blanquea el sidebar */
+}
+
+
+/* === Cards más amplias (como en la maqueta) === */
+.seguimiento .card{ padding: 2rem; }
+
+/* === Layout 2 columnas (ya lo tenías; subo un poco el ancho izq) === */
+.seguimiento .seguimiento-grid{
+  display:grid;
+  gap:26px;
+  grid-template-columns: 1.15fr 1fr;
+  align-items:start;
+}
+@media (max-width: 980px){ .seguimiento .seguimiento-grid{ grid-template-columns:1fr; } }
+
+/* === Alineación label/control === */
+.seguimiento{ --label-col: 210px; } /* ajusta si quieres más/menos ancho */
+.seguimiento .control-line{ display:grid; grid-template-columns: var(--label-col) 1fr; gap:14px 20px; align-items:center; }
+@media (max-width:640px){ .seguimiento .control-line{ grid-template-columns:1fr; } }
+.seguimiento .control-line--area textarea.form-control{ min-height:120px; border-radius:22px; padding:12px 16px; }
+
+/* === Inputs/selects pill con aire extra a la derecha === */
+.seguimiento .form-control,
+.seguimiento .form-select{
+  border-radius:9999px;
+  border:1px solid var(--border);
+  height:40px;
+  padding:10px 20px 10px 14px; /* más espacio a la derecha */
+  font-size:14px;
+  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.seguimiento .form-select{
+  -webkit-appearance:none; appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%231b3b82' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 12px center; background-size:10px 7px;
+  padding-right:36px; /* aire para la flechita */
+}
+.seguimiento .form-control[readonly]{ background:#f7f8fb; color:#8b95a7; }
+.seguimiento .form-control:focus,
+.seguimiento .form-select:focus,
+.seguimiento textarea:focus{ border-color:#b6c7ef; box-shadow:0 0 0 3px rgba(39,111,241,.12); }
+
+/* === Botones === */
+.actions-center{ display:flex; justify-content:center; }
+.seguimiento .btn-success.btn-sm{ padding:8px 16px; height:36px; }
+
+/* === Chips “Asignar” === */
+.chips{ display:flex; flex-wrap:wrap; gap:8px; }
+.chip{
+  display:inline-flex; align-items:center; gap:8px;
+  background:#f1f5ff; color:#1e3a8a;
+  border:1px solid #dbe6ff; padding:6px 10px;
+  border-radius:9999px; font-weight:600; font-size:13px;
+}
+.chip-close{
+  width:18px; height:18px; display:grid; place-items:center;
+  border-radius:50%; background:#e1e9ff; color:#27418f; font-weight:700; cursor:pointer;
+}
+
+/* ====== Espaciados ====== */
+.seguimiento .mb-3{margin-bottom:.9rem!important}
+.seguimiento .mb-4{margin-bottom:1.1rem!important}

@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Editar Lead{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/seguimiento.css') }}">
+
+<div class="seguimiento">
+  <h2 class="mb-4">📋 Seguimiento del Lead {{ lead.codigo }}</h2>
+
+  <!-- Tabs -->
+  <div class="tab-nav mb-3">
+    <a href="{{ url_for('leads.edit_lead', codigo=lead.codigo) }}"
+       class="tab-pill {% if request.endpoint == 'leads.edit_lead' %}is-active{% endif %}">
+       Editar
+    </a>
+    <a href="{{ url_for('leads.seguimiento_lead', codigo=lead.codigo) }}"
+       class="tab-pill {% if request.endpoint == 'leads.seguimiento_lead' %}is-active{% endif %}">
+       Seguimiento
+    </a>
+  </div>
+
+  <form method="POST" action="{{ url_for('leads.edit_lead', codigo=lead.codigo) }}" id="form-editar">
+
+    <!-- GRID 2 COLUMNAS -->
+    <div class="seguimiento-grid">
+      <!-- Columna izquierda -->
+      <div class="card">
+        <div class="card-body p-0">
+          <div class="p-4">
+
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Código</label>
+              <input class="form-control" value="{{ lead.codigo }}" readonly>
+            </div>
+
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Fecha</label>
+              <input class="form-control" value="{{ lead.fecha }}" readonly>
+            </div>
+
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Teléfono</label>
+              <input type="text" name="telefono" class="form-control" value="{{ lead.telefono }}">
+            </div>
+
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">RUC/DNI</label>
+              <input type="text" name="ruc_dni" class="form-control" value="{{ lead.ruc_dni }}">
+            </div>
+
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Nombre</label>
+              <input type="text" name="nombre" class="form-control" value="{{ lead.nombre }}" required>
+            </div>
+
+            <div class="mb-3 control-line" id="sec-canal">
+              <label class="form-label mb-0">Canal de recepción</label>
+              <select name="canal_id" class="form-select">
+                {% for c in canales %}
+                  <option value="{{ c.id }}" {% if c.id == lead.canal_id %}selected{% endif %}>{{ c.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Contacto</label>
+              <input type="text" name="contacto" class="form-control" value="{{ lead.contacto }}">
+            </div>
+
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Dirección</label>
+              <input type="text" name="direccion" class="form-control" value="{{ lead.direccion }}">
+            </div>
+
+
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Columna derecha -->
+      <div class="card">
+        <div class="card-body p-0">
+          <div class="p-4">
+
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Departamento</label>
+              <input type="text" name="departamento" class="form-control" value="{{ lead.departamento }}">
+            </div>
+
+            <div class="mb-0 control-line">
+              <label class="form-label mb-0">Provincia</label>
+              <input type="text" name="provincia" class="form-control" value="{{ lead.provincia }}">
+            </div>
+
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Distrito</label>
+              <input type="text" name="distrito" class="form-control" value="{{ lead.distrito }}">
+            </div>
+
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Bien/Servicio</label>
+              <select name="bien_servicio_id" class="form-select">
+                {% for bs in bienes_servicios %}
+                  <option value="{{ bs.id }}" {% if bs.id == lead.bien_servicio_id %}selected{% endif %}>{{ bs.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">E-mail</label>
+              <input type="email" name="email" class="form-control" value="{{ lead.email }}">
+            </div>
+
+            <!-- Comentario grande -->
+            <div class="mb-3 control-line control-line--area">
+              <label class="form-label mb-0">Comentario</label>
+              <textarea name="comentario" class="form-control" rows="4"
+                        placeholder="Comentario que se usará para saber los avances del lead">{{ lead.comentario }}</textarea>
+            </div>
+
+            <!-- Botón Guardar centrado -->
+            <div class="actions-center mb-3">
+              <button type="submit" class="btn btn-success btn-sm">Guardar</button>
+            </div>
+
+            <!-- Asignar -->
+            <div class="mb-2 control-line">
+              <label class="form-label mb-0">Asignar</label>
+              {% if not es_asesor %}
+                <div>
+                  <div class="chips mb-2">
+                    {% if lead.asignado_a_nombre %}
+                      <span class="chip">
+                        {{ lead.asignado_a_nombre }}
+                        <span class="chip-close">×</span>
+                      </span>
+                    {% endif %}
+                  </div>
+                  <div class="d-flex" style="gap:.5rem;">
+                    <select name="asignado_a" id="asignado_a" class="form-select">
+                      <option value="">-- Seleccionar asesor --</option>
+                      {% for asesor in asesores %}
+                        <option value="{{ asesor['id'] }}" {% if lead['asignado_a'] == asesor['id'] %}selected{% endif %}>
+                          {{ asesor['nombre'] }}
+                        </option>
+                      {% endfor %}
+                    </select>
+                    <button type="submit" name="accion" value="asignar" class="btn btn-primary btn-sm">Asignar</button>
+                  </div>
+                </div>
+              {% else %}
+                <input type="text" class="form-control" value="{{ session['username'] }}" disabled>
+              {% endif %}
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </form>
+</div>
+{% endblock %}

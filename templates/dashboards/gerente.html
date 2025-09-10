@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Dashboard Gerente{% endblock %}
+{% block content %}
+  <h2 class="mb-4">Dashboard Gerente</h2>
+  <p>Rendimiento por asesor, tasa de conversión, pipeline agregado.</p>
+
+  <!-- Botón para crear Lead -->
+  <div class="mt-4">
+    <a href="{{ url_for('leads.create_lead') }}" 
+       class="btn btn-primary rounded-pill px-4 py-2 fw-semibold shadow-sm">
+      <i class="bi bi-plus-circle"></i> Crear Lead
+    </a>
+  </div>
+{% endblock %}

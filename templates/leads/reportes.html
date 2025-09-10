@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Reportes{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes.css') }}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="reportes">
+
+  <h2 class="mb-3">📊 Reportes</h2>
+
+  <!-- Filtros -->
+  <form method="GET" class="filtros">
+    <div class="fila">
+      <div class="item">
+        <label>Desde</label>
+        <input type="date" name="f_ini" value="{{ f_ini }}">
+      </div>
+      <div class="item">
+        <label>Hasta</label>
+        <input type="date" name="f_fin" value="{{ f_fin }}">
+      </div>
+      <div class="item">
+        <label>Canal</label>
+        <select name="canal">
+          <option value="">Todos</option>
+          {% for c in canales %}
+            <option value="{{ c.id }}" {{ 'selected' if canal|string == c.id|string else '' }}>
+              {{ c.nombre }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="item">
+        <label>Asesor</label>
+        <select name="asesor">
+          <option value="">Todos</option>
+          {% for a in asesores %}
+            <option value="{{ a.id }}" {{ 'selected' if asesor|string == a.id|string else '' }}>
+              {{ a.nombre }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="item actions">
+        <button class="btn btn-primary">Aplicar</button>
+        <a class="btn btn-outline-secondary" href="{{ url_for('reports.index') }}">Limpiar</a>
+      </div>
+    </div>
+  </form>
+
+  <!-- KPIs -->
+  <div class="kpis">
+    <div class="kpi">
+      <span class="kpi-label">Total leads</span>
+      <span class="kpi-value">{{ kpis.total }}</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Cerrados vendidos</span>
+      <span class="kpi-value text-success">{{ kpis.vendidos }}</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Cerrados no vendidos</span>
+      <span class="kpi-value text-danger">{{ kpis.no_vendidos }}</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Programados</span>
+      <span class="kpi-value">{{ kpis.programados }}</span>
+    </div>
+  </div>
+
+  <!-- Gráfico -->
+  <div class="card chart-card">
+    <div class="card-header">Leads por día</div>
+    <div class="card-body">
+      <canvas id="leadsLine"></canvas>
+    </div>
+  </div>
+
+  <!-- Tabla por canal -->
+  <div class="card">
+    <div class="card-header">Leads por canal</div>
+    <div class="card-body table-responsive">
+      <table class="table table-modern table-sm">
+        <thead>
+          <tr>
+            <th>Canal</th>
+            <th class="text-end">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in por_canal %}
+            <tr>
+              <td>{{ r.canal or 'Sin canal' }}</td>
+              <td class="text-end">{{ r.total }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="2" class="text-center text-muted">Sin datos</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

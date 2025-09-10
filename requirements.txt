@@ -1,0 +1,8 @@
+Flask==3.0.3
+flask-mysqldb==2.0.0   # o flask-pymysql si prefieres compatibilidad en Windows
+Flask-Bcrypt==1.0.1
+Flask-Login==0.6.3
+Flask-WTF==1.2.1
+python-dotenv==1.0.1
+matplotlib==3.9.2
+requests==2.32.3

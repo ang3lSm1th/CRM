@@ -1,0 +1,217 @@
+/* ====== Barra de búsqueda moderna ====== */
+.buscador{
+  gap: .6rem !important;              /* separaciones parejas */
+}
+
+/* Wrapper para el input de búsqueda con ícono */
+.buscador .search-wrap{
+  position: relative;
+  flex: 1 1 420px;                    /* crece en desktop */
+  min-width: 260px;
+  display: flex;
+  align-items: center;
+}
+.buscador .search-icon{
+  position: absolute;
+  left: 14px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: #64748b;
+  pointer-events: none;
+}
+
+/* Input principal */
+.buscador .search-input{
+  width: 100%;
+  height: 46px;
+  padding: 10px 44px 10px 44px;       /* espacio para el ícono */
+  border-radius: 9999px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 14px;
+  box-shadow: 0 8px 20px rgba(2,18,46,.06);
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.buscador .search-input::placeholder{ color:#8b95a7; }
+.buscador .search-input:focus{
+  border-color:#b6c7ef;
+  box-shadow: 0 0 0 4px rgba(39,111,241,.12), 0 8px 20px rgba(2,18,46,.08);
+  outline: none;
+}
+
+/* Inputs de fecha (mismo look, más compactos) */
+.buscador .date-input{
+  height: 44px;
+  border-radius: 9999px;
+  border: 1px solid #e5e7eb;
+  padding: 8px 16px;
+  font-size: 14px;
+  background:#fff;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.buscador .date-input:focus{
+  border-color:#b6c7ef;
+  box-shadow: 0 0 0 3px rgba(39,111,241,.12);
+}
+
+/* Botones */
+.buscador .btn{
+  height: 44px;
+  border-radius: 9999px;
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+
+.buscador .btn-search{
+  box-shadow: 0 8px 16px rgba(11,59,130,.18);
+  padding: 0 18px;
+}
+
+/* Limpiar */
+.buscador .btn-clear{
+  border-color:#e5e7eb;
+}
+
+/* Exportar */
+.buscador .export-btn{
+  box-shadow: 0 8px 16px rgba(16, 122, 65, .18);
+  padding: 0 18px;
+}
+
+/* Fondo oscuro (opcional). Descomenta si usas tema oscuro en la página */
+/*
+.buscador .search-input,
+.buscador .date-input{
+  background:#0f172a;
+  color:#e2e8f0;
+  border-color:#1e293b;
+}
+.buscador .search-input::placeholder{ color:#718197; }
+*/
+
+/* Responsive: apilar bonito */
+@media (max-width: 640px){
+  .buscador{ gap: .5rem !important; }
+  .buscador .btn,
+  .buscador .date-input{ flex: 1 1 160px; }
+}
+/* Sidebar siempre por encima del buscador */
+.sidebar {
+  z-index: 1000;      /* suficiente para estar sobre cualquier cosa */
+  background: #fff;   /* asegúrate de que tenga fondo sólido */
+}
+
+/* El buscador nunca sobrepasa al sidebar */
+.buscador {
+  z-index: 1;
+  position: relative;
+}
+
+
+/* ===========================
+   Buscador unificado (sin cambiar HTML)
+   Aplica a forms: <form class="mb-3 d-flex"> que contengan .live-search
+   =========================== */
+
+/* Contenedor del buscador: gap, responsivo y stacking correcto */
+form.mb-3.d-flex:has(.live-search) {
+  gap: .6rem !important;
+  position: relative;
+  z-index: 1;
+  flex-wrap: wrap;       /* por si no lo tienen ya */
+}
+
+/* Input principal (.live-search) con look moderno + icono integrado */
+form.mb-3.d-flex .live-search {
+  flex: 1 1 420px;           /* crece en desktop */
+  min-width: 260px;
+  height: 46px;
+  padding: 10px 44px 10px 44px; /* espacio para icono a la izquierda */
+  border-radius: 9999px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(2,18,46,.06);
+  font-size: 14px;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+
+  /* Icono 🔎 con data-URI SVG para no depender de HTML extra */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='M21 21l-3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 14px center;
+  background-size: 20px 20px;
+}
+
+form.mb-3.d-flex .live-search::placeholder { color: #8b95a7; }
+form.mb-3.d-flex .live-search:focus {
+  border-color: #b6c7ef;
+  box-shadow: 0 0 0 4px rgba(39,111,241,.12), 0 8px 20px rgba(2,18,46,.08);
+  outline: none;
+}
+
+/* Si hay filtros de fecha en ese mismo form, darles el mismo look pill */
+form.mb-3.d-flex input[type="date"] {
+  height: 44px;
+  border-radius: 9999px;
+  border: 1px solid #e5e7eb;
+  padding: 8px 16px;
+  font-size: 14px;
+  background: #fff;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+form.mb-3.d-flex input[type="date"]:focus {
+  border-color: #b6c7ef;
+  box-shadow: 0 0 0 3px rgba(39,111,241,.12);
+}
+
+/* Botones del buscador: search, clear y export con el mismo alto/estilo */
+form.mb-3.d-flex .btn,
+form.mb-3.d-flex .search-btn,
+form.mb-3.d-flex .clear-btn,
+form.mb-3.d-flex .export-btn {
+  height: 44px;
+  border-radius: 9999px;
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+
+/* Realzar el botón Buscar */
+form.mb-3.d-flex .search-btn {
+  box-shadow: 0 8px 16px rgba(11,59,130,.18);
+  padding: 0 18px;
+}
+
+/* Botón Limpiar */
+form.mb-3.d-flex .clear-btn {
+  border-color: #e5e7eb;
+}
+
+/* Botón Exportar (si está presente) */
+form.mb-3.d-flex .export-btn {
+  box-shadow: 0 8px 16px rgba(16,122,65,.18);
+  padding: 0 18px;
+}
+
+/* Contador de coincidencias alineado bonito */
+form.mb-3.d-flex .text-muted small {
+  display: inline-block;
+  line-height: 44px; /* igual que los botones */
+}
+
+/* Responsive: apilar en móviles */
+@media (max-width: 640px){
+  form.mb-3.d-flex:has(.live-search) { gap: .5rem !important; }
+  form.mb-3.d-flex .live-search,
+  form.mb-3.d-flex input[type="date"],
+  form.mb-3.d-flex .btn,
+  form.mb-3.d-flex .search-btn,
+  form.mb-3.d-flex .clear-btn,
+  form.mb-3.d-flex .export-btn {
+    flex: 1 1 160px;
+  }
+}
+
+/* Asegurar que el sidebar tape todo y no se vea nada detrás */
+.sidebar {
+  z-index: 1000;
+  background: #cee1ff !important;  /* <- sin 'c7' (sin alfa) */
+}

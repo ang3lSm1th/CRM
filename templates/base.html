@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="CRM Orbes Agricola - Gestión de leads y usuarios"
+    />
+        <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/logo_icon.png') }}?v=2">
+    {% block title %}{% endblock %}
+    {% set _page_title = self.title()|trim %}
+    <title>
+    Orbes Agricola{% if _page_title %} — {{ _page_title }}{% else %} — Inicio{% endif %}
+    </title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/app.css') }}"
+    />
+
+
+  </head>
+  <body>
+    <div class="container">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="logo">
+          <img
+            src="{{ url_for('static', filename='img/logo.png') }}"
+            alt="Logo Orbes Agricola"
+          />
+        </div>
+        <nav>
+          <ul>
+            <li class="list_leads">
+              <a href="{{ url_for('leads.list_leads') }}">Todos los leads</a>
+            </li>
+            <li><a href="{{ url_for('leads.list_unstarted') }}">Leads no iniciados</a></li>
+            <li><a href="{{ url_for('leads.list_in_followup') }}">Leads en seguimiento</a></li>
+            <li><a href="{{ url_for('leads.list_programmed') }}">Leads Programados</a></li>
+            <li><a href="{{ url_for('leads.list_quoted') }}">Leads Cotizados</a></li>
+            <li><a href="{{ url_for('leads.list_closed') }}">Leads Cerrados</a></li>
+            <li><a href="{{ url_for('leads.list_closed_lost') }}">Leads Cerrados no vendidos</a></li>
+            {# Solo visible para ADMIN, GERENTE y RRHH (no para asesores) #} {%
+            if session["id_rol"] in ["administrador", "gerente", "RRHH"] %}
+            <li class="register">
+              <a href="{{ url_for('register.register') }}"
+                >Registrar Nuevo Usuario</a
+              >
+            </li>
+            <li><a href="#">Reporte General</a></li>
+            <li><a href="{{ url_for('leads.reporte_rapido') }}">Resumen de Reporte</a></li>
+            {% endif %}
+            <li class="logout">
+              <a href="{{ url_for('auth.logout') }}">Cerrar Sesión</a>
+            </li>
+          </ul>
+        </nav>
+        <div class="header-buttom">👤 {{ session['username'] }}</div>
+      </aside>
+
+      <!-- Main content -->
+      <main class="content">
+        <header class="header">
+          <div class="header-left"></div>
+          <div class="header-center">
+            <img
+              src="{{ url_for('static', filename='img/logo.png') }}"
+              alt="Logo Orbes Agricola"
+            />
+          </div>
+        </header>
+
+        <!-- 🔔 Toast notifications -->
+<div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="true">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for cat, msg in messages %}
+        <div class="toast toast-{{ cat }}" role="status">
+          <span class="toast-msg">{{ msg|safe }}</span>
+          <button class="toast-close" aria-label="Cerrar" onclick="this.parentElement.remove()">×</button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+</div>
+
+
+        <section class="main-section">
+          {% block content %}{% endblock %}
+        </section>
+      </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+
+
+
+  </body>
+</html>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>

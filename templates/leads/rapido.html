@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}Reporte Rápido{% endblock %}
+{% block content %}
+
+<h2 class="mb-3">📈 Resumen de Reporte</h2>
+
+<form method="GET" class="mb-3 d-flex" style="gap:.5rem;flex-wrap:wrap;">
+  <input type="date" name="f_ini" class="form-control" value="{{ f_ini or '' }}">
+  <input type="date" name="f_fin" class="form-control" value="{{ f_fin or '' }}">
+  <button class="btn btn-primary" type="submit">Aplicar</button>
+  {% if f_ini or f_fin %}
+    <a class="btn btn-outline-secondary" href="{{ url_for(request.endpoint) }}">Limpiar</a>
+  {% endif %}
+</form>
+
+<!-- ===== KPI CARD ===== -->
+<div class="kpi-card mb-3">
+  <div class="kpi-header">Resumen General de Leads</div>
+
+  <div class="kpi-total-label">Total de leads</div>
+  <div class="kpi-total-value">
+    {{ "{:,.0f}".format(total_leads).replace(",", ".") }}
+  </div>
+
+  <div class="kpi-stats">
+    <div class="kpi-stat">
+      <div class="label"><span class="kpi-dot gray"></span>Lead sin iniciar</div>
+      <div class="value">{{ "{:,.0f}".format(total_no_iniciados).replace(",", ".") }}</div>
+    </div>
+    <div class="kpi-stat">
+      <div class="label"><span class="kpi-dot blue"></span>Lead en seguimiento</div>
+      <div class="value">{{ "{:,.0f}".format(total_seguimiento).replace(",", ".") }}</div>
+    </div>
+    <div class="kpi-stat">
+      <div class="label"><span class="kpi-dot amber"></span>Lead programado</div>
+      <div class="value">{{ "{:,.0f}".format(total_programados).replace(",", ".") }}</div>
+    </div>
+    <div class="kpi-stat">
+      <div class="label"><span class="kpi-dot cyan"></span>Lead cotizado</div>
+      <div class="value">{{ "{:,.0f}".format(total_cotizados).replace(",", ".") }}</div>
+    </div>
+    <div class="kpi-stat">
+      <div class="label"><span class="kpi-dot green"></span>Lead cerrado (vendido)</div>
+      <div class="value">{{ "{:,.0f}".format(total_cerrados).replace(",", ".") }}</div>
+    </div>
+    <div class="kpi-stat">
+      <div class="label"><span class="kpi-dot rose"></span>Lead cerrado (no vendido)</div>
+      <div class="value">{{ "{:,.0f}".format(total_cerrados_no_vendidos).replace(",", ".") }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Asesores ===== -->
+<h3 class="mt-4">👥 Estados de leads por Asesor</h3>
+
+<form class="mb-2 d-flex" style="gap:.5rem;flex-wrap:wrap;" onsubmit="return false;">
+  <input
+    type="text"
+    class="form-control live-search"
+    placeholder="Buscar asesor…"
+    id="q-elppa"
+    data-target="#tabla-elppa"
+    data-counter="#cnt-elppa"
+    style="max-width:320px;"
+  >
+  <button type="button" class="btn btn-primary search-btn" data-input="#q-elppa">Buscar</button>
+  <button type="button" class="btn btn-outline-secondary clear-btn" data-input="#q-elppa">Limpiar</button>
+  <button type="button" class="btn btn-outline-success export-btn" data-table="#tabla-elppa" data-filename="Asesores.xlsx">Exportar</button>
+  <div class="text-muted" style="align-self:center;">
+    <small>Coincidencias: <span id="cnt-elppa">0</span></small>
+  </div>
+</form>
+
+<div class="card p-3 mb-3">
+  <table class="table table-people" id="tabla-elppa">
+    <thead>
+      <tr>
+        
+        <th>Nombre</th>
+        <th class="text-end">Leads asignados</th>
+        <th class="text-end">Lead sin iniciar</th>
+        <th class="text-end">Lead en proceso</th>
+        <th class="text-end">Lead completado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% set ns = namespace(printed=false) %}
+      {% for asesor, d in elppa|dictsort %}
+        {% if asesor and asesor|trim|lower != 'sin asignar' %}
+          {% set ns.printed = true %}
+          {% set total_asign = d.no_iniciados + d.seguimiento + d.programados + d.cotizados + d.cerrados + d.cerrados_no_vendidos %}
+          {% set en_proceso = d.seguimiento + d.programados + d.cotizados %}
+          {% set completado = d.cerrados + d.cerrados_no_vendidos %}
+          <tr>
+            
+            <td><span class="person-name">{{ asesor }}</span></td>
+            <td class="text-end"><span class="num-badge">{{ "{:,.0f}".format(total_asign).replace(",", ".") }}</span></td>
+            <td class="text-end">{{ "{:,.0f}".format(d.no_iniciados).replace(",", ".") }}</td>
+            <td class="text-end">{{ "{:,.0f}".format(en_proceso).replace(",", ".") }}</td>
+            <td class="text-end">{{ "{:,.0f}".format(completado).replace(",", ".") }}</td>
+          </tr>
+        {% endif %}
+      {% endfor %}
+      {% if not ns.printed %}
+        <tr class="no-data"><td colspan="6" class="text-center text-muted">Sin datos</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ===== Cotizado ===== -->
+<h3 class="mt-4">📄 Cotizado</h3>
+<div class="card p-3 mb-3">
+  <table class="table table-modern table-sm">
+    <thead>
+      <tr>
+        <th>Nombre Cotizado</th>
+        <th class="text-end">Cantidad</th>
+        <th class="text-end">Monto Total S/.</th>
+        <th class="text-end">Monto Total $</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for label, data in cotizado_rows %}
+        <tr>
+          <td>{{ label }}</td>
+          <td class="text-end">{{ data.cant }}</td>
+          <td class="text-end">{{ "%.2f"|format(data.pen) }}</td>
+          <td class="text-end">{{ "%.2f"|format(data.usd) }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="text-center text-muted">Sin datos</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if cotizado_bar_png %}
+<div class="card p-3 mb-3" style="max-width:820px;margin-inline:auto;">
+  <h4 class="mb-2" style="text-align:center;">Montos Cotizados por estado (S/ vs $)</h4>
+  <img
+    src="data:image/png;base64,{{ cotizado_bar_png }}"
+    alt="Montos Cotizados por estado"
+    style="display:block;margin:0 auto;max-width:100%;height:auto;"
+  >
+</div>
+{% endif %}
+
+
+
+</div>
+
+<!-- ===== Por Canal ===== -->
+<div class="row" style="display:grid;grid-template-columns:1fr;gap:1rem;">
+  <div class="card p-3">
+    <h4>Por Canal de Contacto</h4>
+    <table class="table table-modern table-sm">
+      <thead><tr><th>Canal</th><th class="text-end">Cantidad</th></tr></thead>
+      <tbody>
+  {% set ns = namespace(printed=false) %}
+  {% for nombre, cnt in canal_counts %}
+    {% if nombre and nombre|trim and nombre|trim|lower != 'sin canal' %}
+      {% set ns.printed = true %}
+      <tr>
+        <td>{{ nombre }}</td>
+        <td class="text-end">{{ cnt }}</td>
+      </tr>
+    {% endif %}
+  {% endfor %}
+
+  {% if not ns.printed %}
+    <tr>
+      <td colspan="2" class="text-center text-muted">Sin datos</td>
+    </tr>
+  {% endif %}
+</tbody>
+
+    </table>
+
+    {% if bar_recepcion_png %}
+<div class="card p-3 mb-3" style="max-width:1000px;margin-inline:auto;">
+  <h4 class="mb-2" style="text-align:center;">Canales de Recepción (Top 12)</h4>
+  <img
+    src="data:image/png;base64,{{ bar_recepcion_png }}"
+    alt="Canales de Recepción"
+    style="display:block;margin:0 auto;max-width:100%;height:auto;"
+  >
+</div>
+{% endif %}
+
+{% if bar_contacto_png %}
+<div class="card p-3 mb-3" style="max-width:1000px;margin-inline:auto;">
+  <h4 class="mb-2" style="text-align:center;">Canales de Contacto (Top 12)</h4>
+  <img
+    src="data:image/png;base64,{{ bar_contacto_png }}"
+    alt="Canales de Contacto"
+    style="display:block;margin:0 auto;max-width:100%;height:auto;"
+  >
+</div>
+{% endif %}
+
+  </div>
+</div>
+
+{% endblock %}

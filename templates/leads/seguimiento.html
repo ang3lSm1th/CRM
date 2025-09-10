@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}Seguimiento Lead{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/seguimiento.css') }}">
+<script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+
+
+
+<div class="seguimiento">
+
+  <h2 class="mb-4">📋 Seguimiento del Lead {{ lead.codigo }}</h2>
+
+  <div class="mb-3">
+    <a href="{{ url_for('leads.edit_lead', codigo=lead.codigo) }}" class="btn btn-outline-primary">Editar</a>
+    <a href="{{ url_for('leads.seguimiento_lead', codigo=lead.codigo) }}" class="btn btn-primary">Seguimiento</a>
+  </div>
+
+  {# ===== fallbacks ===== #}
+  {% set f_proceso = request.form.get('proceso_id') or (ultimo.proceso_id|string if ultimo and ultimo.proceso_id is not none else '') %}
+  {% set f_canal   = request.form.get('canal_contacto') or (ultimo.canal_contacto|string if ultimo and ultimo.canal_contacto is not none else '') %}
+  {% set f_fecha   = request.form.get('fecha_programada') or (ultimo.fecha_programada if ultimo and ultimo.fecha_programada else '') %}
+  {% set f_cot     = request.form.get('cotizacion') or (ultimo.cotizacion if ultimo and ultimo.cotizacion else '') %}
+  {% set f_monto   = request.form.get('monto') or (ultimo.monto if ultimo and ultimo.monto is not none else '') %}
+  {% set f_moneda  = request.form.get('moneda_id') or (ultimo.moneda_id|string if ultimo and ultimo.moneda_id is not none else '') %}
+  {% set f_motivo  = request.form.get('motivo_no_venta_id') or (ultimo.motivo_no_venta_id|string if ultimo and ultimo.motivo_no_venta_id is not none else '') %}
+  {% set f_com     = request.form.get('comentario') or (ultimo.comentario if ultimo and ultimo.comentario else '') %}
+
+  <form method="POST" action="{{ url_for('leads.seguimiento_lead', codigo=lead.codigo) }}" id="form-seguimiento">
+    <div class="seguimiento-grid">
+      <!-- Columna izquierda -->
+      <div class="col-left">
+        <div class="card p-3">
+
+          <div class="mb-3 control-line">
+            <label class="form-label mb-0">Código</label>
+            <input type="text" class="form-control" value="{{ lead.codigo }}" readonly>
+          </div>
+
+          <div class="mb-3 control-line">
+            <label class="form-label mb-0">Fecha</label>
+            <input type="text" class="form-control" value="{{ lead.fecha }}" readonly>
+          </div>
+
+          <div class="mb-3 control-line">
+            <label class="form-label mb-0">Teléfono</label>
+            <input type="text" class="form-control" value="{{ lead.telefono }}" readonly>
+          </div>
+
+          <div class="mb-3 control-line">
+            <label class="form-label mb-0">Proceso</label>
+            <select id="proceso_select" name="proceso_id" class="form-select" {{ 'disabled' if lock_proceso else '' }}>
+              <option value="" disabled {{ 'selected' if not f_proceso }}>-- Seleccione un proceso --</option>
+              {% for p in procesos %}
+                {% set pid = (p.id if p.id is defined else p['id']) | string %}
+                {% set pnombre = p.nombre_proceso if p.nombre_proceso is defined else p['nombre_proceso'] %}
+                <option value="{{ pid }}" {{ 'selected' if f_proceso == pid else '' }}>{{ pnombre }}</option>
+              {% endfor %}
+            </select>
+            {% if lock_proceso %}
+              <input type="hidden" name="proceso_id" value="{{ f_proceso }}">
+            {% endif %}
+          </div>
+
+          <!-- Canal de comunicación -->
+          <div id="sec-canal" class="mb-3 control-line" style="display:none;">
+            <label class="form-label mb-0">Canal de comunicación</label>
+
+            <select name="canal_contacto" id="canal_contacto" class="form-select">
+              <option value="" disabled {{ 'selected' if not f_canal }}>-- Seleccione un canal de comunicación --</option>
+              {% for c in canales_contacto %}
+                {% set cid = (c.id if c.id is defined else c['id']) | string %}
+                {% set cnombre = c.nombre if c.nombre is defined else c['nombre'] %}
+                <option value="{{ cid }}" {{ 'selected' if f_canal == cid else '' }}>{{ cnombre }}</option>
+              {% endfor %}
+            </select>
+
+            <!-- respaldo por si el select queda disabled -->
+            <input type="hidden" id="canal_contacto_hidden" name="canal_contacto" value="{{ f_canal }}">
+            <script>
+              (function(){
+                const sel = document.getElementById('canal_contacto');
+                const hid = document.getElementById('canal_contacto_hidden');
+                const form = document.getElementById('form-seguimiento');
+                if (sel && hid) sel.addEventListener('change', ()=> hid.value = sel.value || '');
+                if (form) form.addEventListener('submit', ()=> { if (sel) sel.disabled = false; if (hid && sel) hid.value = sel.value || ''; });
+              })();
+            </script>
+          </div>
+
+          <div id="sec-fecha" class="mb-3 control-line" style="display:none;">
+            <label class="form-label mb-0">Fecha de programación</label>
+            <input type="date" name="fecha_programada" id="fecha_programada" class="form-control" value="{{ f_fecha }}">
+          </div>
+
+          <div id="sec-cotizacion" class="card p-3 mb-3" style="display:none;">
+            <h5 class="mb-3">💰 Cotización</h5>
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Código</label>
+              <input type="text" name="cotizacion" id="cotizacion" class="form-control" maxlength="20" placeholder="Ej: ABC12345" value="{{ f_cot }}">
+            </div>
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Monto</label>
+              <input type="number" name="monto" id="monto" class="form-control" min="0" step="0.01" placeholder="0.00" value="{{ f_monto }}">
+            </div>
+            <div class="mb-0 control-line">
+              <label class="form-label mb-0">Moneda</label>
+              <select id="moneda" name="moneda_id" class="form-select">
+                <option value="" disabled {{ 'selected' if not f_moneda }}>-- Seleccione una Moneda --</option>
+                {% for m in monedas %}
+                  {% set mid = (m.id if m.id is defined else m['id']) | string %}
+                  {% set mnombre = m.nombre_moneda if m.nombre_moneda is defined else m['nombre_moneda'] %}
+                  <option value="{{ mid }}" {{ 'selected' if f_moneda == mid else '' }}>{{ mnombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div id="sec-motivo" class="mb-3 control-line" style="display:none;">
+            <label class="form-label mb-0">Motivo (No vendido)</label>
+            <select id="motivo_no_venta_id" name="motivo_no_venta_id" class="form-select">
+              <option value="" disabled {{ 'selected' if not f_motivo }}>-- Seleccione un motivo de no venta --</option>
+              {% for mt in motivos %}
+                {% set mtid = (mt.id if mt.id is defined else mt['id']) | string %}
+                {% set mtnombre = mt.motivo_no_venta if mt.motivo_no_venta is defined else mt['motivo_no_venta'] %}
+                <option value="{{ mtid }}" {{ 'selected' if f_motivo == mtid else '' }}>{{ mtnombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Columna derecha -->
+      <div class="col-right">
+        <div class="card p-3">
+          <div class="mb-3 control-line">
+            <label class="form-label mb-0">Distrito</label>
+            <input type="text" class="form-control" value="{{ lead.distrito or '' }}" readonly>
+          </div>
+          <div class="mb-3 control-line">
+            <label class="form-label mb-0">Bien/Servicio</label>
+            <input type="text" class="form-control" value="{{ bien_servicio_nombre or '' }}" readonly>
+          </div>
+          <div class="mb-3 control-line">
+            <label class="form-label mb-0">E-mail</label>
+            <input type="text" class="form-control" value="{{ lead.email or '' }}" readonly>
+          </div>
+          <div class="mb-2 control-line control-line--area">
+            <label class="form-label mb-0">Comentario</label>
+            <textarea id="comentario" name="comentario" class="form-control" rows="4" placeholder="Escribe tus observaciones aquí...">{{ f_com }}</textarea>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+
+      <div class="actions-right mb-3">
+            <button type="submit" class="btn btn-success btn-sm">Guardar</button>
+          </div>
+
+  </form>
+
+  <h4 class="mt-4 mb-2">Actividades de Cliente</h4>
+
+  <form class="mb-3 d-flex" style="gap:.5rem;" onsubmit="return false;">
+    <input type="text" class="form-control live-search" placeholder="Buscar en actividades..." id="q-actividades" data-target="#tabla-actividades" data-counter="#cnt-actividades">
+    <button type="button" class="btn btn-primary search-btn" data-input="#q-actividades">Buscar</button>
+    <button type="button" class="btn btn-outline-secondary clear-btn" data-input="#q-actividades">Limpiar</button>
+    <div class="text-muted" style="align-self:center;">
+      <small>Coincidencias: <span id="cnt-actividades">0</span></small>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-modern table-striped table-sm" id="tabla-actividades">
+      <thead>
+        <tr>
+          <th>Código Lead</th>
+          <th>Nombre</th>
+          <th>Fecha del Lead</th>
+          <th>Contacto</th>
+          <th>Bien/Servicio</th>
+          <th>Teléfono</th>
+          <th>Proceso</th>
+          <th>Comentario</th>
+          <th>Fecha de Guardado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in seguimientos %}
+        <tr>
+          <td>{{ lead.codigo }}</td>
+          <td>{{ lead_nombre or lead.nombre or lead.razon_social or lead.nombre_completo or '' }}</td>
+          <td>{{ lead.fecha }}</td>
+          <td>{{ lead_contacto or lead.contacto or lead.persona_contacto or '' }}</td>
+          <td>{{ bien_servicio_nombre or '' }}</td>
+          <td>{{ lead.telefono }}</td>
+          <td>{{ proc_map.get(s.proceso_id) or '' }}</td>
+          <td>{{ s.comentario or '' }}</td>
+          <td>{{ s.fecha_guardado }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" class="text-center text-muted no-data">Sin actividades registradas.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+{% endblock %}
