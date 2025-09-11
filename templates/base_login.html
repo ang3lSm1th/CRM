@@ -10,5 +10,13 @@
 </head>
 <body>
   {% block content %}{% endblock %}
+
+  <!-- Contenedor de toasts + flashes en data-* -->
+  <div id="toast-root"
+       aria-live="polite"
+       aria-atomic="true"
+       data-flashes='{{ get_flashed_messages(with_categories=True) | tojson | safe }}'></div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
 </body>
 </html>

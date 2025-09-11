@@ -1,9 +1,7 @@
 {% extends "base_login.html" %}
-
 {% block title %}Login - CRM{% endblock %}
-
 {% block content %}
-<body class="login">
+
 <div class="login-container">
   <!-- Columna izquierda -->
   <div class="left">
@@ -24,12 +22,10 @@
       </form>
     </div>
   </div>
-  </body>
 
   <!-- Columna derecha -->
   <div class="right">
     <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo">
-    
   </div>
 </div>
 {% endblock %}

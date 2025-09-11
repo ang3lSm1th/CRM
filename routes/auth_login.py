@@ -8,28 +8,28 @@ auth_bp = Blueprint("auth", __name__)
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        # Sanitizar entradas
         username = request.form.get("usuario", "").strip()
         password = request.form.get("password", "")
 
-        # Validación mínima del username (solo letras, números, puntos, guiones, 3-50 chars)
+        # Validación mínima del username
         if not re.match(r"^[A-Za-z0-9_.-]{3,50}$", username):
             flash("Usuario inválido", "warning")
-            return render_template("auth/login.html"), 400
+            return redirect(url_for("auth.login"))
 
-        # Buscar usuario en la base de datos (usa parámetros -> sin inyección SQL)
         user = User.get_by_username(username)
 
-        # Validar existencia y contraseña
         if not user or not check_password(user.password, password):
-            flash("Usuario o contraseña inválidos", "danger")
-            return render_template("auth/login.html"), 401
+            flash("Usuario o contraseña incorrecta", "danger")
+            return redirect(url_for("auth.login"))
 
-        # Limpiar sesión anterior antes de asignar nueva (evita session fixation)
+# después de verificar credenciales...
         session.clear()
         session["user_id"] = int(user.id)
-        session["username"] = user.usuario
-        session["id_rol"] = str(user.id_rol)  # mejor como string por consistencia
+        session["username"] = user.usuario        # si igual lo quieres tener
+        session["nombre"] = user.nombre           # ← agrega esto
+        session["id_rol"] = str(user.id_rol)
+
+
 
         return redirect(url_for("dashboard.dashboard_router"))
 
@@ -38,6 +38,5 @@ def login():
 
 @auth_bp.route("/logout")
 def logout():
-    # Eliminar datos de sesión
     session.clear()
     return redirect(url_for("auth.login"))

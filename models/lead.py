@@ -2,7 +2,7 @@
 from extensions import mysql
 import MySQLdb.cursors
 from MySQLdb.cursors import DictCursor
-
+from MySQLdb import IntegrityError  # <— añade esto arriba
 # Resolver nombres sin acoplar al esquema exacto
 from models.canal import Canal
 from models.user import User
@@ -52,19 +52,25 @@ class Lead:
     @staticmethod
     def create(data):
         cur = mysql.connection.cursor()
-        cur.execute(
-            """
-            INSERT INTO leads
-            (codigo, fecha, nombre, telefono, ruc_dni, email, contacto, direccion,
-             departamento, provincia, distrito, canal_id, bien_servicio_id, asignado_a, comentario)
-            VALUES (%(codigo)s, %(fecha)s, %(nombre)s, %(telefono)s, %(ruc_dni)s,
-                    %(email)s, %(contacto)s, %(direccion)s, %(departamento)s, %(provincia)s,
-                    %(distrito)s, %(canal_id)s, %(bien_servicio_id)s, %(asignado_a)s, %(comentario)s)
-            """,
-            data,
-        )
-        mysql.connection.commit()
-        cur.close()
+        try:
+            cur.execute(
+                """
+                INSERT INTO leads
+                (codigo, fecha, nombre, telefono, ruc_dni, email, contacto, direccion,
+                 departamento, provincia, distrito, canal_id, bien_servicio_id, asignado_a, comentario)
+                VALUES (%(codigo)s, %(fecha)s, %(nombre)s, %(telefono)s, %(ruc_dni)s,
+                        %(email)s, %(contacto)s, %(direccion)s, %(departamento)s, %(provincia)s,
+                        %(distrito)s, %(canal_id)s, %(bien_servicio_id)s, %(asignado_a)s, %(comentario)s)
+                """,
+                data,
+            )
+            mysql.connection.commit()
+            return cur.lastrowid
+        except IntegrityError:
+            mysql.connection.rollback()
+            raise
+        finally:
+            cur.close()
 
     # ------------------------
     # Generar código auto-incrementable
@@ -109,31 +115,35 @@ class Lead:
     # ------------------------
     # Actualizar por ID
     # ------------------------
-    @staticmethod
     def update(data):
         cur = mysql.connection.cursor()
-        cur.execute(
-            """
-            UPDATE leads SET
-                nombre=%(nombre)s,
-                telefono=%(telefono)s,
-                ruc_dni=%(ruc_dni)s,
-                email=%(email)s,
-                contacto=%(contacto)s,
-                direccion=%(direccion)s,
-                departamento=%(departamento)s,
-                provincia=%(provincia)s,
-                distrito=%(distrito)s,
-                canal_id=%(canal_id)s,
-                bien_servicio_id=%(bien_servicio_id)s,
-                asignado_a=%(asignado_a)s,
-                comentario=%(comentario)s
-            WHERE id=%(id)s
-            """,
-            data,
-        )
-        mysql.connection.commit()
-        cur.close()
+        try:
+            cur.execute(
+                """
+                UPDATE leads SET
+                    nombre=%(nombre)s,
+                    telefono=%(telefono)s,
+                    ruc_dni=%(ruc_dni)s,
+                    email=%(email)s,
+                    contacto=%(contacto)s,
+                    direccion=%(direccion)s,
+                    departamento=%(departamento)s,
+                    provincia=%(provincia)s,
+                    distrito=%(distrito)s,
+                    canal_id=%(canal_id)s,
+                    bien_servicio_id=%(bien_servicio_id)s,
+                    asignado_a=%(asignado_a)s,
+                    comentario=%(comentario)s
+                WHERE id=%(id)s
+                """,
+                data,
+            )
+            mysql.connection.commit()
+        except IntegrityError:
+            mysql.connection.rollback()
+            raise
+        finally:
+            cur.close()
 
     # ------------------------
     # Actualizar por CÓDIGO
@@ -141,35 +151,30 @@ class Lead:
     @staticmethod
     def update_by_codigo(data):
         cur = mysql.connection.cursor()
-        cur.execute(
-            """
-            UPDATE leads SET
-                nombre=%s, telefono=%s, ruc_dni=%s, email=%s,
-                contacto=%s, direccion=%s, departamento=%s,
-                provincia=%s, distrito=%s, canal_id=%s,
-                bien_servicio_id=%s, asignado_a=%s, comentario=%s
-            WHERE codigo=%s
-            """,
-            (
-                data["nombre"],
-                data["telefono"],
-                data["ruc_dni"],
-                data["email"],
-                data["contacto"],
-                data["direccion"],
-                data["departamento"],
-                data["provincia"],
-                data["distrito"],
-                data["canal_id"],
-                data["bien_servicio_id"],
-                data["asignado_a"],
-                data["comentario"],
-                data["codigo"],
-            ),
-        )
-        mysql.connection.commit()
-        cur.close()
-
+        try:
+            cur.execute(
+                """
+                UPDATE leads SET
+                    nombre=%s, telefono=%s, ruc_dni=%s, email=%s,
+                    contacto=%s, direccion=%s, departamento=%s,
+                    provincia=%s, distrito=%s, canal_id=%s,
+                    bien_servicio_id=%s, asignado_a=%s, comentario=%s
+                WHERE codigo=%s
+                """,
+                (
+                    data["nombre"], data["telefono"], data["ruc_dni"], data["email"],
+                    data["contacto"], data["direccion"], data["departamento"], data["provincia"],
+                    data["distrito"], data["canal_id"], data["bien_servicio_id"],
+                    data["asignado_a"], data["comentario"], data["codigo"],
+                ),
+            )
+            mysql.connection.commit()
+        except IntegrityError:
+            mysql.connection.rollback()
+            raise
+        finally:
+            cur.close()
+            
     # ============================================================
     # Helpers: resolver nombres (canal y asignado_a)
     # ============================================================

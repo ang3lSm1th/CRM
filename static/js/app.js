@@ -310,3 +310,49 @@
     });
   });
 })();
+
+// static/js/app.js
+(function () {
+  const ICONS = {
+    danger:  'fa-triangle-exclamation',
+    warning: 'fa-circle-exclamation',
+    success: 'fa-circle-check',
+    info:    'fa-circle-info'
+  };
+
+  function createToast(root, category, msg) {
+    const type = ['danger','warning','success','info'].includes(category) ? category : 'info';
+    const div = document.createElement('div');
+    div.className = `toast toast-${type}`;
+    div.innerHTML = `
+      <i class="fa-solid ${ICONS[type]}" aria-hidden="true"></i>
+      <div class="toast-msg">${msg}</div>
+      <button class="toast-close" aria-label="Cerrar">&times;</button>
+    `;
+
+    root.appendChild(div);
+
+    const close = () => { div.classList.add('hide'); setTimeout(() => div.remove(), 200); };
+    div.querySelector('.toast-close').addEventListener('click', close);
+    setTimeout(close, type === 'danger' ? 6000 : 4000);
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const root = document.getElementById('toast-root');
+    if (!root) return;
+
+    let flashes = [];
+    try {
+      const raw = root.dataset.flashes || '[]';
+      flashes = JSON.parse(raw);
+    } catch (e) {
+      console.error('Flashes JSON inválido:', e);
+    }
+
+    if (Array.isArray(flashes)) {
+      flashes.forEach(([category, msg]) => createToast(root, category, msg));
+      // Limpia el dato para que no se reinyecte si haces navegación parcial
+      root.dataset.flashes = '[]';
+    }
+  });
+})();

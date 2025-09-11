@@ -1,0 +1,76 @@
+/* Más específico que .container de Bootstrap */
+.create-lead-page .container {
+  background: #f9fbff;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 4px 12px rgba(0, 86, 179, 0.1);
+}
+
+/* Título */
+.create-lead-page h2 {
+  color: #1d4ed8;
+  font-weight: 600;
+  border-bottom: 2px solid #93c5fd;
+  padding-bottom: 8px;
+  margin-bottom: 20px;
+}
+
+/* Labels */
+.create-lead-page .form-label {
+  font-weight: 500;
+  color: #2563eb;
+}
+
+/* Inputs y selects */
+.create-lead-page .form-control,
+.create-lead-page .form-select,
+.create-lead-page textarea {
+  border: 1px solid #263241;
+  border-radius: 8px;
+  padding: 10px;
+  transition: all 0.2s ease-in-out;
+  background: #fff;
+}
+
+.create-lead-page .form-control:focus,
+.create-lead-page .form-select:focus,
+.create-lead-page textarea:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 5px rgba(59, 130, 246, 0.4);
+}
+
+/* Botones */
+.create-lead-page .btn-primary {
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
+  font-weight: 500;
+  padding: 10px 20px;
+  border-radius: 8px;
+}
+
+.create-lead-page .btn-primary:hover {
+  background-color: #1e40af !important;
+  border-color: #1e40af !important;
+}
+
+.create-lead-page .btn-secondary {
+  background-color: #e0f2fe;
+  border-color: #bae6fd;
+  color: #0c4a6e;
+  font-weight: 500;
+  padding: 10px 20px;
+  border-radius: 8px;
+}
+
+.create-lead-page .btn-secondary:hover {
+  background-color: #bae6fd;
+  color: #075985;
+}
+
+/* Quita resize y mejora espaciados */
+.create-lead-page textarea { resize: none; }
+.create-lead-page .row { margin-bottom: 10px; }
+
+/* Fondo general (solo en esta página) */
+.create-lead-page { background-color: #ffffff; }
