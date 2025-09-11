@@ -49,7 +49,7 @@
           <div class="mb-3 control-line">
             <label class="form-label mb-0">Proceso</label>
             <select id="proceso_select" name="proceso_id" class="form-select" {{ 'disabled' if lock_proceso else '' }}>
-              <option value="" disabled {{ 'selected' if not f_proceso }}>-- Seleccione un proceso --</option>
+              
               {% for p in procesos %}
                 {% set pid = (p.id if p.id is defined else p['id']) | string %}
                 {% set pnombre = p.nombre_proceso if p.nombre_proceso is defined else p['nombre_proceso'] %}
