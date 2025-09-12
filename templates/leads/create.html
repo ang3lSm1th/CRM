@@ -3,138 +3,161 @@
 {% block title %}Crear Lead{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/createleads.css') }}?v=1">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/createleads.css') }}?v=2">
 {% endblock %}
 
 {% block content %}
 <div class="create-lead-page">
   <h2 class="mb-4">➕ Crear Lead</h2>
-  <div class="container mt-4">
-    
 
-    <form method="POST" action="{{ url_for('leads.create_lead') }}">
-      <div class="row">
-        <!-- Código -->
-        <div class="col-md-4 mb-3">
-          <label for="codigo" class="form-label">Código</label>
-          <input type="text" id="codigo" name="codigo" class="form-control" 
-                 value="{{ codigo }}" readonly>
+  <form method="POST" action="{{ url_for('leads.create_lead') }}">
+    <div class="clp-grid">
+      <!-- =============== MÓDULO IZQUIERDO =============== -->
+      <section class="clp-module">
+        <header class="clp-module__head">
+          <h3>Datos del Lead</h3>
+          <p>Identificación y contacto</p>
+        </header>
+
+        <div class="clp-module__body">
+          <!-- Metadatos compactos -->
+          <div class="row">
+            <!-- Código -->
+            <div class="col-md-6">
+              <div class="form-row">
+                <label for="codigo" class="form-label">Código</label>
+                <input type="text" id="codigo" name="codigo" class="form-control" value="{{ codigo }}" readonly>
+              </div>
+            </div>
+            <!-- Fecha -->
+            <div class="col-md-6">
+              <div class="form-row">
+                <label for="fecha" class="form-label">Fecha</label>
+                <input type="date" id="fecha" name="fecha" class="form-control" value="{{ fecha_hoy }}">
+              </div>
+            </div>
+          </div>
+
+          <!-- 1) NOMBRE COMPLETO - CLIENTE -->
+          <div class="form-row">
+            <label for="nombre" class="form-label">CLIENTE</label>
+            <input type="text" id="nombre" name="nombre" class="form-control">
+          </div>
+
+          <!-- 2) DNI/RUC -->
+          <div class="form-row">
+            <label for="ruc_dni" class="form-label">DNI/RUC</label>
+            <input type="text" id="ruc_dni" name="ruc_dni" class="form-control">
+          </div>
+
+          <!-- 3) TELÉFONO/CELULAR -->
+          <div class="form-row">
+            <label for="telefono" class="form-label">TELÉFONO/CELULAR</label>
+            <input type="text" id="telefono" name="telefono" class="form-control">
+          </div>
+
+          <!-- 4) CONTACTO -->
+          <div class="form-row">
+            <label for="contacto" class="form-label">CONTACTO</label>
+            <input type="text" id="contacto" name="contacto" class="form-control">
+          </div>
+
+          <!-- 5) CORREO -->
+          <div class="form-row">
+            <label for="email" class="form-label">CORREO</label>
+            <input type="email" id="email" name="email" class="form-control">
+          </div>
+
+          <!-- 6) DIRECCIÓN -->
+          <div class="form-row">
+            <label for="direccion" class="form-label">DIRECCIÓN</label>
+            <input type="text" id="direccion" name="direccion" class="form-control">
+          </div>
+
+          <!-- 7-8-9) DEP / PROV / DIST -->
+          <div class="row">
+            <div class="col-md-4">
+              <div class="form-row">
+                <label for="departamento" class="form-label">DEPARTAMENTO</label>
+                <input type="text" id="departamento" name="departamento" class="form-control">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-row">
+                <label for="provincia" class="form-label">PROVINCIA</label>
+                <input type="text" id="provincia" name="provincia" class="form-control">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-row">
+                <label for="distrito" class="form-label">DISTRITO</label>
+                <input type="text" id="distrito" name="distrito" class="form-control">
+              </div>
+            </div>
+          </div>
         </div>
+      </section>
 
-        <!-- Fecha -->
-        <div class="col-md-4 mb-3">
-          <label for="fecha" class="form-label">Fecha</label>
-          <input type="date" id="fecha" name="fecha" class="form-control"
-                 value="{{ fecha_hoy }}">
-        </div>
-      </div>
+      <!-- =============== MÓDULO DERECHO =============== -->
+      <section class="clp-module">
+        <header class="clp-module__head">
+          <h3>Datos Comerciales</h3>
+          <p>Asignación, producto y notas</p>
+        </header>
 
-      <div class="row">
-        <!-- Teléfono -->
-        <div class="col-md-4 mb-3">
-          <label for="telefono" class="form-label">Teléfono</label>
-          <input type="text" id="telefono" name="telefono" class="form-control">
-        </div>
+        <div class="clp-module__body">
+          <!-- 10) BIEN/SERVICIO -->
+          <div class="form-row">
+            <label for="bien_servicio_id" class="form-label">BIEN/SERVICIO</label>
+            <select id="bien_servicio_id" name="bien_servicio_id" class="form-select" required>
+              <option value="">-- Seleccione un bien o servicio --</option>
+              {% for bs in bienes_servicios %}
+                <option value="{{ bs.id }}">{{ bs.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
 
-        <!-- RUC / DNI -->
-        <div class="col-md-4 mb-3">
-          <label for="ruc_dni" class="form-label">RUC / DNI</label>
-          <input type="text" id="ruc_dni" name="ruc_dni" class="form-control">
-        </div>
-
-        <!-- Nombre -->
-        <div class="col-md-4 mb-3">
-          <label for="nombre" class="form-label">Nombre completo</label>
-          <input type="text" id="nombre" name="nombre" class="form-control">
-        </div>
-      </div>
-
-      <div class="row">
-        <!-- Canal -->
-        <div class="col-md-6 mb-3">
-          <label for="canal_id" class="form-label">Canal</label>
-          <select name="canal_id" class="form-select" required>
-            <option value="">-- Seleccione un canal --</option>
-            {% for canal in canales %}
-              <option value="{{ canal.id }}">{{ canal.nombre }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <!-- Contacto -->
-        <div class="col-md-6 mb-3">
-          <label for="contacto" class="form-label">Contacto</label>
-          <input type="text" id="contacto" name="contacto" class="form-control">
-        </div>
-      </div>
-
-      <!-- Dirección -->
-      <div class="mb-3">
-        <label for="direccion" class="form-label">Dirección</label>
-        <input type="text" id="direccion" name="direccion" class="form-control">
-      </div>
-
-      <div class="row">
-        <div class="col-md-4 mb-3">
-          <label for="departamento" class="form-label">Departamento</label>
-          <input type="text" id="departamento" name="departamento" class="form-control">
-        </div>
-        <div class="col-md-4 mb-3">
-          <label for="provincia" class="form-label">Provincia</label>
-          <input type="text" id="provincia" name="provincia" class="form-control">
-        </div>
-        <div class="col-md-4 mb-3">
-          <label for="distrito" class="form-label">Distrito</label>
-          <input type="text" id="distrito" name="distrito" class="form-control">
-        </div>
-      </div>
-
-      <!-- Bien o Servicio -->
-      <div class="mb-3">
-        <label for="bien_servicio_id" class="form-label">Bien o Servicio</label>
-        <select name="bien_servicio_id" class="form-select" required>
-          <option value="">-- Seleccione un bien o servicio --</option>
-          {% for bs in bienes_servicios %}
-            <option value="{{ bs.id }}">{{ bs.nombre }}</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <!-- Email -->
-      <div class="mb-3">
-        <label for="email" class="form-label">Correo electrónico</label>
-        <input type="email" id="email" name="email" class="form-control">
-      </div>
-
-      <!-- Comentario -->
-       <label for="comentario" class="form-label">Comentario</label>
-      <div class="mb-3">
-       
-        <textarea id="comentario" name="comentario" class="form-control" rows="3"></textarea>
-      </div>
-
-      <!-- Asignar a -->
-      <div class="form-group mb-3">
-        <label for="asignado_a">Asignado a:</label>
-        {% if es_asesor %}
-            <input type="text" class="form-control" value="{{ asesores[0].nombre }}" readonly>
-            <input type="hidden" name="asignado_a" value="{{ asesores[0].id }}">
-        {% else %}
-            <select name="asignado_a" class="form-control">
+          <!-- 11) ASIGNADO -->
+          <div class="form-row">
+            <label for="asignado_a" class="form-label">ASIGNADO</label>
+            {% if es_asesor %}
+              <input type="text" class="form-control" value="{{ asesores[0].nombre }}" readonly>
+              <input type="hidden" name="asignado_a" value="{{ asesores[0].id }}">
+            {% else %}
+              <select id="asignado_a" name="asignado_a" class="form-select">
                 <option value="">-- Seleccione un asesor --</option>
                 {% for asesor in asesores %}
-                    <option value="{{ asesor.id }}">{{ asesor.nombre }}</option>
+                  <option value="{{ asesor.id }}">{{ asesor.nombre }}</option>
                 {% endfor %}
-            </select>
-        {% endif %}
-      </div>
+              </select>
+            {% endif %}
+          </div>
 
-      <!-- Botones -->
-      <div class="d-flex justify-content-between">
-        <a href="{{ url_for('leads.list_leads') }}" class="btn btn-secondary">⬅ Volver</a>
-        <button type="submit" class="btn btn-primary">💾 Guardar Lead</button>
-      </div>
-    </form>
-  </div>
+          <!-- 12) CANAL -->
+          <div class="form-row">
+            <label for="canal_id" class="form-label">CANAL</label>
+            <select id="canal_id" name="canal_id" class="form-select" required>
+              <option value="">-- Seleccione un canal --</option>
+              {% for canal in canales %}
+                <option value="{{ canal.id }}">{{ canal.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- 13) COMENTARIO -->
+          <div class="form-row">
+            <label for="comentario" class="form-label">COMENTARIO</label>
+            <textarea id="comentario" name="comentario" class="form-control" rows="5"></textarea>
+          </div>
+
+          <!-- Acciones -->
+          <div class="clp-actions">
+            <a href="{{ url_for('leads.list_leads') }}" class="btn btn-secondary">⬅ Volver</a>
+            <button type="submit" class="btn btn-primary">💾 Guardar Lead</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </form>
 </div>
 {% endblock %}
