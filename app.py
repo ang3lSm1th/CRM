@@ -34,7 +34,7 @@ app = create_app()
 # Config extra (cookies/seguridad) sobre la instancia
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SECURE=True,   # ← en LAN/HTTP
+    SESSION_COOKIE_SECURE=False,   # ← en LAN/HTTP
     SESSION_COOKIE_SAMESITE="Lax",
     PERMANENT_SESSION_LIFETIME=1800
 )
@@ -42,4 +42,4 @@ app.config.update(
 
 # Solo para correr LOCALMENTE (no en Render)
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=8000, debug=True)

@@ -1,4 +1,3 @@
-# routes/dashboard.py
 from flask import Blueprint, session, redirect, url_for, flash
 from utils.security import login_required, ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH, ROLE_ASESOR
 
@@ -10,10 +9,9 @@ def dashboard_router():
     rol = session.get("id_rol")
 
     if rol in (ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH):
-        # Redirige a la vista del blueprint "leads"
-        return redirect(url_for("leads.list_leads"))         # → /leads/list
+        return redirect(url_for("leads.list_leads"))     # → /leads/list
     elif rol == ROLE_ASESOR:
-        return redirect(url_for("leads.list_unstarted"))     # → /leads/sin-iniciar
+        return redirect(url_for("leads.list_unstarted")) # → /leads/sin-iniciar
 
     flash("Rol no reconocido", "warning")
     return redirect(url_for("auth.login"))

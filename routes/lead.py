@@ -24,7 +24,7 @@ from models.canal_contacto import CanalContacto
 lead_bp = Blueprint("leads", __name__, url_prefix="/leads")
 
 # =========================================================
-# Router por rol: /leads  →  list (admin/gerente/RRHH) o sin-iniciar (asesor)
+# Router por rol: /leads → list (Admin/Gerente/RRHH) o sin-iniciar (Asesor)
 # =========================================================
 @lead_bp.route("/")
 @login_required
@@ -37,72 +37,67 @@ def leads_router():
     flash("Rol no reconocido", "warning")
     return redirect(url_for("auth.login"))
 
-
 # =========================================================
-# LISTAS (solo Admin / Gerente / RRHH)
+# LISTAS
 # =========================================================
-ROLES_LIST = (ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH)
+ROLES_LIST      = (ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH)                 # para admin views
+ROLES_LIST_ALL  = (ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH, ROLE_ASESOR)    # asesor puede ver todas
 
 @lead_bp.route("/list")
-@role_required(*ROLES_LIST)
+@role_required(*ROLES_LIST_ALL)
 def list_leads():
     q      = (request.args.get("q") or "").strip()
     f_ini  = request.args.get("f_ini") or None
     f_fin  = request.args.get("f_fin") or None
 
     if q or f_ini or f_fin:
-        leads = Lead.search_for_user(
-            session["id_rol"], session["user_id"], q=q, start_date=f_ini, end_date=f_fin
-        )
+        leads = Lead.search_for_user(session["id_rol"], session["user_id"], q=q, start_date=f_ini, end_date=f_fin)
     else:
-        leads = Lead.list_for_user(
-            session["id_rol"], session["user_id"], start_date=f_ini, end_date=f_fin
-        )
+        leads = Lead.list_for_user(session["id_rol"], session["user_id"], start_date=f_ini, end_date=f_fin)
 
     return render_template("leads/list.html", leads=leads, q=q, total=len(leads), f_ini=f_ini, f_fin=f_fin)
 
-
 @lead_bp.route("/programados")
-@role_required(*ROLES_LIST)
+@role_required(*ROLES_LIST_ALL)
 def list_programmed():
     q = (request.args.get("q") or "").strip()
     leads = Lead.list_programmed_for_user(session["id_rol"], session["user_id"], q)
     return render_template("leads/programados.html", leads=leads, q=q, total=len(leads))
 
 @lead_bp.route("/cotizados")
-@role_required(*ROLES_LIST)
+@role_required(*ROLES_LIST_ALL)
 def list_quoted():
     q = (request.args.get("q") or "").strip()
     leads = Lead.list_quoted_for_user(session["id_rol"], session["user_id"], q)
     return render_template("leads/cotizados.html", leads=leads, q=q, total=len(leads))
 
 @lead_bp.route("/cerrados")
-@role_required(*ROLES_LIST)
+@role_required(*ROLES_LIST_ALL)
 def list_closed():
     q = (request.args.get("q") or "").strip()
     leads = Lead.list_closed_for_user(session["id_rol"], session["user_id"], q)
     return render_template("leads/cerrados.html", leads=leads, q=q, total=len(leads))
 
 @lead_bp.route("/cerrados-no-vendidos")
-@role_required(*ROLES_LIST)
+@role_required(*ROLES_LIST_ALL)
 def list_closed_lost():
     q = (request.args.get("q") or "").strip()
     leads = Lead.list_closed_lost_for_user(session["id_rol"], session["user_id"], q)
     return render_template("leads/cerrados_no_vendidos.html", leads=leads, q=q, total=len(leads))
 
 @lead_bp.route("/en-seguimiento")
-@role_required(*ROLES_LIST)
+@role_required(*ROLES_LIST_ALL)
 def list_in_followup():
     q = (request.args.get("q") or "").strip()
     leads = Lead.list_in_followup_for_user(session["id_rol"], session["user_id"], q)
     return render_template("leads/seguimiento_sidebar.html", leads=leads, q=q, total=len(leads))
 
-
 # =========================================================
-# SIN INICIAR (solo Asesor)
+# SIN INICIAR (solo Asesor para el acceso directo)
 # =========================================================
+# Después (todos los roles)
 @lead_bp.route("/sin-iniciar")
-@role_required(ROLE_ASESOR)
+@role_required(ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH, ROLE_ASESOR)  # o usa @login_required si prefieres
 def list_unstarted():
     q = (request.args.get("q") or "").strip()
     leads = Lead.list_unstarted_for_user(session["id_rol"], session["user_id"], q)
@@ -134,7 +129,10 @@ def create_lead():
             "asignado_a": (session["user_id"] if session["id_rol"] == ROLE_ASESOR else request.form.get("asignado_a")),
             "comentario": request.form.get("comentario"),
         }
-        Lead.create(data)
+
+        # Inserta lead + seguimiento "No iniciado" automático
+        Lead.create(data, created_by_user_id=session.get("user_id"))
+
         flash("✅ Lead creado correctamente", "success")
         return redirect(url_for("leads.list_leads"))
 
@@ -147,7 +145,6 @@ def create_lead():
         asesores=(User.get_by_role(ROLE_ASESOR) if session["id_rol"] != ROLE_ASESOR else [User.get_by_id(session["user_id"])]),
         es_asesor=(session["id_rol"] == ROLE_ASESOR),
     )
-
 
 @lead_bp.route("/edit/<codigo>", methods=["GET", "POST"])
 @role_required(ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH, ROLE_ASESOR)
@@ -186,7 +183,6 @@ def edit_lead(codigo):
         es_asesor=(session["id_rol"] == ROLE_ASESOR),
     )
 
-
 @lead_bp.route("/delete/<codigo>", methods=["POST"])
 @role_required(ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH)
 def delete_lead(codigo):
@@ -202,7 +198,6 @@ def delete_lead(codigo):
 
     flash("🗑️ Lead eliminado correctamente", "success")
     return redirect(url_for("leads.list_leads"))
-
 
 # =========================================================
 # SEGUIMIENTO (permiso amplio)
@@ -348,7 +343,6 @@ def seguimiento_lead(codigo):
         lock_proceso=lock_proceso,
     )
 
-
 # =========================================================
 # Reporte rápido (solo Admin / Gerente / RRHH)
 # =========================================================
@@ -441,7 +435,7 @@ def reporte_rapido():
     }
     USD_ID, PEN_ID = 1, 2
 
-    # Conteo comparativo para gráficos por canal
+    # Conteo comparativo por canal
     recep_counts = {}     # canales de recepción
     contacto_counts = {}  # canales de contacto (seguimiento)
 
@@ -475,7 +469,7 @@ def reporte_rapido():
         # Estado + totales globales
         estado_key = None
         cotizado_key = None
-        if "no iniciado" in pnorm:
+        if r.get("proceso_id") is None or "no iniciado" in pnorm:
             estado_key = "no_iniciados";            total_no_iniciados += 1
         elif "seguimiento" in pnorm:
             estado_key = "seguimiento";             total_seguimiento += 1
@@ -529,7 +523,7 @@ def reporte_rapido():
         ("Cotizado Cerrado no vendido", cotizado_tbl["Cotizado Cerrado no vendido"]),
     ]
 
-    # === Gráficos (idéntico a tu versión, sin cambios de lógica) ===
+    # === Barras agrupadas para "Cotizado" (montos S/ vs $ por estado)
     def make_grouped_bar_base64(labels, pen_vals, usd_vals, xlabel="Monto total"):
         if not labels:
             return None
@@ -558,6 +552,7 @@ def reporte_rapido():
         buf = io.BytesIO(); fig.savefig(buf, format="png", bbox_inches="tight", transparent=True); plt.close(fig)
         return base64.b64encode(buf.getvalue()).decode("ascii")
 
+    # ===== Barras horizontales (una serie) para canales
     def make_single_bar_base64(labels, values, top_n=12, xlabel="Cantidad de leads", bar_color=None):
         items = [(lbl, val) for lbl, val in zip(labels, values) if lbl and str(lbl).strip()]
         if not items: return None
@@ -581,18 +576,44 @@ def reporte_rapido():
         buf = io.BytesIO(); fig.savefig(buf, format="png", bbox_inches="tight", transparent=True); plt.close(fig)
         return base64.b64encode(buf.getvalue()).decode("ascii")
 
-    # Datos para gráficos
-    # (… resto sin cambios de tu versión …)
-    # Para abreviar aquí, puedes mantener exactamente tu lógica previa:
-    # construir recep_counts, contacto_counts y generar bar_recepcion_png / bar_contacto_png
-    # (ya están arriba en tu código original)
+    # Datos para gráficos por canal
+    names_recep = list(recep_counts.keys())
+    vals_recep  = [recep_counts[n] for n in names_recep]
 
-    # Como arriba ya calculaste recep_counts/contacto_counts:
-    # (si tu versión previa los llena en este flujo, mantenlo igual)
-    # Para no romper tu flujo actual, dejo el return como estaba:
-    # (Si necesitas otra vez bar_recepcion_png o bar_contacto_png, reusa tu fragmento original)
+    names_contacto = list(contacto_counts.keys())
+    vals_contacto  = [contacto_counts[n] for n in names_contacto]
+
+    BLUE   = "#2563eb"
+    ORANGE = "#f59e0b"
+
+    bar_recepcion_png = make_single_bar_base64(
+        names_recep, vals_recep, top_n=12, xlabel="Leads por canal de recepción", bar_color=BLUE
+    )
+    bar_contacto_png = make_single_bar_base64(
+        names_contacto, vals_contacto, top_n=12, xlabel="Leads por canal de contacto", bar_color=ORANGE
+    )
+
+    # Montos agrupados para cotizados
+    labels_cot = [lbl for (lbl, _) in cotizado_rows]
+    pen_vals   = [row["pen"] for (_, row) in cotizado_rows]
+    usd_vals   = [row["usd"] for (_, row) in cotizado_rows]
+    cotizado_bar_png = make_grouped_bar_base64(labels_cot, pen_vals, usd_vals, xlabel="Monto total por estado")
+
     return render_template(
         "leads/rapido.html",
-        # Pasa aquí tus variables calculadas si usas esta vista desde un handler aparte
-        # o elimina esta función si no utilizas /leads/reporte-rapido en producción.
+        f_ini=f_ini, f_fin=f_fin,
+        total_leads=total_leads,
+        proc_counts=proc_counts,
+        canal_counts=canal_counts,
+        total_no_iniciados=total_no_iniciados,
+        total_seguimiento=total_seguimiento,
+        total_programados=total_programados,
+        total_cotizados=total_cotizados,
+        total_cerrados=total_cerrados,
+        total_cerrados_no_vendidos=total_cerrados_no_vendidos,
+        elppa=elppa,
+        cotizado_rows=cotizado_rows,
+        cotizado_bar_png=cotizado_bar_png,
+        bar_recepcion_png=bar_recepcion_png,
+        bar_contacto_png=bar_contacto_png,
     )

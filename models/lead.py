@@ -2,7 +2,8 @@
 from extensions import mysql
 import MySQLdb.cursors
 from MySQLdb.cursors import DictCursor
-from MySQLdb import IntegrityError  # <— añade esto arriba
+from MySQLdb import IntegrityError
+
 # Resolver nombres sin acoplar al esquema exacto
 from models.canal import Canal
 from models.user import User
@@ -46,13 +47,29 @@ class Lead:
         self.asignado_a = asignado_a
         self.comentario = comentario
 
+    # -------------------------------------------------------
+    # Helper: id de proceso por nombre (case-insensitive)
+    # -------------------------------------------------------
+    @staticmethod
+    def _get_proceso_id_by_name(name: str):
+        for p in Proceso.get_all():
+            pname = (p["nombre_proceso"] if isinstance(p, dict) else getattr(p, "nombre_proceso", "")) or ""
+            if pname.strip().lower() == name.strip().lower():
+                return p["id"] if isinstance(p, dict) else getattr(p, "id", None)
+        return None
+
     # ------------------------
-    # Crear lead
+    # Crear lead (+ seguimiento "No iniciado")
     # ------------------------
     @staticmethod
-    def create(data):
+    def create(data, created_by_user_id=None):
+        """
+        Crea el lead y, si se pasa created_by_user_id, inserta un seguimiento
+        inicial con proceso 'No iniciado' para que aparezca en la vista.
+        """
         cur = mysql.connection.cursor()
         try:
+            # 1) Insertar el lead
             cur.execute(
                 """
                 INSERT INTO leads
@@ -64,8 +81,32 @@ class Lead:
                 """,
                 data,
             )
+            lead_id = cur.lastrowid
+
+            # 2) Seguimiento "No iniciado"
+            if created_by_user_id:
+                proc_id = Lead._get_proceso_id_by_name("no iniciado")
+                if proc_id:
+                    cur.execute(
+                        """
+                        INSERT INTO seguimientos
+                          (lead_id, usuario_id, fecha_seguimiento, proceso_id, fecha_programada,
+                           motivo_no_venta_id, cotizacion, monto, moneda_id, comentario,
+                           canal_contacto, fecha_guardado)
+                        VALUES
+                          (%s, %s, %s, %s, NULL, NULL, NULL, NULL, NULL, %s, NULL, NOW())
+                        """,
+                        (
+                            lead_id,
+                            created_by_user_id,
+                            data.get("fecha"),
+                            proc_id,
+                            "Creación automática",
+                        ),
+                    )
+
             mysql.connection.commit()
-            return cur.lastrowid
+            return lead_id
         except IntegrityError:
             mysql.connection.rollback()
             raise
@@ -174,7 +215,7 @@ class Lead:
             raise
         finally:
             cur.close()
-            
+
     # ============================================================
     # Helpers: resolver nombres (canal y asignado_a)
     # ============================================================
@@ -241,30 +282,21 @@ class Lead:
         """Soporta 'asesor' como string o constante ROLE_ASESOR."""
         try:
             from utils.security import ROLE_ASESOR
-
             if id_rol == ROLE_ASESOR:
                 return True
         except Exception:
             pass
         return str(id_rol).strip().lower() in ("asesor", "role_asesor")
 
-# ============================================================
-# Listados generales
-# ============================================================
+    # ============================================================
+    # Listados generales
+    # ============================================================
     @staticmethod
     def list_for_user(id_rol, user_id, q="", start_date=None, end_date=None):
-        """
-        Lista 'Todos los leads' con filtros opcionales:
-        - q: búsqueda libre
-        - start_date / end_date: rango por l.fecha (YYYY-MM-DD)
-        """
-        # Delegamos en search_for_user para no duplicar lógica
+        """Lista 'Todos los leads' con filtros opcionales."""
         return Lead.search_for_user(
-            id_rol=id_rol,
-            user_id=user_id,
-            q=q,
-            start_date=start_date,
-            end_date=end_date,
+            id_rol=id_rol, user_id=user_id, q=q,
+            start_date=start_date, end_date=end_date,
         )
 
     @staticmethod
@@ -294,7 +326,7 @@ class Lead:
             sql += " AND l.asignado_a = %s"
             params.append(user_id)
 
-        # Filtro por rango de fechas
+        # Filtro por fechas
         if start_date:
             sql += " AND l.fecha >= %s"
             params.append(start_date)
@@ -322,10 +354,6 @@ class Lead:
         cur.close()
 
         return Lead._apply_name_resolution(rows)
-
-
-
-        
 
     # ============================================================
     # Último seguimiento = "No iniciado"
@@ -518,7 +546,7 @@ class Lead:
             """
             params.extend([like] * 11)
 
-        # Próximos primero por fecha_programada, luego reciente por último guardado
+        # Próximos primero por fecha_programada, luego recientes
         sql += " ORDER BY su.fecha_programada ASC, su.fecha_guardado DESC, l.id DESC"
         cur.execute(sql, params)
         rows = cur.fetchall()
@@ -729,4 +757,3 @@ class Lead:
         rows = cur.fetchall()
         cur.close()
         return Lead._apply_name_resolution(rows)
-

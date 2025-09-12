@@ -20,10 +20,7 @@
         </header>
 
         <div class="clp-module__body">
-<<<<<<< HEAD
           <!-- Metadatos compactos -->
-=======
->>>>>>> 9140bfd1f6e16105cc48b4b00a75e041d004d20a
           <div class="row">
             <!-- Código -->
             <div class="col-md-6">
@@ -41,7 +38,6 @@
             </div>
           </div>
 
-<<<<<<< HEAD
           <!-- 1) NOMBRE COMPLETO - CLIENTE -->
           <div class="form-row">
             <label for="nombre" class="form-label">CLIENTE</label>
@@ -83,72 +79,18 @@
             <div class="col-md-4">
               <div class="form-row">
                 <label for="departamento" class="form-label">DEPARTAMENTO</label>
-=======
-          <div class="row">
-            <!-- Nombre -->
-            <div class="col-md-6">
-              <div class="form-row">
-                <label for="nombre" class="form-label">Nombre completo</label>
-                <input type="text" id="nombre" name="nombre" class="form-control">
-              </div>
-            </div>
-            <!-- Teléfono -->
-            <div class="col-md-6">
-              <div class="form-row">
-                <label for="telefono" class="form-label">Teléfono</label>
-                <input type="text" id="telefono" name="telefono" class="form-control">
-              </div>
-            </div>
-          </div>
-
-          <div class="row">
-            <!-- RUC / DNI -->
-            <div class="col-md-6">
-              <div class="form-row">
-                <label for="ruc_dni" class="form-label">RUC / DNI</label>
-                <input type="text" id="ruc_dni" name="ruc_dni" class="form-control">
-              </div>
-            </div>
-            <!-- Email -->
-            <div class="col-md-6">
-              <div class="form-row">
-                <label for="email" class="form-label">Correo electrónico</label>
-                <input type="email" id="email" name="email" class="form-control">
-              </div>
-            </div>
-          </div>
-
-          <!-- Dirección -->
-          <div class="form-row">
-            <label for="direccion" class="form-label">Dirección</label>
-            <input type="text" id="direccion" name="direccion" class="form-control">
-          </div>
-
-          <div class="row">
-            <div class="col-md-4">
-              <div class="form-row">
-                <label for="departamento" class="form-label">Departamento</label>
->>>>>>> 9140bfd1f6e16105cc48b4b00a75e041d004d20a
                 <input type="text" id="departamento" name="departamento" class="form-control">
               </div>
             </div>
             <div class="col-md-4">
               <div class="form-row">
-<<<<<<< HEAD
                 <label for="provincia" class="form-label">PROVINCIA</label>
-=======
-                <label for="provincia" class="form-label">Provincia</label>
->>>>>>> 9140bfd1f6e16105cc48b4b00a75e041d004d20a
                 <input type="text" id="provincia" name="provincia" class="form-control">
               </div>
             </div>
             <div class="col-md-4">
               <div class="form-row">
-<<<<<<< HEAD
                 <label for="distrito" class="form-label">DISTRITO</label>
-=======
-                <label for="distrito" class="form-label">Distrito</label>
->>>>>>> 9140bfd1f6e16105cc48b4b00a75e041d004d20a
                 <input type="text" id="distrito" name="distrito" class="form-control">
               </div>
             </div>
@@ -160,7 +102,6 @@
       <section class="clp-module">
         <header class="clp-module__head">
           <h3>Datos Comerciales</h3>
-<<<<<<< HEAD
           <p>Asignación, producto y notas</p>
         </header>
 
@@ -210,75 +151,6 @@
           </div>
 
           <!-- Acciones -->
-=======
-          <p>Canal, asignación y notas</p>
-        </header>
-
-        <div class="clp-module__body">
-          <div class="row">
-            <!-- Canal -->
-            <div class="col-md-6">
-              <div class="form-row">
-                <label for="canal_id" class="form-label">Canal</label>
-                <select id="canal_id" name="canal_id" class="form-select" required>
-                  <option value="">-- Seleccione un canal --</option>
-                  {% for canal in canales %}
-                    <option value="{{ canal.id }}">{{ canal.nombre }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-            </div>
-
-            <!-- Bien o Servicio -->
-            <div class="col-md-6">
-              <div class="form-row">
-                <label for="bien_servicio_id" class="form-label">Bien o Servicio</label>
-                <select id="bien_servicio_id" name="bien_servicio_id" class="form-select" required>
-                  <option value="">-- Seleccione un bien o servicio --</option>
-                  {% for bs in bienes_servicios %}
-                    <option value="{{ bs.id }}">{{ bs.nombre }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div class="row">
-            <!-- Contacto -->
-            <div class="col-md-6">
-              <div class="form-row">
-                <label for="contacto" class="form-label">Contacto</label>
-                <input type="text" id="contacto" name="contacto" class="form-control">
-              </div>
-            </div>
-
-            <!-- Asignado a -->
-            <div class="col-md-6">
-              <div class="form-row">
-                <label for="asignado_a" class="form-label">Asignado a</label>
-                {% if es_asesor %}
-                  <input type="text" class="form-control" value="{{ asesores[0].nombre }}" readonly>
-                  <input type="hidden" name="asignado_a" value="{{ asesores[0].id }}">
-                {% else %}
-                  <select id="asignado_a" name="asignado_a" class="form-select">
-                    <option value="">-- Seleccione un asesor --</option>
-                    {% for asesor in asesores %}
-                      <option value="{{ asesor.id }}">{{ asesor.nombre }}</option>
-                    {% endfor %}
-                  </select>
-                {% endif %}
-              </div>
-            </div>
-          </div>
-
-          <!-- Comentario -->
-          <div class="form-row">
-            <label for="comentario" class="form-label">Comentario</label>
-            <textarea id="comentario" name="comentario" class="form-control" rows="5"></textarea>
-          </div>
-
-          <!-- Botones -->
->>>>>>> 9140bfd1f6e16105cc48b4b00a75e041d004d20a
           <div class="clp-actions">
             <a href="{{ url_for('leads.list_leads') }}" class="btn btn-secondary">⬅ Volver</a>
             <button type="submit" class="btn btn-primary">💾 Guardar Lead</button>
