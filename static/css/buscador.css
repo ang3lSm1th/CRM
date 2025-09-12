@@ -215,3 +215,14 @@ form.mb-3.d-flex .text-muted small {
   z-index: 1000;
   background: #cee1ff !important;  /* <- sin 'c7' (sin alfa) */
 }
+
+.flex.between {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start; /* todo se alinea a la izquierda */
+  gap: .5rem; /* espacio entre el botón y el título */
+}
+
+.flex.between h2 {
+  margin: 0;  /* elimina saltos extra */
+}
