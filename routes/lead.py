@@ -1,5 +1,5 @@
 # routes/lead.py
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from utils.security import login_required, role_required, ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH, ROLE_ASESOR
 from models.lead import Lead
 from models.canal import Canal
@@ -617,3 +617,57 @@ def reporte_rapido():
         bar_recepcion_png=bar_recepcion_png,
         bar_contacto_png=bar_contacto_png,
     )
+# API: listar departamentos
+@lead_bp.route("/api/departamentos", methods=["GET"])
+def api_list_departamentos():
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    try:
+        # columnas reales: idDepartamento, departamento
+        cur.execute("SELECT idDepartamento, departamento FROM departamentos ORDER BY departamento")
+        rows = cur.fetchall() or []
+        # devolver { id, nombre } para que el frontend no cambie
+        return jsonify([{"id": r["idDepartamento"], "nombre": r["departamento"]} for r in rows]), 200
+    except Exception as e:
+        # opcional: print(e) para debug en consola
+        return jsonify({"error": "No se pudo obtener departamentos"}), 500
+    finally:
+        cur.close()
+
+
+# API: provincias por departamento (por idDepartamento)
+@lead_bp.route("/api/provincias/<int:departamento_id>", methods=["GET"])
+def api_provincias_by_dep(departamento_id):
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    try:
+        # columnas reales: idProvincia, provincia, idDepartamento (clave foránea)
+        cur.execute(
+            "SELECT idProvincia, provincia FROM provincia WHERE idDepartamento = %s ORDER BY provincia",
+            (departamento_id,),
+        )
+        rows = cur.fetchall() or []
+        return jsonify([{"id": r["idProvincia"], "nombre": r["provincia"]} for r in rows]), 200
+    except Exception as e:
+        # opcional: print(e)
+        return jsonify({"error": "No se pudo obtener provincias"}), 500
+    finally:
+        cur.close()
+
+
+# API: distritos por provincia (por idProvincia)
+@lead_bp.route("/api/distritos/<int:provincia_id>", methods=["GET"])
+def api_distritos_by_prov(provincia_id):
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    try:
+        # columnas reales: idDistrito, distrito, idProvincia
+        cur.execute(
+            "SELECT idDistrito, distrito FROM distrito WHERE idProvincia = %s ORDER BY distrito",
+            (provincia_id,),
+        )
+        rows = cur.fetchall() or []
+        return jsonify([{"id": r["idDistrito"], "nombre": r["distrito"]} for r in rows]), 200
+    except Exception as e:
+        # opcional: print(e)
+        return jsonify({"error": "No se pudo obtener distritos"}), 500
+    finally:
+        cur.close()
+

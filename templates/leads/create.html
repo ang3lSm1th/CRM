@@ -12,7 +12,7 @@
 
   <form method="POST" action="{{ url_for('leads.create_lead') }}">
     <div class="clp-grid">
-      <!-- =============== MÓDULO IZQUIERDO =============== -->
+      <!-- IZQUIERDA -->
       <section class="clp-module">
         <header class="clp-module__head">
           <h3>Datos del Lead</h3>
@@ -20,16 +20,13 @@
         </header>
 
         <div class="clp-module__body">
-          <!-- Metadatos compactos -->
           <div class="row">
-            <!-- Código -->
             <div class="col-md-6">
               <div class="form-row">
                 <label for="codigo" class="form-label">Código</label>
                 <input type="text" id="codigo" name="codigo" class="form-control" value="{{ codigo }}" readonly>
               </div>
             </div>
-            <!-- Fecha -->
             <div class="col-md-6">
               <div class="form-row">
                 <label for="fecha" class="form-label">Fecha</label>
@@ -38,67 +35,70 @@
             </div>
           </div>
 
-          <!-- 1) NOMBRE COMPLETO - CLIENTE -->
           <div class="form-row">
             <label for="nombre" class="form-label">CLIENTE</label>
             <input type="text" id="nombre" name="nombre" class="form-control">
           </div>
 
-          <!-- 2) DNI/RUC -->
           <div class="form-row">
             <label for="ruc_dni" class="form-label">DNI/RUC</label>
             <input type="text" id="ruc_dni" name="ruc_dni" class="form-control">
           </div>
 
-          <!-- 3) TELÉFONO/CELULAR -->
           <div class="form-row">
             <label for="telefono" class="form-label">TELÉFONO/CELULAR</label>
             <input type="text" id="telefono" name="telefono" class="form-control">
           </div>
 
-          <!-- 4) CONTACTO -->
           <div class="form-row">
             <label for="contacto" class="form-label">CONTACTO</label>
             <input type="text" id="contacto" name="contacto" class="form-control">
           </div>
 
-          <!-- 5) CORREO -->
           <div class="form-row">
             <label for="email" class="form-label">CORREO</label>
             <input type="email" id="email" name="email" class="form-control">
           </div>
 
-          <!-- 6) DIRECCIÓN -->
           <div class="form-row">
             <label for="direccion" class="form-label">DIRECCIÓN</label>
             <input type="text" id="direccion" name="direccion" class="form-control">
           </div>
 
-          <!-- 7-8-9) DEP / PROV / DIST -->
+          <!-- DEP / PROV / DIST -->
           <div class="row">
             <div class="col-md-4">
               <div class="form-row">
                 <label for="departamento" class="form-label">DEPARTAMENTO</label>
-                <input type="text" id="departamento" name="departamento" class="form-control">
+                <select id="departamento" name="departamento" class="form-control" required>
+                  <option value="">-- Seleccione departamento --</option>
+                </select>
               </div>
             </div>
+
             <div class="col-md-4">
               <div class="form-row">
                 <label for="provincia" class="form-label">PROVINCIA</label>
-                <input type="text" id="provincia" name="provincia" class="form-control">
+                <select id="provincia" name="provincia" class="form-control" required>
+                  <option value="">-- Seleccione provincia --</option>
+                </select>
               </div>
             </div>
+
             <div class="col-md-4">
               <div class="form-row">
                 <label for="distrito" class="form-label">DISTRITO</label>
-                <input type="text" id="distrito" name="distrito" class="form-control">
+                <select id="distrito" name="distrito" class="form-control" required>
+                  <option value="">-- Seleccione distrito --</option>
+                </select>
               </div>
             </div>
           </div>
+
         </div>
       </section>
 
-      <!-- =============== MÓDULO DERECHO =============== -->
+      <!-- DERECHA -->
       <section class="clp-module">
         <header class="clp-module__head">
           <h3>Datos Comerciales</h3>
@@ -106,7 +106,6 @@
         </header>
 
         <div class="clp-module__body">
-          <!-- 10) BIEN/SERVICIO -->
           <div class="form-row">
             <label for="bien_servicio_id" class="form-label">BIEN/SERVICIO</label>
             <select id="bien_servicio_id" name="bien_servicio_id" class="form-select" required>
@@ -117,7 +116,6 @@
             </select>
           </div>
 
-          <!-- 11) ASIGNADO -->
           <div class="form-row">
             <label for="asignado_a" class="form-label">ASIGNADO</label>
             {% if es_asesor %}
@@ -133,7 +131,6 @@
             {% endif %}
           </div>
 
-          <!-- 12) CANAL -->
           <div class="form-row">
             <label for="canal_id" class="form-label">CANAL</label>
             <select id="canal_id" name="canal_id" class="form-select" required>
@@ -144,13 +141,11 @@
             </select>
           </div>
 
-          <!-- 13) COMENTARIO -->
           <div class="form-row">
             <label for="comentario" class="form-label">COMENTARIO</label>
             <textarea id="comentario" name="comentario" class="form-control" rows="5"></textarea>
           </div>
 
-          <!-- Acciones -->
           <div class="clp-actions">
             <a href="{{ url_for('leads.list_leads') }}" class="btn btn-secondary">⬅ Volver</a>
             <button type="submit" class="btn btn-primary">💾 Guardar Lead</button>
@@ -160,4 +155,14 @@
     </div>
   </form>
 </div>
+
+<script>
+  window.UBIGEO_API = {
+    departamentos: "{{ url_for('leads.api_list_departamentos') }}",
+    provincias: "{{ url_for('leads.api_provincias_by_dep', departamento_id=0) }}".replace("/0", ""),
+    distritos:  "{{ url_for('leads.api_distritos_by_prov', provincia_id=0) }}".replace("/0", "")
+  };
+</script>
+
+<script src="{{ url_for('static', filename='js/app.js') }}?v=1" defer></script>
 {% endblock %}

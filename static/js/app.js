@@ -311,48 +311,133 @@
   });
 })();
 
-// static/js/app.js
+
+// ==============================
+// UBIGEO: departamento -> provincia -> distrito
+// ==============================
 (function () {
-  const ICONS = {
-    danger:  'fa-triangle-exclamation',
-    warning: 'fa-circle-exclamation',
-    success: 'fa-circle-check',
-    info:    'fa-circle-info'
-  };
-
-  function createToast(root, category, msg) {
-    const type = ['danger','warning','success','info'].includes(category) ? category : 'info';
-    const div = document.createElement('div');
-    div.className = `toast toast-${type}`;
-    div.innerHTML = `
-      <i class="fa-solid ${ICONS[type]}" aria-hidden="true"></i>
-      <div class="toast-msg">${msg}</div>
-      <button class="toast-close" aria-label="Cerrar">&times;</button>
-    `;
-
-    root.appendChild(div);
-
-    const close = () => { div.classList.add('hide'); setTimeout(() => div.remove(), 200); };
-    div.querySelector('.toast-close').addEventListener('click', close);
-    setTimeout(close, type === 'danger' ? 6000 : 4000);
-  }
+  'use strict';
 
   document.addEventListener('DOMContentLoaded', function () {
-    const root = document.getElementById('toast-root');
-    if (!root) return;
+    const selDep = document.getElementById('departamento');
+    const selProv = document.getElementById('provincia');
+    const selDist = document.getElementById('distrito');
 
-    let flashes = [];
-    try {
-      const raw = root.dataset.flashes || '[]';
-      flashes = JSON.parse(raw);
-    } catch (e) {
-      console.error('Flashes JSON inválido:', e);
+    // Si no existen los selects en la página actual, salir sin tocar nada.
+    if (!selDep || !selProv || !selDist) return;
+
+    const API = (window && window.UBIGEO_API) ? window.UBIGEO_API : null;
+    if (!API || !API.departamentos || !API.provincias || !API.distritos) {
+      console.error('UBIGEO API no definido en window.UBIGEO_API');
+      return;
     }
 
-    if (Array.isArray(flashes)) {
-      flashes.forEach(([category, msg]) => createToast(root, category, msg));
-      // Limpia el dato para que no se reinyecte si haces navegación parcial
-      root.dataset.flashes = '[]';
-    }
+    const reset = (el, label) => {
+      el.innerHTML = '';
+      const o = document.createElement('option');
+      o.value = '';
+      o.textContent = label || '-- Seleccione --';
+      el.appendChild(o);
+    };
+
+    const fill = (el, items, placeholder) => {
+      reset(el, placeholder);
+      (items || []).forEach(it => {
+        const o = document.createElement('option');
+        o.value = it.nombre || '';       // value = nombre (mantener esquema DB)
+        o.textContent = it.nombre || '';
+        if (it.id !== undefined && it.id !== null) o.dataset.id = String(it.id);
+        el.appendChild(o);
+      });
+    };
+
+    const fetchJson = async (url) => {
+      const r = await fetch(url, { credentials: 'same-origin' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return await r.json();
+    };
+
+    const loadDepartamentos = async () => {
+      try {
+        const data = await fetchJson(API.departamentos);
+        fill(selDep, data, '-- Seleccione departamento --');
+
+        // Preselección por atributo data-selected-name (edit) o value ya presente
+        const preDep = (selDep.dataset && selDep.dataset.selectedName) ? selDep.dataset.selectedName : (selDep.value || '');
+        if (preDep) {
+          const opt = [...selDep.options].find(o => o.value === preDep);
+          if (opt) {
+            selDep.value = opt.value;
+            const depId = opt.dataset.id;
+            if (depId) await loadProvincias(depId);
+          }
+        }
+      } catch (err) {
+        console.error('Error cargando departamentos:', err);
+        reset(selDep, '-- Error cargando --');
+        reset(selProv, '-- Seleccione provincia --');
+        reset(selDist, '-- Seleccione distrito --');
+      }
+    };
+
+    const loadProvincias = async (depId) => {
+      if (!depId) { reset(selProv, '-- Seleccione provincia --'); reset(selDist, '-- Seleccione distrito --'); return; }
+      try {
+        const url = API.provincias.endsWith('/') ? API.provincias + depId : API.provincias + '/' + depId;
+        const data = await fetchJson(url);
+        fill(selProv, data, '-- Seleccione provincia --');
+
+        const preProv = (selProv.dataset && selProv.dataset.selectedName) ? selProv.dataset.selectedName : (selProv.value || '');
+        if (preProv) {
+          const opt = [...selProv.options].find(o => o.value === preProv);
+          if (opt) {
+            selProv.value = opt.value;
+            const provId = opt.dataset.id;
+            if (provId) await loadDistritos(provId);
+          }
+        }
+      } catch (err) {
+        console.error('Error cargando provincias:', err);
+        reset(selProv, '-- Error cargando --');
+        reset(selDist, '-- Seleccione distrito --');
+      }
+    };
+
+    const loadDistritos = async (provId) => {
+      if (!provId) { reset(selDist, '-- Seleccione distrito --'); return; }
+      try {
+        const url = API.distritos.endsWith('/') ? API.distritos + provId : API.distritos + '/' + provId;
+        const data = await fetchJson(url);
+        fill(selDist, data, '-- Seleccione distrito --');
+
+        const preDist = (selDist.dataset && selDist.dataset.selectedName) ? selDist.dataset.selectedName : (selDist.value || '');
+        if (preDist) {
+          const opt = [...selDist.options].find(o => o.value === preDist);
+          if (opt) selDist.value = opt.value;
+        }
+      } catch (err) {
+        console.error('Error cargando distritos:', err);
+        reset(selDist, '-- Error cargando --');
+      }
+    };
+
+    // Eventos
+    selDep.addEventListener('change', async function () {
+      const opt = selDep.selectedOptions[0];
+      const depId = opt ? opt.dataset.id : null;
+      reset(selProv, '-- Cargando provincias --');
+      reset(selDist, '-- Seleccione distrito --');
+      await loadProvincias(depId);
+    });
+
+    selProv.addEventListener('change', async function () {
+      const opt = selProv.selectedOptions[0];
+      const provId = opt ? opt.dataset.id : null;
+      reset(selDist, '-- Cargando distritos --');
+      await loadDistritos(provId);
+    });
+
+    // Inicializa
+    loadDepartamentos();
   });
 })();
