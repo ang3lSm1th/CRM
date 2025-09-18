@@ -441,3 +441,236 @@
     loadDepartamentos();
   });
 })();
+
+// -----------------------
+// Notificaciones (polling + render) - REEMPLAZAR BLOQUE ANTIGUO
+// Pegar al final de static/js/app.js (reemplazando el bloque actual)
+// -----------------------
+(function () {
+  'use strict';
+
+  // función pública que inicializa el módulo (reusable)
+  function initNotifModule(opts) {
+    opts = opts || {};
+    const API = opts.api || '/leads/notifications/panel';
+    const root = document.getElementById(opts.rootId || 'notif-dropdown-root-sidebar');
+    const toggle = document.getElementById(opts.toggleId || 'notifDropdown');
+    const menu = document.getElementById(opts.menuId || 'notif-list-sidebar');
+    const badge = document.getElementById(opts.badgeId || 'notif-count');
+    const itemsProg = document.getElementById(opts.itemsProgramadasId || 'notif-items-programadas');
+    const itemsSin = document.getElementById(opts.itemsSinId || 'notif-items-sin-iniciar');
+
+    // si falta algo, no inicializamos pero devolvemos estado para debug
+    if (!root || !toggle || !menu || !badge || !itemsProg || !itemsSin) {
+      console.debug('initNotifModule: elementos no encontrados', {
+        root: !!root, toggle: !!toggle, menu: !!menu, badge: !!badge, itemsProg: !!itemsProg, itemsSin: !!itemsSin
+      });
+      return { ok: false };
+    }
+
+    // previene doble binding (si se llama varias veces)
+    if (root.__notif_inited) {
+      console.debug('initNotifModule: ya inicializado');
+      return { ok: true };
+    }
+    root.__notif_inited = true;
+
+    const LS_KEY = 'crm_seen_notifs_v1';
+
+    function readSeenMap() {
+      try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); }
+      catch (e) { return {}; }
+    }
+    function writeSeenMap(obj) {
+      try { localStorage.setItem(LS_KEY, JSON.stringify(obj)); } catch (e) { /* ignore */ }
+    }
+
+    function showQuickToast(title, msg) {
+      if (typeof createToast === 'function') {
+        try { createToast(document.getElementById('toast-root') || document.body, 'info', title + ': ' + msg); return; } catch(e){/* fallback */ }
+      }
+      const rootToast = document.getElementById('toast-root') || document.body;
+      const div = document.createElement('div');
+      div.className = 'toast toast-info';
+      div.innerHTML = `<div class="toast-msg"><strong>${title}</strong> — ${msg}</div><button class="toast-close" aria-label="Cerrar">&times;</button>`;
+      rootToast.appendChild(div);
+      const btn = div.querySelector('.toast-close');
+      btn && btn.addEventListener('click', () => div.remove());
+      setTimeout(() => { div.remove(); }, 5000);
+    }
+
+    function escapeHtml(s) {
+      if (!s) return '';
+      return String(s).replace(/[&<>"']/g, function (m) {
+        return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[m];
+      });
+    }
+
+    // reemplazar renderList por esta versión que usa el enlace estático en base.html
+function renderList(container, items, type) {
+  container.innerHTML = '';
+  if (!items || items.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'dropdown-item small text-muted';
+    empty.textContent = '— Ninguno —';
+    container.appendChild(empty);
+
+    // ocultamos el "ver más" si no hay items
+    const moreWrap = document.getElementById('notif-more-' + (type === 'programadas' ? 'programados' : 'sin'));
+    if (moreWrap) moreWrap.style.display = 'none';
+    return;
+  }
+
+  const MAX_VISIBLE = 3; // o usa 6 como antes, tú eliges
+  const toShow = items.slice(0, MAX_VISIBLE);
+  toShow.forEach(it => {
+    const a = document.createElement('a');
+    a.className = 'dropdown-item small';
+    a.href = '/leads/seguimiento/' + (it.codigo || it.id);
+    const smallDate = it.fecha_programada ? `<div class="small text-muted">${it.fecha_programada}</div>` : '';
+    a.innerHTML = `<strong>${it.codigo ? it.codigo + ' — ' : ''}${escapeHtml(it.nombre || 'Sin nombre')}</strong>${smallDate}`;
+    container.appendChild(a);
+  });
+
+  // Usar el contenedor / enlace estático del HTML para "Ver todos"
+  if (items.length > MAX_VISIBLE) {
+    // mostramos y actualizamos el texto
+    // si estamos renderizando programadas -> id 'notif-more-programados'
+    // si estamos renderizando sin iniciar -> puedes crear 'notif-more-sin' igual en HTML si lo quieres.
+    const moreWrap = document.getElementById('notif-more-' + (type === 'programadas' ? 'programados' : 'sin'));
+    const moreText = document.getElementById('notif-more-programados-text'); // actualidad: programados
+    const moreLink = document.getElementById('notif-more-programados-link');
+
+    if (moreWrap && moreText && moreLink) {
+      moreText.textContent = `${items.length - MAX_VISIBLE} más...`;
+      moreWrap.style.display = 'block';
+      // ya definiste href en el HTML, si quieres cambiarlo dinámicamente:
+      // moreLink.href = (type === 'programadas') ? '/leads/programados' : '/leads/list_unstarted';
+    } else {
+      // fallback: si no existe el HTML predefinido, inyectar lo viejo
+      const more = document.createElement('div');
+      more.className = 'dropdown-item small text-center text-muted';
+      more.style.borderTop = '1px solid #eef2f7';
+      more.style.marginTop = '.4rem';
+      more.innerHTML = `${items.length - MAX_VISIBLE} más... <a href="/leads/programados" style="margin-left:.3rem">Ver todos los programados</a>`;
+      container.appendChild(more);
+    }
+  } else {
+    // si no hay items extra, ocultar el wrapper si existe
+    const moreWrap = document.getElementById('notif-more-' + (type === 'programadas' ? 'programados' : 'sin'));
+    if (moreWrap) moreWrap.style.display = 'none';
+  }
+}
+
+
+    function notifyNew(prev, programadas, sinIniciar) {
+      // prev: { programadas: [...ids], sin_iniciar: [...ids] }
+      const prevProg = new Set((prev.programadas||[]).map(String));
+      const prevSin = new Set((prev.sin_iniciar||[]).map(String));
+      const newProg = (programadas||[]).filter(i => !prevProg.has(String(i.id)));
+      const newSin  = (sinIniciar || []).filter(i => !prevSin.has(String(i.id)));
+
+      // Si hay más de 1 notificación nueva, agrupar en 1 toast
+      if (newProg.length > 1) {
+        showQuickToast('Programados', `Tienes ${newProg.length} leads programados para hoy.`);
+      } else {
+        newProg.forEach(n => showQuickToast('Programado hoy', `${n.codigo ? n.codigo + ' — ' : ''}${n.nombre || ''}`));
+      }
+
+      if (newSin.length > 1) {
+        showQuickToast('Asignados', `Tienes ${newSin.length} leads asignados (sin iniciar).`);
+      } else {
+        newSin.forEach(n => showQuickToast('Asignado (No iniciado)', `${n.codigo ? n.codigo + ' — ' : ''}${n.nombre || ''}`));
+      }
+
+      return {
+        programadas: (programadas||[]).map(i => String(i.id)),
+        sin_iniciar: (sinIniciar||[]).map(i => String(i.id))
+      };
+    }
+
+    function updateUI(data) {
+      const programadas = data.programadas || [];
+      const sinIniciar = data.sin_iniciar || [];
+
+      // Mostrar solo programadas asignadas al usuario (backend ya debe filtrar; si no, filtrar aquí)
+      renderList(itemsProg, programadas);
+      renderList(itemsSin, sinIniciar);
+
+      const total = (programadas.length || 0) + (sinIniciar.length || 0);
+      if (total > 0) {
+        badge.style.display = 'inline-block';
+        badge.textContent = String(total);
+        badge.setAttribute('aria-label', `${total} notificaciones`);
+      } else {
+        badge.style.display = 'none';
+        badge.textContent = '0';
+        badge.removeAttribute('aria-label');
+      }
+    }
+
+    async function fetchAndProcess() {
+      try {
+        const resp = await fetch(API, { credentials: 'same-origin' });
+        if (!resp.ok) { console.warn('Notif fetch failed', resp.status); return; }
+        const data = await resp.json();
+        const prev = readSeenMap();
+        updateUI(data);
+        const newState = notifyNew(prev, data.programadas || [], data.sin_iniciar || []);
+        writeSeenMap(newState);
+      } catch (err) {
+        console.error('Error fetching notifications', err);
+      }
+    }
+
+    // Toggle del menu (open/close) con protección para clicks duplicados
+    function showMenu() { root.classList.add('open'); menu.style.display = 'block'; toggle.setAttribute('aria-expanded', 'true'); }
+    function hideMenu() { root.classList.remove('open'); menu.style.display = 'none'; toggle.setAttribute('aria-expanded', 'false'); }
+    function toggleMenu(ev) {
+      ev && ev.preventDefault(); ev && ev.stopPropagation();
+      const visible = menu.style.display === 'block' || root.classList.contains('open');
+      visible ? hideMenu() : showMenu();
+    }
+
+    // Bind seguro (evita múltiples binding en llamadas repetidas)
+    if (!toggle.__notif_bound) {
+      toggle.addEventListener('click', toggleMenu, { passive: false });
+      toggle.__notif_bound = true;
+    }
+
+    // cerrar si clic fuera (solo una vez)
+    if (!document.__notif_outbound) {
+      document.addEventListener('click', function (ev) {
+        if (!root.contains(ev.target)) hideMenu();
+      });
+      document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') hideMenu(); });
+      document.__notif_outbound = true;
+    }
+
+    // primera carga + polling
+    fetchAndProcess();
+    root.__notif_poll = setInterval(fetchAndProcess, 60 * 1000);
+
+    // Exponer un método para forzar refresh o teardown
+    return {
+      ok: true,
+      refresh: fetchAndProcess,
+      teardown: function () {
+        clearInterval(root.__notif_poll);
+        root.__notif_inited = false;
+        // no removemos listeners por simplicidad; página completa los limpiará
+      }
+    };
+  }
+
+  // Exponemos globalmente para poder reinicializar desde otras vistas si es necesario
+  window.initNotifModule = initNotifModule;
+
+  // Intentamos inicializar en DOMContentLoaded automáticamente
+  document.addEventListener('DOMContentLoaded', function () {
+    try { initNotifModule(); } catch (e) { console.error('initNotifModule error', e); }
+  });
+
+})();
+
+

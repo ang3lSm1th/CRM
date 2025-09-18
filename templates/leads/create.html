@@ -70,7 +70,7 @@
             <div class="col-md-4">
               <div class="form-row">
                 <label for="departamento" class="form-label">DEPARTAMENTO</label>
-                <select id="departamento" name="departamento" class="form-control" required>
+                <select id="departamento" name="departamento" class="form-control" >
                   <option value="">-- Seleccione departamento --</option>
                 </select>
               </div>
@@ -79,7 +79,7 @@
             <div class="col-md-4">
               <div class="form-row">
                 <label for="provincia" class="form-label">PROVINCIA</label>
-                <select id="provincia" name="provincia" class="form-control" required>
+                <select id="provincia" name="provincia" class="form-control" >
                   <option value="">-- Seleccione provincia --</option>
                 </select>
               </div>
@@ -88,7 +88,7 @@
             <div class="col-md-4">
               <div class="form-row">
                 <label for="distrito" class="form-label">DISTRITO</label>
-                <select id="distrito" name="distrito" class="form-control" required>
+                <select id="distrito" name="distrito" class="form-control" >
                   <option value="">-- Seleccione distrito --</option>
                 </select>
               </div>
@@ -122,7 +122,7 @@
               <input type="text" class="form-control" value="{{ asesores[0].nombre }}" readonly>
               <input type="hidden" name="asignado_a" value="{{ asesores[0].id }}">
             {% else %}
-              <select id="asignado_a" name="asignado_a" class="form-select">
+              <select id="asignado_a" name="asignado_a" class="form-select" required>
                 <option value="">-- Seleccione un asesor --</option>
                 {% for asesor in asesores %}
                   <option value="{{ asesor.id }}">{{ asesor.nombre }}</option>

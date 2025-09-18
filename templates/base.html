@@ -3,10 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="CRM Orbes Agricola - Gestión de leads y usuarios"
-    />
+    <meta name="description" content="CRM Orbes Agricola - Gestión de leads y usuarios" />
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/logo_icon.png') }}?v=2">
 
     {% block title %}{% endblock %}
@@ -15,10 +12,12 @@
       Orbes Agricola{% if _page_title %} — {{ _page_title }}{% else %} — Inicio{% endif %}
     </title>
 
+    <!-- Font Awesome para el icono de campana -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
     <!-- CSS global -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}"/>
 
-    <!-- 👇 CSS por-vista (create.html inyecta aquí) -->
     {% block styles %}{% endblock %}
   </head>
 
@@ -27,36 +26,65 @@
       <!-- Sidebar -->
       <aside class="sidebar">
         <div class="logo">
-          <img
-            src="{{ url_for('static', filename='img/logo.png') }}"
-            alt="Logo Orbes Agricola"
-          />
+          <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo Orbes Agricola" />
         </div>
         <nav>
           <ul>
-            <li class="list_leads">
-              <a href="{{ url_for('leads.list_leads') }}">Todos los leads</a>
-            </li>
+            <li class="list_leads"><a href="{{ url_for('leads.list_leads') }}">Todos los leads</a></li>
             <li><a href="{{ url_for('leads.list_unstarted') }}">Leads no iniciados</a></li>
             <li><a href="{{ url_for('leads.list_in_followup') }}">Leads en seguimiento</a></li>
             <li><a href="{{ url_for('leads.list_programmed') }}">Leads Programados</a></li>
             <li><a href="{{ url_for('leads.list_quoted') }}">Leads Cotizados</a></li>
             <li><a href="{{ url_for('leads.list_closed') }}">Leads Cerrados</a></li>
             <li><a href="{{ url_for('leads.list_closed_lost') }}">Leads Cerrados no vendidos</a></li>
-            {# Solo visible para ADMIN, GERENTE y RRHH (no para asesores) #}
             {% if session["id_rol"] in ["administrador", "gerente", "RRHH"] %}
-              <li class="register">
-                <a href="{{ url_for('register.register') }}">Registrar Nuevo Usuario</a>
-              </li>
+              <li class="register"><a href="{{ url_for('register.register') }}">Registrar Nuevo Usuario</a></li>
               <li><a href="#">Reporte General</a></li>
               <li><a href="{{ url_for('leads.reporte_rapido') }}">Resumen de Reporte</a></li>
             {% endif %}
-            <li class="logout">
-              <a href="{{ url_for('auth.logout') }}">Cerrar Sesión</a>
-            </li>
+            <li class="logout"><a href="{{ url_for('auth.logout') }}">Cerrar Sesión</a></li>
           </ul>
         </nav>
-        <div class="header-buttom">👤 {{ session.get('nombre') }}</div>
+
+        <!-- Usuario + campana (campana siempre visible) -->
+        <div class="sidebar-footer" style="margin-top:8px; text-align:center;">
+          <div class="user-with-notif" style="display:flex; align-items:center; gap:.6rem; justify-content:center;">
+            <span class="user-name">👤 {{ session.get('nombre') }}</span>
+
+            <!-- NOTIFICACIONES: id's usados por el JS -->
+            <div class="notif-dropdown" id="notif-dropdown-root-sidebar" aria-live="polite">
+              <a href="javascript:void(0);" id="notifDropdown" class="nav-link" aria-haspopup="true" aria-expanded="false" title="Notificaciones" style="color:inherit; text-decoration:none; position:relative;">
+                <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                <!-- contador (se oculta si es cero) -->
+                <span id="notif-count" class="badge notif-badge" style="display:none;">0</span>
+              </a>
+
+              <!-- menú desplegable (se mostrará hacia arriba con CSS) -->
+              <div class="notif-menu" id="notif-list-sidebar" role="menu" aria-labelledby="notifDropdown">
+                <div class="small text-muted mb-1">Notificaciones</div>
+                <div style="border-top:1px solid #eef2f7; margin: .35rem 0;"></div>
+
+                <div class="small text-muted">Programadas para hoy</div>
+                <div id="notif-items-programadas" class="notif-items-block" style="max-height:200px; overflow:auto; margin-bottom:.35rem;">
+                  <div class="dropdown-item small text-muted">— Cargando —</div>
+                </div>
+
+                <div style="border-top:1px solid #eef2f7; margin: .35rem 0;"></div>
+
+                <div class="small text-muted">Asignadas - Sin iniciar</div>
+                <div id="notif-items-sin-iniciar" class="notif-items-block" style="max-height:200px; overflow:auto; margin-bottom:.35rem;">
+                  <div class="dropdown-item small text-muted">— Cargando —</div>
+                </div>
+
+                <div style="border-top:1px solid #eef2f7; margin: .35rem 0;"></div>
+                <div style="text-align:center;">
+                  <a href="{{ url_for('leads.list_unstarted') }}" class="small text-muted">Ver todos los no iniciados</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </aside>
 
       <!-- Main content -->
@@ -64,14 +92,14 @@
         <header class="header">
           <div class="header-left"></div>
           <div class="header-center">
-            <img
-              src="{{ url_for('static', filename='img/logo.png') }}"
-              alt="Logo Orbes Agricola"
-            />
+            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo Orbes Agricola" />
           </div>
         </header>
 
-        <!-- 🔔 Toast notifications -->
+        <!-- Toaster container (usado por app.js) -->
+        <div id="toast-root" aria-live="polite" aria-atomic="true" style="position:fixed; right:1rem; top:1rem; z-index:2000;"></div>
+
+        <!-- Flash stack (tu antiguo toast-stack) -->
         <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="true">
           {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -91,8 +119,10 @@
       </main>
     </div>
 
-    <!-- JS global -->
+    <!-- Librería usada por exportar tablas (si la usas) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+    <!-- Tu app.js (contiene el resto de lógica + el módulo de notificaciones que añadiremos) -->
+    <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
   </body>
 </html>

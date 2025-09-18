@@ -453,10 +453,7 @@ def reporte_rapido():
         if rname:
             recep_counts[rname] = recep_counts.get(rname, 0) + 1
 
-        cid = r.get("canal_contacto")
-        cname = canales_contacto.get(cid)
-        if cname:
-            contacto_counts[cname] = contacto_counts.get(cname, 0) + 1
+        
 
         pnorm = (pname or "").strip().lower()
 
@@ -515,7 +512,7 @@ def reporte_rapido():
                     pass
 
     proc_counts = sorted(proc_counts.items(), key=lambda x: x[1], reverse=True)
-    canal_counts = sorted(canal_counts.items(), key=lambda x: x[1], reverse=True)
+    canal_counts = sorted(recep_counts.items(), key=lambda x: x[1], reverse=True)
 
     cotizado_rows = [
         ("Cotizado", cotizado_tbl["Cotizado"]),
@@ -580,8 +577,7 @@ def reporte_rapido():
     names_recep = list(recep_counts.keys())
     vals_recep  = [recep_counts[n] for n in names_recep]
 
-    names_contacto = list(contacto_counts.keys())
-    vals_contacto  = [contacto_counts[n] for n in names_contacto]
+    
 
     BLUE   = "#2563eb"
     ORANGE = "#f59e0b"
@@ -589,9 +585,7 @@ def reporte_rapido():
     bar_recepcion_png = make_single_bar_base64(
         names_recep, vals_recep, top_n=12, xlabel="Leads por canal de recepción", bar_color=BLUE
     )
-    bar_contacto_png = make_single_bar_base64(
-        names_contacto, vals_contacto, top_n=12, xlabel="Leads por canal de contacto", bar_color=ORANGE
-    )
+    
 
     # Montos agrupados para cotizados
     labels_cot = [lbl for (lbl, _) in cotizado_rows]
@@ -615,7 +609,6 @@ def reporte_rapido():
         cotizado_rows=cotizado_rows,
         cotizado_bar_png=cotizado_bar_png,
         bar_recepcion_png=bar_recepcion_png,
-        bar_contacto_png=bar_contacto_png,
     )
 # API: listar departamentos
 @lead_bp.route("/api/departamentos", methods=["GET"])
@@ -671,3 +664,96 @@ def api_distritos_by_prov(provincia_id):
     finally:
         cur.close()
 
+# Endpoint: devuelve programadas para hoy (filtradas por asignado si es ASESOR)
+@lead_bp.route("/notifications/panel", methods=["GET"])
+def notifications_panel():
+    """
+    Endpoint JSON para el panel de notificaciones.
+    - 'programadas': leads cuyo último seguimiento es 'programado' y fecha_programada = hoy.
+      * Si el usuario es ASESOR, se restringe a leads relacionados con él (asignado_a = user_id OR su.usuario_id = user_id).
+      * Si es ADMIN/GERENTE/RRHH, se devuelven todas las programadas para hoy.
+    - 'sin_iniciar': solo se devuelve si el usuario es ASESOR; para otros roles devuelve lista vacía.
+    """
+    user_id = session.get("user_id")
+    user_role = session.get("id_rol")
+    from datetime import date
+    hoy = date.today().strftime("%Y-%m-%d")
+
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    try:
+        # 1) PROGRAMADAS PARA HOY (tomando el último seguimiento por lead)
+        base_sql = """
+            SELECT l.id, l.codigo, l.nombre, su.fecha_programada, l.asignado_a, su.usuario_id
+            FROM leads l
+            JOIN (
+              SELECT s1.lead_id, s1.id AS last_id
+              FROM seguimientos s1
+              LEFT JOIN seguimientos s2
+                ON s2.lead_id = s1.lead_id
+               AND (s2.fecha_guardado > s1.fecha_guardado OR (s2.fecha_guardado = s1.fecha_guardado AND s2.id > s1.id))
+              WHERE s2.id IS NULL
+            ) last ON last.lead_id = l.id
+            JOIN seguimientos su ON su.id = last.last_id
+            JOIN proceso p ON p.id = su.proceso_id
+            WHERE LOWER(TRIM(p.nombre_proceso)) = 'programado'
+              AND DATE(su.fecha_programada) = %s
+        """
+        params = [hoy]
+
+        # Asesores ven solo sus programadas; roles superiores ven todas
+        if user_role == ROLE_ASESOR:
+            base_sql += " AND (l.asignado_a = %s OR su.usuario_id = %s)"
+            params.extend([user_id, user_id])
+
+        base_sql += " ORDER BY su.fecha_programada ASC, l.id DESC"
+        cur.execute(base_sql, params)
+        programadas = cur.fetchall() or []
+
+        # 2) SIN INICIAR: **solo** para ASESORES (otros roles no reciben esta lista)
+        sin_iniciar = []
+        if user_role == ROLE_ASESOR:
+            sin_sql = """
+                SELECT l.id, l.codigo, l.nombre, l.fecha, l.asignado_a
+                FROM leads l
+                JOIN (
+                  SELECT s1.lead_id, s1.id AS last_id
+                  FROM seguimientos s1
+                  LEFT JOIN seguimientos s2
+                    ON s2.lead_id = s1.lead_id
+                   AND (s2.fecha_guardado > s1.fecha_guardado OR (s2.fecha_guardado = s1.fecha_guardado AND s2.id > s1.id))
+                  WHERE s2.id IS NULL
+                ) last ON last.lead_id = l.id
+                JOIN seguimientos su ON su.id = last.last_id
+                JOIN proceso p ON p.id = su.proceso_id
+                WHERE LOWER(TRIM(p.nombre_proceso)) = 'no iniciado'
+                  AND l.asignado_a = %s
+                ORDER BY su.fecha_guardado DESC, l.id DESC
+            """
+            cur.execute(sin_sql, (user_id,))
+            sin_iniciar = cur.fetchall() or []
+
+        # Normalizar la salida (convertir fechas a string cuando aplique)
+        def normalize(rows, date_field=None):
+            out = []
+            for r in rows:
+                item = {
+                    "id": r.get("id"),
+                    "codigo": r.get("codigo"),
+                    "nombre": r.get("nombre"),
+                }
+                if date_field and r.get(date_field) is not None:
+                    item[date_field] = str(r.get(date_field))
+                out.append(item)
+            return out
+
+        return jsonify({
+            "programadas": normalize(programadas, "fecha_programada"),
+            "sin_iniciar": normalize(sin_iniciar, None)
+        }), 200
+
+    except Exception as e:
+        # Puedes habilitar un print para debug temporalmente:
+        # print("notifications_panel error:", e)
+        return jsonify({"error": "No se pudo obtener notificaciones"}), 500
+    finally:
+        cur.close()

@@ -1,6 +1,5 @@
-{% extends "base_login.html" %}
-{% block title %}Login - CRM{% endblock %}
-{% block content %}
+{% extends "base_login.html" %} {% block title %}Login - CRM{% endblock %} {%
+block content %}
 
 <div class="login-container">
   <!-- Columna izquierda -->
@@ -10,13 +9,33 @@
       <h2>Bienvenido Usuario</h2>
       <p>Por favor ingrese sus datos</p>
       <form method="POST" class="form">
+        {% with messages = get_flashed_messages(with_categories=true) %} {% if
+        messages %}
+        <div class="flash-container">
+          {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+          <p>                    <!-- espacio  -->                 </p> 
+          {% endfor %}
+        </div>
+        {% endif %} {% endwith %}
+
         <div class="input-group">
           <i class="fa fa-user"></i>
-          <input type="text" name="usuario" placeholder="Ingrese su identificación" required>
+          <input
+            type="text"
+            name="usuario"
+            placeholder="Ingrese su identificación"
+            required
+          />
         </div>
         <div class="input-group">
           <i class="fa fa-lock"></i>
-          <input type="password" name="password" placeholder="Ingrese su clave" required>
+          <input
+            type="password"
+            name="password"
+            placeholder="Ingrese su clave"
+            required
+          />
         </div>
         <button type="submit" class="btn">Ingresar</button>
       </form>
@@ -25,7 +44,7 @@
 
   <!-- Columna derecha -->
   <div class="right">
-    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" />
   </div>
 </div>
 {% endblock %}

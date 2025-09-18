@@ -63,7 +63,7 @@ body {
 }
 
 .sidebar ul li a:hover {
-  background: #cce0ff;
+  background: hsl(216, 100%, 90%);
 }
 
 /* Íconos */
@@ -425,3 +425,184 @@ body {
   font-weight: 700;
 }
 
+/* ---------------------------
+   Notificaciones (campana) - estilo nuevo y limpio
+   Pegar al final de static/css/app.css
+   --------------------------- */
+
+.notif-dropdown {
+  position: relative;
+  display: inline-block;
+  font-family: inherit;
+  line-height: 1;
+}
+
+/* Icono campana */
+.notif-dropdown .fa-bell,
+.notif-dropdown svg#bell-fallback {
+  font-size: 1.05rem;
+  color: #334155; /* gris oscuro */
+  transition: color .18s ease, transform .12s ease;
+  vertical-align: middle;
+}
+.notif-dropdown:hover .fa-bell {
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+
+/* Badge contador */
+.notif-badge {
+  position: absolute !important;
+  top: -8px !important;
+  right: -8px !important;
+  font-size: 0.65rem !important;
+  font-weight: 700;
+  padding: 0.18rem 0.42rem;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(2,6,23,0.12);
+  border: 2px solid #fff;
+  transform-origin: center;
+}
+
+/* Contenedor del menú */
+.notif-dropdown .notif-menu {
+  display: none;
+  position: absolute;
+  left: 50%;
+  bottom: 120%;              /* abre hacia arriba */
+  transform: translateX(-50%);
+  background: #ffffff;
+  border: 1px solid #eef2f7;
+  box-shadow: 0 12px 32px rgba(2,6,23,0.08);
+  min-width: 320px;
+  max-width: 420px;
+  max-height: 360px;
+  overflow: hidden;
+  z-index: 1600;
+  padding: 0.6rem;
+  border-radius: 10px;
+  transition: opacity .16s ease, transform .12s ease;
+  opacity: 0;
+  transform-origin: 50% 100%;
+  transform: translateX(-50%) translateY(6px);
+}
+
+/* Mostrar con JS (clase open o display inline style) */
+.notif-dropdown.open .notif-menu,
+.notif-dropdown .notif-menu[style*="display: block"] {
+  display: block;
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Cabecera */
+.notif-menu .notif-header {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 0.95rem;
+  text-align: center;
+  padding-bottom: 6px;
+}
+
+/* Divider */
+.notif-menu .divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 8px 0;
+  border-radius: 2px;
+}
+
+/* Bloque con scroll */
+.notif-items-block {
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* scrollbar suave */
+.notif-items-block::-webkit-scrollbar { width: 8px; }
+.notif-items-block::-webkit-scrollbar-thumb { background: rgba(2,6,23,0.07); border-radius: 999px; }
+
+/* Item */
+.notif-items-block .dropdown-item {
+  display: block;
+  padding: 10px 8px;
+  border-radius: 8px;
+  color: #0f172a;
+  text-decoration: none;
+  transition: background .12s ease;
+  margin-bottom: 6px;
+}
+.notif-items-block .dropdown-item:last-child { margin-bottom: 0; }
+
+.notif-items-block .dropdown-item strong {
+  display: block;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #0b1220;
+}
+.notif-items-block .dropdown-item .small {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* hover */
+.notif-items-block .dropdown-item:hover {
+  background: #f8fafc;
+  text-decoration: none;
+}
+
+/* "Ver todos" */
+.notif-menu .see-all {
+  display: block;
+  margin-top: 8px;
+  padding: 8px;
+  font-size: 0.9rem;
+  text-align: center;
+  color: #2563eb;
+  text-decoration: none;
+  border-radius: 8px;
+}
+.notif-menu .see-all:hover { background: #eff6ff; }
+
+/* Mensaje compact: cuando hay N items se mostrará 1 toast con resumen (style para toast-root) */
+#toast-root .toast.toast-info.summary {
+  border-left-color: #2563eb;
+  background: #ffffff;
+  color: #0b1220;
+  box-shadow: 0 10px 30px rgba(2,6,23,0.06);
+}
+#toast-root .toast.toast-info.summary .toast-msg { font-weight:700; }
+
+/* Ajustes responsivos */
+@media (max-width: 520px) {
+  .notif-dropdown .notif-menu { min-width: 260px; max-width: 92vw; left: 50%; transform: translateX(-50%); bottom: 110%; }
+  .notif-items-block { max-height: 160px; }
+}
+
+/* Notificaciones: asegurar visibilidad y evitar interferencias */
+.notif-dropdown { position: relative; z-index: 2500; pointer-events: auto; }
+.notif-dropdown .notif-menu {
+  position: absolute;
+  left: 50%;
+  bottom: 120%;
+  transform: translateX(-50%);
+  display: none;
+  min-width: 320px;
+  max-height: 320px;
+  overflow: auto;
+  box-shadow: 0 10px 30px rgba(2,6,23,0.08);
+  border-radius: 8px;
+  background: #fff;
+}
+.notif-dropdown.open .notif-menu,
+.notif-dropdown .notif-menu[style*="display: block"] {
+  display: block;
+}
+
+/* Asegurar que sidebar conserve su color original (evita override desde seguimiento.css) */
+:root { --sidebar-bg: #e6f0ff; }
+.sidebar { background: var(--sidebar-bg) !important; }

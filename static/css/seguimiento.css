@@ -242,15 +242,21 @@
   box-shadow:0 6px 14px rgba(11,59,130,.18);
 }
 .tab-pill:not(.is-active){
-  background:#dceeff;  /* color de la barrita */
+  background:hsl(209, 100%, 89%);  /* color de la barrita */
   color:#0b3b82;
 }
 
-/* Sidebar siempre por encima del buscador */
+/* eliminar la regla global que blanquea el sidebar y usar variable */
+:root {
+  --sidebar-bg: #cde1ff; /* color por defecto que tenías antes */
+}
+
+/* regla global del sidebar (en app.css principal) */
 .sidebar {
   z-index: 1000;
-  background: #fff;   /* <- esto te blanquea el sidebar */
+  background: var(--sidebar-bg);
 }
+
 
 
 /* === Cards más amplias (como en la maqueta) === */
