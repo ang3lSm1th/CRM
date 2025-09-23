@@ -610,6 +610,7 @@ def reporte_rapido():
         cotizado_bar_png=cotizado_bar_png,
         bar_recepcion_png=bar_recepcion_png,
     )
+
 # API: listar departamentos
 @lead_bp.route("/api/departamentos", methods=["GET"])
 def api_list_departamentos():

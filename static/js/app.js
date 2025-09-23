@@ -514,100 +514,82 @@ function renderList(container, items, type) {
     empty.className = 'dropdown-item small text-muted';
     empty.textContent = '— Ninguno —';
     container.appendChild(empty);
-
-    // ocultamos el "ver más" si no hay items
-    const moreWrap = document.getElementById('notif-more-' + (type === 'programadas' ? 'programados' : 'sin'));
-    if (moreWrap) moreWrap.style.display = 'none';
     return;
   }
 
-  const MAX_VISIBLE = 3; // o usa 6 como antes, tú eliges
-  const toShow = items.slice(0, MAX_VISIBLE);
-  toShow.forEach(it => {
+  const MAX_VISIBLE = 3; // 👈 solo muestra 3 en "sin iniciar"
+
+// --- PROGRAMADAS ---
+if (type === 'programadas') {
+  items.forEach(it => {
     const a = document.createElement('a');
     a.className = 'dropdown-item small';
     a.href = '/leads/seguimiento/' + (it.codigo || it.id);
-    const smallDate = it.fecha_programada ? `<div class="small text-muted">${it.fecha_programada}</div>` : '';
+    const smallDate = it.fecha_programada
+      ? `<div class="small text-muted">${it.fecha_programada}</div>`
+      : '';
     a.innerHTML = `<strong>${it.codigo ? it.codigo + ' — ' : ''}${escapeHtml(it.nombre || 'Sin nombre')}</strong>${smallDate}`;
     container.appendChild(a);
   });
 
-  // Usar el contenedor / enlace estático del HTML para "Ver todos"
-  if (items.length > MAX_VISIBLE) {
-    // mostramos y actualizamos el texto
-    // si estamos renderizando programadas -> id 'notif-more-programados'
-    // si estamos renderizando sin iniciar -> puedes crear 'notif-more-sin' igual en HTML si lo quieres.
-    const moreWrap = document.getElementById('notif-more-' + (type === 'programadas' ? 'programados' : 'sin'));
-    const moreText = document.getElementById('notif-more-programados-text'); // actualidad: programados
-    const moreLink = document.getElementById('notif-more-programados-link');
+  // Bloque final con el link más arriba
+  const more = document.createElement('div');
+  more.className = 'dropdown-item small text-center text-muted';
+  // quitamos margin-top y border-top para que quede más junto
+  more.style.borderTop = '1px solid #eef2f7';
+  more.style.marginTop = '.1rem';
+  more.innerHTML = `
+    <a href="/leads/programados" style="display:block">Ver todos los programados</a>
+  `;
+  container.appendChild(more);
+  return;
+}
 
-    if (moreWrap && moreText && moreLink) {
-      moreText.textContent = `${items.length - MAX_VISIBLE} más...`;
-      moreWrap.style.display = 'block';
-      // ya definiste href en el HTML, si quieres cambiarlo dinámicamente:
-      // moreLink.href = (type === 'programadas') ? '/leads/programados' : '/leads/list_unstarted';
-    } else {
-      // fallback: si no existe el HTML predefinido, inyectar lo viejo
+
+  // --- SIN INICIAR ---
+  if (type === 'sin') {
+    const toShow = items.slice(0, MAX_VISIBLE);
+    toShow.forEach(it => {
+      const a = document.createElement('a');
+      a.className = 'dropdown-item small';
+      a.href = '/leads/seguimiento/' + (it.codigo || it.id);
+      a.innerHTML = `<strong>${it.codigo ? it.codigo + ' — ' : ''}${escapeHtml(it.nombre || 'Sin nombre')}</strong>`;
+      container.appendChild(a);
+    });
+
+    if (items.length > MAX_VISIBLE) {
       const more = document.createElement('div');
       more.className = 'dropdown-item small text-center text-muted';
       more.style.borderTop = '1px solid #eef2f7';
       more.style.marginTop = '.4rem';
-      more.innerHTML = `${items.length - MAX_VISIBLE} más... <a href="/leads/programados" style="margin-left:.3rem">Ver todos los programados</a>`;
+      more.innerHTML = `
+        <div>${items.length - MAX_VISIBLE} más...</div>
+        <a href="/leads/list_unstarted" style="margin-top:.3rem; display:block">Ver todos no iniciados</a>
+      `;
       container.appendChild(more);
     }
-  } else {
-    // si no hay items extra, ocultar el wrapper si existe
-    const moreWrap = document.getElementById('notif-more-' + (type === 'programadas' ? 'programados' : 'sin'));
-    if (moreWrap) moreWrap.style.display = 'none';
+    return;
   }
 }
 
+function updateUI(data) {
+  const programadas = data.programadas || [];
+  const sinIniciar = data.sin_iniciar || [];
 
-    function notifyNew(prev, programadas, sinIniciar) {
-      // prev: { programadas: [...ids], sin_iniciar: [...ids] }
-      const prevProg = new Set((prev.programadas||[]).map(String));
-      const prevSin = new Set((prev.sin_iniciar||[]).map(String));
-      const newProg = (programadas||[]).filter(i => !prevProg.has(String(i.id)));
-      const newSin  = (sinIniciar || []).filter(i => !prevSin.has(String(i.id)));
+  renderList(itemsProg, programadas, 'programadas');
+  renderList(itemsSin, sinIniciar, 'sin');
 
-      // Si hay más de 1 notificación nueva, agrupar en 1 toast
-      if (newProg.length > 1) {
-        showQuickToast('Programados', `Tienes ${newProg.length} leads programados para hoy.`);
-      } else {
-        newProg.forEach(n => showQuickToast('Programado hoy', `${n.codigo ? n.codigo + ' — ' : ''}${n.nombre || ''}`));
-      }
-
-      if (newSin.length > 1) {
-        showQuickToast('Asignados', `Tienes ${newSin.length} leads asignados (sin iniciar).`);
-      } else {
-        newSin.forEach(n => showQuickToast('Asignado (No iniciado)', `${n.codigo ? n.codigo + ' — ' : ''}${n.nombre || ''}`));
-      }
-
-      return {
-        programadas: (programadas||[]).map(i => String(i.id)),
-        sin_iniciar: (sinIniciar||[]).map(i => String(i.id))
-      };
-    }
-
-    function updateUI(data) {
-      const programadas = data.programadas || [];
-      const sinIniciar = data.sin_iniciar || [];
-
-      // Mostrar solo programadas asignadas al usuario (backend ya debe filtrar; si no, filtrar aquí)
-      renderList(itemsProg, programadas);
-      renderList(itemsSin, sinIniciar);
-
-      const total = (programadas.length || 0) + (sinIniciar.length || 0);
-      if (total > 0) {
-        badge.style.display = 'inline-block';
-        badge.textContent = String(total);
-        badge.setAttribute('aria-label', `${total} notificaciones`);
-      } else {
-        badge.style.display = 'none';
-        badge.textContent = '0';
-        badge.removeAttribute('aria-label');
-      }
-    }
+  const total = programadas.length + sinIniciar.length;
+  if (total > 0) {
+    badge.style.display = 'inline-block';
+    badge.textContent = String(total);
+    badge.setAttribute('aria-label', `${total} notificaciones`);
+  } else {
+    badge.style.display = 'none';
+    badge.textContent = '0';
+    badge.removeAttribute('aria-label');
+  }
+}
 
     async function fetchAndProcess() {
       try {
