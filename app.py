@@ -5,6 +5,11 @@ from routes.auth_login import auth_bp
 from routes.dashboard import dashboard_bp
 from routes.lead import lead_bp
 from routes.auth_register import register_bp  # 👈 solo importamos register_bp
+from routes.auth_usuarios import usuarios_bp
+from routes.reporte_rapido import reporte_rapido_bp
+
+
+
 
 def create_app():
     app = Flask(__name__)
@@ -16,9 +21,10 @@ def create_app():
     # Registramos blueprints
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(register_bp, url_prefix="/auth")  # 👈 separado pero mismo prefijo
+    app.register_blueprint(usuarios_bp, url_prefix="/usuarios")   # <-- registrar aquí
     app.register_blueprint(dashboard_bp, url_prefix="")
     app.register_blueprint(lead_bp, url_prefix="/leads")
-
+    app.register_blueprint(reporte_rapido_bp, url_prefix="/leads")
     @app.route("/")
     def index():
         if session.get("user_id"):

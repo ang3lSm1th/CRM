@@ -1,38 +1,18 @@
 {% extends "base.html" %}
 {% block title %}Leads cotizados{% endblock %}
-
 {% block content %}
 <div class="flex between">
   <h2>Leads cotizados</h2>
 </div>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/buscador.css') }}">
-
 <form class="mb-3 d-flex" style="gap:.5rem;" onsubmit="return false;">
-  <input
-    type="text"
-    class="form-control live-search"
-    placeholder="Buscar en la tabla..."
-    id="q-cotizados"
-    data-target="#tabla-cotizados"
-    data-counter="#cnt-cotizados"
-  >
-  <button
-    type="button"
-    class="btn btn-primary search-btn"
-    data-input="#q-cotizados"
-  >Buscar</button>
-
-  <button
-    type="button"
-    class="btn btn-outline-secondary clear-btn"
-    data-input="#q-cotizados"
-  >Limpiar</button>
-
+  <input type="text" class="form-control live-search" placeholder="Buscar en la tabla..." id="q-cotizados" data-target="#tabla-cotizados" data-counter="#cnt-cotizados" style="max-width: 250px;">
+  <button type="button" class="btn btn-primary search-btn" data-input="#q-cotizados">Buscar</button>
+  <button type="button" class="btn btn-outline-secondary clear-btn" data-input="#q-cotizados">Limpiar</button>
   <div class="text-muted" style="align-self:center;">
     <small>Coincidencias: <span id="cnt-cotizados">0</span></small>
   </div>
 </form>
-
 <div class="table-container">
   <table class="table" id="tabla-cotizados">
     <thead>
@@ -42,7 +22,7 @@
         <th>Teléfono</th>
         <th>RUC/DNI</th>
         <th>Nombre</th>
-        <th>Cotización</th>     {# 👈 después de Nombre #}
+        <th>Cotización</th>
         <th>Monto</th>
         <th>Moneda</th>
         <th>Canal</th>
@@ -87,9 +67,8 @@
     </tbody>
   </table>
 </div>
-
 <script>
-  function irSeguimiento(codigo){
+  function irSeguimiento(codigo) {
     // Abre la vista de seguimiento y, si no hay valor aún, marca "Cotizado"
     window.location.href = "/leads/seguimiento/" + codigo + "?preset=cotizado";
   }

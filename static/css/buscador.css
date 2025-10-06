@@ -1,179 +1,232 @@
-/* ====== Barra de búsqueda moderna (CSS completo) ====== */
-
-/* Contenedor general del buscador */
-.buscador{
-  gap: .6rem !important;
-  position: relative;
-  z-index: 1;
-  max-width: 1100px;  
-  width: 100%;
-  margin-left: 0;      /* siempre pegado a la izquierda */
-  margin-right: 0;
-  justify-content: flex-start;
+/* ------------------------------------ */
+/* --- Estilos generales y utilidades --- */
+/* ------------------------------------ */
+body {
+    background-color: #e2e8f0; /* Tono gris claro para el fondo de la ventana */
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
-/* Form con live-search */
-form.mb-3.d-flex:has(.live-search) {
-  gap: .6rem !important;
-  position: relative;
-  z-index: 1;
-  flex-wrap: wrap;       
-  max-width: 1100px;     
-  width: 100%;
-  margin-left: 0;
-  margin-right: 0;
-  align-items: center;
-  justify-content: flex-start; 
-}
-
-/* Wrapper para el input de búsqueda */
-.buscador .search-wrap{
-  position: relative;
-  flex: 0 1 625px;
-  max-width: 625px;
-  min-width: 260px;
-  display: flex;
-  align-items: center;
-}
-
-/* Input de búsqueda */
-form.mb-3.d-flex .live-search,
-.buscador .search-input {
-  flex: 0 1 600px;
-  max-width: 600px;
-  min-width: 260px;
-  width: 100%;
-  height: 46px;
-  padding: 10px 44px 10px 44px;
-  border-radius: 9999px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  box-shadow: 0 8px 20px rgba(2,18,46,.06);
-  font-size: 14px;
-  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='M21 21l-3.5-3.5'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: 14px center;
-  background-size: 20px 20px;
-}
-
-form.mb-3.d-flex .live-search::placeholder,
-.buscador .search-input::placeholder { 
-  color: #8b95a7; 
-}
-
-form.mb-3.d-flex .live-search:focus,
-.buscador .search-input:focus {
-  border-color:#b6c7ef;
-  box-shadow: 0 0 0 4px rgba(39,111,241,.12), 0 8px 20px rgba(2,18,46,.08);
-  outline: none;
-}
-
-/* Inputs de fecha */
-form.mb-3.d-flex input[type="date"],
-.buscador .date-input {
-  height: 44px;
-  border-radius: 9999px;
-  border: 1px solid #e5e7eb;
-  padding: 8px 16px;
-  font-size: 14px;
-  background:#fff;
-  transition: border-color .18s ease, box-shadow .18s ease;
-  flex: 0 0 auto;
-  min-width: 140px;
-}
-
-form.mb-3.d-flex input[type="date"]:focus,
-.buscador .date-input:focus {
-  border-color:#b6c7ef;
-  box-shadow: 0 0 0 3px rgba(39,111,241,.12);
-}
-
-/* ==== Botones ==== */
-/* === Botones base (tamaño uniforme) === */
-/* === Botones base (mismo tamaño exacto) === */
-.buscador .btn,
-form.mb-3.d-flex .btn {
-  height: 44px;
-  width: 130px;           /* 👈 mismo ancho fijo para todos */
-  border-radius: 9999px;
-  font-weight: 700;
-  letter-spacing: .2px;
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 0;             /* ya no depende del texto */
-}
-
-/* === Buscar (azul) === */
-.buscador .btn-search,
-form.mb-3.d-flex .search-btn {
-  background-color: #0d6efd;
-  color: #fff !important;
-  border: none !important;
-  box-shadow: 0 8px 16px rgba(11,59,130,.18);
-}
-.buscador .btn-search:hover,
-form.mb-3.d-flex .search-btn:hover {
-  background-color: #0b5ed7;
-}
-
-/* === Limpiar (azul igual que buscar) === */
-.buscador .btn-clear,
-form.mb-3.d-flex .clear-btn {
-  background-color: #0d6efd;
-  color: #fff !important;
-  border: none !important;
-  box-shadow: 0 8px 16px rgba(11,59,130,.18);
-}
-.buscador .btn-clear:hover,
-form.mb-3.d-flex .clear-btn:hover {
-  background-color: #0b5ed7;
-}
-
-/* === Exportar Excel (verde) === */
-.buscador .export-btn,
-form.mb-3.d-flex .export-btn {
-  background-color: #198754;
-  color: #fff !important;
-  border: none !important;
-  box-shadow: 0 8px 16px rgba(16,122,65,.18);
-}
-.buscador .export-btn:hover,
-form.mb-3.d-flex .export-btn:hover {
-  background-color: #157347;
-}
-
-
-
-/* Responsive */
-@media (max-width: 640px){
-  .buscador{ gap: .5rem !important; }
-  form.mb-3.d-flex:has(.live-search) { gap: .5rem !important; }
-  form.mb-3.d-flex .live-search,
-  form.mb-3.d-flex input[type="date"],
-  form.mb-3.d-flex .btn {
-    flex: 1 1 100%;
-    max-width: 100%;
-    min-width: 0;
-  }
-}
-
-/* Sidebar */
-.sidebar {
-  z-index: 1000;
-  background: #cee1ff !important;
-}
-
-/* Flex utilities */
+/* Contenedor flexible para el encabezado de la página */
 .flex.between {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: .5rem;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start; /* Alinea los elementos al inicio */
+    gap: 1.5rem; /* Agrega un espacio entre el título y el botón */
+    margin-bottom: 2rem;
 }
-.flex.between h2 { margin: 0; }
 
-/* ====== Fin del CSS ====== */
+h2 {
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+}
+
+/* --------------------- */
+/* --- Botón "Nuevo Lead" --- */
+/* --------------------- */
+.btn-new-lead {
+    background-color: #3b82f6; /* Azul brillante */
+    color: #ffffff; /* Letras blancas */
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 9999px; /* Forma de píldora */
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.25);
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-new-lead:hover {
+    background-color: #2563eb;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+}
+
+.btn-new-lead:active {
+    transform: translateY(0);
+}
+
+
+/* --------------------- */
+/* --- Barra de filtros --- */
+/* --------------------- */
+form.mb-3 {
+    background-color: #fff;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Cuadro de búsqueda */
+.form-control {
+    border-radius: 8px;
+    padding: 0.75rem 1rem; /* Aumenta el padding vertical para más altura */
+    font-size: 0.9rem;
+    border-color: #cbd5e1;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.input-group-text {
+    border-color: #cbd5e1;
+    background-color: #e2e8f0;
+    color: #475569;
+    border-radius: 8px 0 0 8px;
+    padding: 0.75rem 1rem; /* Aumenta el padding vertical para coincidir con la altura del input */
+}
+
+/* Campos de fecha */
+.form-control-sm {
+    border-radius: 8px;
+    margin-left: 6px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    border-color: #cbd5e1;
+    transition: all 0.2s ease;
+}
+
+.form-control-sm:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.btn-sm {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background-color: #3b82f6;
+    border-color: #3b82f6;
+}
+
+.btn-primary:hover {
+    background-color: #2563eb;
+    border-color: #2563eb;
+}
+
+.btn-success {
+    background-color: #22c55e;
+    border-color: #22c55e;
+}
+
+.btn-success:hover {
+    background-color: #16a34a;
+    border-color: #16a34a;
+}
+
+/* ---------------------- */
+/* --- Contenedor Tabla --- */
+/* ---------------------- */
+.table-container {
+    overflow-x: auto;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    padding: 1.5rem;
+}
+
+/* Estilos de la tabla */
+.table {
+    width: 100%;
+    margin-bottom: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.table thead {
+    background-color: #c7e0ff; /* Fondo azul claro del encabezado */
+    color: #1e293b;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+}
+
+.table th {
+    padding: 1.25rem 1rem;
+    border-bottom: 2px solid #000; /* Borde negro del encabezado */
+    text-align: left;
+}
+
+.table tbody tr {
+    background-color: #fff;
+    border-bottom: 2px solid #000; /* Borde negro de las separaciones */
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+.table td {
+    padding: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Estilo para filas impares para mejor legibilidad */
+.table tbody tr:nth-child(odd) {
+    background-color: #f8fafc;
+}
+
+.table tbody tr:hover:nth-child(odd) {
+    background-color: #f0f4f8;
+}
+
+.no-data {
+    text-align: center;
+    color: #64748b;
+    padding: 2rem !important;
+}
+
+/* --------------------- */
+/* --- Responsive --- */
+/* --------------------- */
+@media (max-width: 768px) {
+    .flex.between {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.5rem;
+    }
+    .btn-new-lead {
+        width: 100%;
+        justify-content: center;
+    }
+    .table thead {
+        display: none;
+    }
+    .table, .table tbody, .table tr, .table td {
+        display: block;
+        width: 100%;
+    }
+    .table tr {
+        margin-bottom: 1rem;
+        border: 1px solid #e2e8f0;
+    }
+    .table td {
+        text-align: right;
+        position: relative;
+        padding-left: 50%;
+    }
+    .table td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 0;
+        width: 50%;
+        padding-left: 1rem;
+        font-weight: 600;
+        text-align: left;
+        color: #475569;
+    }
+}

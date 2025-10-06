@@ -1,0 +1,40 @@
+/* Archivo: static/css/usuarios_registrados.css */
+
+.usuarios-page {
+    width: 100%;
+    margin-top: 20px;
+}
+
+.usuarios-page .card {
+    border-radius: 8px;
+}
+
+.usuarios-page .card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.usuarios-page .title {
+    color: #34495e;
+}
+
+.usuarios-page .table {
+    margin-bottom: 0;
+}
+
+.usuarios-page .btn-action {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.1rem;
+    padding: 0;
+}
+
+.usuarios-page .modal-sm-custom {
+    max-width: 350px;
+}

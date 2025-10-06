@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Editar Lead{% endblock %}
+
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/seguimiento.css') }}">
 
@@ -7,15 +8,13 @@
   <h2 class="mb-4">📋 Seguimiento del Lead {{ lead.codigo }}</h2>
 
   <div class="tab-nav mb-3">
-    <a href="{{ url_for('leads.edit_lead', codigo=lead.codigo) }}"
-       class="tab-pill {% if request.endpoint == 'leads.edit_lead' %}is-active{% endif %}">Editar</a>
-    <a href="{{ url_for('leads.seguimiento_lead', codigo=lead.codigo) }}"
-       class="tab-pill {% if request.endpoint == 'leads.seguimiento_lead' %}is-active{% endif %}">Seguimiento</a>
+    <a href="{{ url_for('leads.edit_lead', codigo=lead.codigo) }}" class="tab-pill {% if request.endpoint == 'leads.edit_lead' %}is-active{% endif %}">Editar</a>
+    <a href="{{ url_for('leads.seguimiento_lead', codigo=lead.codigo) }}" class="tab-pill {% if request.endpoint == 'leads.seguimiento_lead' %}is-active{% endif %}">Seguimiento</a>
   </div>
 
   <form method="POST" action="{{ url_for('leads.edit_lead', codigo=lead.codigo) }}" id="form-editar">
     <div class="seguimiento-grid">
-      <!-- IZQ -->
+      <!-- Izquierda -->
       <div class="card">
         <div class="card-body p-0">
           <div class="p-4">
@@ -23,27 +22,22 @@
               <label class="form-label mb-0">Código</label>
               <input class="form-control" value="{{ lead.codigo }}" readonly>
             </div>
-
             <div class="mb-3 control-line">
               <label class="form-label mb-0">Fecha</label>
               <input class="form-control" value="{{ lead.fecha }}" readonly>
             </div>
-
             <div class="mb-3 control-line">
               <label class="form-label mb-0">Teléfono</label>
               <input type="text" name="telefono" class="form-control" value="{{ lead.telefono }}">
             </div>
-
             <div class="mb-3 control-line">
               <label class="form-label mb-0">RUC/DNI</label>
               <input type="text" name="ruc_dni" class="form-control" value="{{ lead.ruc_dni }}">
             </div>
-
             <div class="mb-3 control-line">
               <label class="form-label mb-0">Nombre</label>
               <input type="text" name="nombre" class="form-control" value="{{ lead.nombre }}" required>
             </div>
-
             <div class="mb-3 control-line" id="sec-canal">
               <label class="form-label mb-0">Canal de recepción</label>
               <select name="canal_id" class="form-select">
@@ -52,12 +46,10 @@
                 {% endfor %}
               </select>
             </div>
-
             <div class="mb-3 control-line">
               <label class="form-label mb-0">Contacto</label>
               <input type="text" name="contacto" class="form-control" value="{{ lead.contacto }}">
             </div>
-
             <div class="mb-3 control-line">
               <label class="form-label mb-0">Dirección</label>
               <input type="text" name="direccion" class="form-control" value="{{ lead.direccion }}">
@@ -66,22 +58,24 @@
         </div>
       </div>
 
-      <!-- DER -->
+      <!-- Derecha -->
       <div class="card">
         <div class="card-body p-0">
           <div class="p-4">
+
+            <!-- DESPLEGABLES UBIGEO -->
             <div class="mb-3 control-line">
               <label class="form-label mb-0">Departamento</label>
               <select name="departamento" id="departamento" class="form-control"
-                      data-selected-name="{{ lead.departamento | default('') }}">
+                data-selected-id="{{ lead.departamento or lead.idDepartamento or '' }}">
                 <option value="">-- Seleccione departamento --</option>
               </select>
             </div>
 
-            <div class="mb-0 control-line">
+            <div class="mb-3 control-line">
               <label class="form-label mb-0">Provincia</label>
               <select name="provincia" id="provincia" class="form-control"
-                      data-selected-name="{{ lead.provincia | default('') }}">
+                data-selected-id="{{ lead.provincia or lead.idProvincia or '' }}" disabled>
                 <option value="">-- Seleccione provincia --</option>
               </select>
             </div>
@@ -89,10 +83,12 @@
             <div class="mb-3 control-line">
               <label class="form-label mb-0">Distrito</label>
               <select name="distrito" id="distrito" class="form-control"
-                      data-selected-name="{{ lead.distrito | default('') }}">
+                data-selected-id="{{ lead.distrito or lead.idDistrito or '' }}" disabled>
                 <option value="">-- Seleccione distrito --</option>
               </select>
             </div>
+
+            <!-- FIN DESPLEGABLES UBIGEO -->
 
             <div class="mb-3 control-line">
               <label class="form-label mb-0">Bien/Servicio</label>
@@ -108,17 +104,7 @@
               <input type="email" name="email" class="form-control" value="{{ lead.email }}">
             </div>
 
-            <div class="mb-3 control-line control-line--area">
-              <label class="form-label mb-0">Comentario</label>
-              <textarea name="comentario" class="form-control" rows="4"
-                        placeholder="Comentario que se usará para saber los avances del lead">{{ lead.comentario }}</textarea>
-            </div>
-
-            <div class="actions-center mb-3">
-              <button type="submit" class="btn btn-success btn-sm">Guardar</button>
-            </div>
-
-            <div class="mb-2 control-line">
+                          <div class="mb-2 control-line">
               <label class="form-label mb-0">Asignar</label>
               {% if not es_asesor %}
                 <div>
@@ -147,6 +133,15 @@
               {% endif %}
             </div>
 
+            <div class="mb-3 control-line control-line--area">
+              <label class="form-label mb-0">Comentario</label>
+              <textarea name="comentario" class="form-control" rows="4">{{ lead.comentario }}</textarea>
+            </div>
+
+            <div class="actions-center mb-3">
+              <button type="submit" class="btn btn-success btn-sm">Guardar</button>
+            </div>
+
           </div>
         </div>
       </div>
@@ -155,12 +150,12 @@
 </div>
 
 <script>
-  window.UBIGEO_API = {
-    departamentos: "{{ url_for('leads.api_list_departamentos') }}",
-    provincias: "{{ url_for('leads.api_provincias_by_dep', departamento_id=0) }}".replace("/0", ""),
-    distritos:  "{{ url_for('leads.api_distritos_by_prov', provincia_id=0) }}".replace("/0", "")
-  };
+window.UBIGEO_API = {
+  departamentos: "{{ url_for('leads.api_list_departamentos') }}",
+  provincias: "{{ url_for('leads.api_provincias_by_dep', departamento_id=0) }}".replace("/0", ""),
+  distritos: "{{ url_for('leads.api_distritos_by_prov', provincia_id=0) }}".replace("/0", "")
+};
 </script>
 
-<script src="{{ url_for('static', filename='js/app.js') }}?v=1" defer></script>
+<script src="{{ url_for('static', filename='js/app.js') }}?v=3" defer></script>
 {% endblock %}

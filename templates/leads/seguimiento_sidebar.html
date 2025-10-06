@@ -8,31 +8,33 @@
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/buscador.css') }}">
 
-<form class="mb-3 d-flex" style="gap:.5rem;" onsubmit="return false;">
-  <input
-    type="text"
-    class="form-control live-search"
-    placeholder="Buscar en la tabla..."
-    id="q-seguimiento"
-    data-target="#tabla-seguimiento"
-    data-counter="#cnt-seguimiento"
-  >
-  <button
-    type="button"
-    class="btn btn-primary search-btn"
-    data-input="#q-seguimiento"
-  >Buscar</button>
+<div style="max-width: 600px;">
+  <form class="mb-3 d-flex align-items-center" style="gap:.5rem;" onsubmit="return false;">
+    <input
+      type="text"
+      class="form-control form-control-sm live-search"
+      placeholder="Buscar en la tabla..."
+      id="q-seguimiento"
+      data-target="#tabla-seguimiento"
+      data-counter="#cnt-seguimiento"
+    >
+    <button
+      type="button"
+      class="btn btn-primary btn-sm search-btn"
+      data-input="#q-seguimiento"
+    >Buscar</button>
 
-  <button
-    type="button"
-    class="btn btn-outline-secondary clear-btn"
-    data-input="#q-seguimiento"
-  >Limpiar</button>
+    <button
+      type="button"
+      class="btn btn-outline-secondary btn-sm clear-btn"
+      data-input="#q-seguimiento"
+    >Limpiar</button>
 
-  <div class="text-muted" style="align-self:center;">
-    <small>Coincidencias: <span id="cnt-seguimiento">0</span></small>
-  </div>
-</form>
+    <div class="text-muted" style="align-self:center;">
+      <small>Coincidencias: <span id="cnt-seguimiento">0</span></small>
+    </div>
+  </form>
+</div>
 
 <div class="table-container">
   <table class="table" id="tabla-seguimiento">

@@ -21,6 +21,7 @@
         <div class="form-row">
           <label class="form-label">Nombre</label>
           <input type="text" name="nombre" class="form-control"
+                 value="{{ form_data.nombre if form_data and form_data.nombre }}"
                  placeholder="Ej: Ana Rodríguez" required>
         </div>
 
@@ -28,10 +29,11 @@
         <div class="form-row">
           <label class="form-label">Usuario</label>
           <input type="text" name="username" class="form-control"
+                 value="{{ form_data.username if form_data and form_data.username }}"
                  placeholder="Mínimo 5 caracteres (a-z, 0-9)" required>
         </div>
 
-        <!-- Clave (si quieres verla siempre, usa type="text") -->
+        <!-- Clave -->
         <div class="form-row">
           <label class="form-label">Clave</label>
           <input type="text" name="password" class="form-control"
@@ -44,7 +46,10 @@
           <select name="rol" class="form-select" required>
             <option value="">Seleccione un rol</option>
             {% for rol in roles %}
-              <option value="{{ rol.id }}">{{ rol.nombre }}</option>
+              <option value="{{ rol.id }}"
+                {% if form_data and form_data.rol_id == rol.id|string %}selected{% endif %}>
+                {{ rol.nombre }}
+              </option>
             {% endfor %}
           </select>
         </div>

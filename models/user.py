@@ -7,11 +7,8 @@ class User:
         self.usuario = usuario
         self.nombre = nombre
         self.password = password
-        self.id_rol = id_rol  # aquí id_rol es el NOMBRE del rol (ej: "asesor")
+        self.id_rol = id_rol
 
-    # ---------------------------
-    # Obtener usuario por username
-    # ---------------------------
     @staticmethod
     def get_by_username(username: str):
         cur = mysql.connection.cursor(DictCursor)
@@ -25,9 +22,6 @@ class User:
         cur.close()
         return User(**row) if row else None
 
-    # ---------------------------
-    # Obtener usuario por ID
-    # ---------------------------
     @staticmethod
     def get_by_id(user_id: int):
         cur = mysql.connection.cursor(DictCursor)
@@ -41,9 +35,6 @@ class User:
         cur.close()
         return User(**row) if row else None
 
-    # ---------------------------
-    # Obtener todos los usuarios
-    # ---------------------------
     @staticmethod
     def get_all():
         cur = mysql.connection.cursor(DictCursor)
@@ -57,9 +48,6 @@ class User:
         cur.close()
         return [User(**row) for row in rows]
 
-    # ---------------------------
-    # Obtener usuarios por nombre de rol
-    # ---------------------------
     @staticmethod
     def get_by_role(role_name: str):
         cur = mysql.connection.cursor(DictCursor)
@@ -72,3 +60,17 @@ class User:
         rows = cur.fetchall()
         cur.close()
         return [User(**row) for row in rows]
+
+    @staticmethod
+    def delete_by_id(user_id: int):
+        cur = mysql.connection.cursor()
+        try:
+            cur.execute("DELETE FROM usuarios WHERE id = %s", (user_id,))
+            mysql.connection.commit()
+            return cur.rowcount > 0
+        except Exception as e:
+            print(f"Error al eliminar usuario: {e}")
+            mysql.connection.rollback()
+            return False
+        finally:
+            cur.close()

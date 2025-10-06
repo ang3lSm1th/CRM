@@ -4,10 +4,8 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/seguimiento.css') }}">
 <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
 
-
-
 <div class="seguimiento">
-
+ <div class="seguimiento-grid-header">
   <h2 class="mb-4">📋 Seguimiento del Lead {{ lead.codigo }}</h2>
 
   <div class="mb-3">
@@ -49,7 +47,6 @@
           <div class="mb-3 control-line">
             <label class="form-label mb-0">Proceso</label>
             <select id="proceso_select" name="proceso_id" class="form-select" {{ 'disabled' if lock_proceso else '' }}>
-              
               {% for p in procesos %}
                 {% set pid = (p.id if p.id is defined else p['id']) | string %}
                 {% set pnombre = p.nombre_proceso if p.nombre_proceso is defined else p['nombre_proceso'] %}
@@ -60,19 +57,19 @@
               <input type="hidden" name="proceso_id" value="{{ f_proceso }}">
             {% endif %}
           </div>
-
-          <!-- Canal de comunicación -->
+          <!-- Canal de contacto -->
           <div id="sec-canal" class="mb-3 control-line" style="display:none;">
-            <label class="form-label mb-0">Canal de comunicación</label>
+            <label class="form-label mb-0">Canal de contacto</label>
 
             <select name="canal_contacto" id="canal_contacto" class="form-select">
-              <option value="" disabled {{ 'selected' if not f_canal }}>-- Seleccione un canal de comunicación --</option>
-              {% for c in canales_contacto %}
-                {% set cid = (c.id if c.id is defined else c['id']) | string %}
-                {% set cnombre = c.nombre if c.nombre is defined else c['nombre'] %}
-                <option value="{{ cid }}" {{ 'selected' if f_canal == cid else '' }}>{{ cnombre }}</option>
-              {% endfor %}
-            </select>
+            <option value="" disabled {{ 'selected' if not f_canal }}>-- Seleccione un canal de contacto --</option>
+            {% for c in canales %}
+              {% set cid = (c.id if c.id is defined else c['id']) | string %}
+              {% set cnombre = c.nombre if c.nombre is defined else c['nombre'] %}
+              <option value="{{ cid }}" {{ 'selected' if f_canal == cid else '' }}>{{ cnombre }}</option>
+            {% endfor %}
+          </select>
+
 
             <!-- respaldo por si el select queda disabled -->
             <input type="hidden" id="canal_contacto_hidden" name="canal_contacto" value="{{ f_canal }}">
@@ -82,10 +79,16 @@
                 const hid = document.getElementById('canal_contacto_hidden');
                 const form = document.getElementById('form-seguimiento');
                 if (sel && hid) sel.addEventListener('change', ()=> hid.value = sel.value || '');
-                if (form) form.addEventListener('submit', ()=> { if (sel) sel.disabled = false; if (hid && sel) hid.value = sel.value || ''; });
+                if (form) form.addEventListener('submit', ()=> { 
+                  if (sel) sel.disabled = false; 
+                  if (hid && sel) hid.value = sel.value || ''; 
+                });
               })();
             </script>
           </div>
+
+
+
 
           <div id="sec-fecha" class="mb-3 control-line" style="display:none;">
             <label class="form-label mb-0">Fecha de programación</label>
@@ -149,14 +152,13 @@
             <label class="form-label mb-0">Comentario</label>
             <textarea id="comentario" name="comentario" class="form-control" rows="4" placeholder="Escribe tus observaciones aquí...">{{ f_com }}</textarea>
           </div>
-          
         </div>
       </div>
     </div>
 
-      <div class="actions-right mb-3">
-            <button type="submit" class="btn btn-success btn-sm">Guardar</button>
-          </div>
+    <div class="actions-right mb-3">
+      <button type="submit" class="btn btn-success btn-sm">Guardar</button>
+    </div>
 
   </form>
 
@@ -207,6 +209,6 @@
       </tbody>
     </table>
   </div>
-
+</div>
 </div>
 {% endblock %}

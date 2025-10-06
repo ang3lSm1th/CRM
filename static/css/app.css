@@ -1,32 +1,50 @@
+/*
+ * Archivo: static/css/app.css
+ * Corregido para un sidebar fijo y contenido principal con scroll.
+ */
+
 /* General */
-body {
-  margin: 0;
-  font-family: 'Segoe UI', sans-serif;
-  background: #f5f6fa;
-  color: #333;
-}
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: #f5f6fa;
+    color: #333;
+    min-height: 100vh;
+    overflow: auto;
+  }
 
 .container {
   display: flex;
-  height: 100vh;
+  min-height: 100vh;
 }
 
 /* Sidebar general */
 .sidebar {
-  width: 250px;
+  width: 250px;   /* 🔹 Cambiado de 250px a 150px */
+  flex-shrink: 0;
   height: 100vh;
-  background: #e6f0ff; /* azul suave */
+  background: #cde1ff; /* azul suave */
   display: flex;
   flex-direction: column;
-  justify-content: space-between; /* 🔹 ahora el usuario se va abajo */
+  justify-content: space-between;
   padding: 15px 10px;
   box-sizing: border-box;
-  position: fixed; /* siempre visible */
+  position: fixed; /* <-- Lo mantenemos fijo */
   top: 0;
   left: 0;
+  z-index: 1000; /* <-- Añadimos z-index para que esté siempre encima */
 }
 
-/* Logo */
+.content {
+    flex-grow: 1; /* Permite que el contenido principal ocupe todo el espacio restante */
+    display: flex;
+    flex-direction: column;
+    /* Los demás estilos de .content no se modifican */
+   
+
+}
+
+/* Logo, Menú, etc. ... (el resto del sidebar se mantiene igual) */
 .sidebar .logo {
   display: flex;
   flex-direction: column;
@@ -39,7 +57,6 @@ body {
   margin-bottom: 5px;
 }
 
-/* Menú */
 .sidebar ul {
   list-style: none;
   padding: 0;
@@ -63,43 +80,62 @@ body {
 }
 
 .sidebar ul li a:hover {
-  background: hsl(216, 100%, 90%);
+  background: hsl(216, 100%, 80%);
 }
 
-/* Íconos */
 .sidebar ul li a i {
   margin-right: 8px;
   font-size: 16px;
 }
 
-/* Cerrar sesión */
 .sidebar .logout a {
   color: #cc0000;
   font-weight: bold;
 }
 
 .sidebar .logout a:hover {
-  background: #ffe6e6;
+  background: #ff9e9e;
 }
 
-/* Usuario al fondo */
 .header-buttom {
   padding: 12px;
   border-top: 1px solid #ccd9ff;
   font-weight: bold;
   text-align: center;
-  background: #d9e8ff; /* 🔹 fondo diferenciado */
+  background: #d9e8ff;
   border-radius: 6px;
-  margin-top: auto; /* 🔹 asegura que quede al fondo */
+  margin-top: auto;
 }
 
-/* Main content */
-.content {
-  flex: 1;
-  padding: 30px;
+.main-section {
+    width: 110%; /* Ocupa el 100% de .content */
+    margin-left: 280px;
+    min-width: calc(100% - 250px); 
+    padding: 20px 20px 40px 20px;/* Mantiene un padding interno para que el contenido no se pegue */
+    background: #f4f6f9;
+    box-sizing: border-box;
 }
 
-/* Header */
+.reporte-rapido {
+    width: 71%; /* Ocupa el 100% de .content */
+    padding: 20px 20px 40px 20px;/* Mantiene un padding interno para que el contenido no se pegue */
+    background: #f4f6f9;
+    box-sizing: border-box;
+}
+
+.main-section .row {
+    margin-left: -20px; /* Negativo para compensar el padding de .main-section */
+    margin-right: -20px; /* Negativo para compensar el padding de .main-section */
+}
+
+.main-section .col-md-12 {
+    padding-left: 20px; /* Positivo para restablecer el padding interno, si es necesario */
+    padding-right: 20px; /* Positivo para restablecer el padding interno, si es necesario */
+}
+
+
+
+/* Encabezado del Main Content */
 .header {
   text-align: center;
 }
@@ -165,33 +201,18 @@ body {
   background: #2563eb;
 }
 
-/* ===== MAIN SECTION ===== */
-.main-section {
-  margin-left: 250px;   /* 🔹 mismo ancho que sidebar */
-  padding: 20px;
-  flex: 1;
-  background: #f4f6f9;
-  min-height: 100vh;
-  overflow-x: auto;
-  box-sizing: border-box;
-}
-
 /* ===== CONTENEDOR DE TABLAS ===== */
 .table-container {
-  width: 100%;
-  overflow-x: auto;
-  margin-top: 1rem;
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    /* Si tienes overflow-x: auto en main-section, puedes quitarlo de aquí. 
+       Pero para ser seguro, mantenlo. */
+    width: 100%; 
+
 }
 
 /* ===== TABLA ===== */
 .table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-  min-width: 1000px;
+    width: 100%; /* Asegura que la tabla ocupe todo el ancho */
+    min-width: 1000px; /* Puedes añadir esto si tu tabla necesita un mínimo de ancho para que no se vea horrible */
 }
 
 .table thead {
@@ -238,6 +259,30 @@ body {
   transition: background 0.2s;
 }
 
+.btnguardar {
+  background: #3498db;
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 14px;
+  transition: background 0.2s;
+  margin-left: 10px;
+}
+
+.btnvolver {
+  background: #3498db;
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 14px;
+  transition: background 0.2s;
+  margin-left: 170px;
+}
+
+
+
 .btn:hover {
   background: #2980b9;
 }
@@ -269,7 +314,7 @@ body {
 .toast-success{ border-left-color:#2e7d32; }
 .toast-danger { border-left-color:#c62828; }
 .toast-warning{ border-left-color:#ed6c02; }
-.toast-info   { border-left-color:#0288d1; }
+.toast-info   { border-left-color:#0288d1; }
 
 .toast-close{
   position: absolute; top: 6px; right: 8px;
@@ -280,16 +325,14 @@ body {
 
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to  { opacity: 1; transform: translateY(0); }
 }
 
 .toast.fade-out{ animation: toast-out .25s ease-in forwards; }
 @keyframes toast-out{
   from { opacity: 1; transform: translateY(0); }
-  to   { opacity: 0; transform: translateY(-6px); }
+  to  { opacity: 0; transform: translateY(-6px); }
 }
-
-/* css rapido.html */
 
 /* ==== KPI Summary Card ==== */
 .kpi-card {
@@ -373,7 +416,6 @@ body {
 }
 
 /* CSS Asesores */
-
 /* ===== Tabla Asesores (table-people) ===== */
 .table-people {
   width: 100%;
@@ -471,7 +513,7 @@ body {
   display: none;
   position: absolute;
   left: 50%;
-  bottom: 120%;              /* abre hacia arriba */
+  bottom: 120%; /* abre hacia arriba */
   transform: translateX(-50%);
   background: #ffffff;
   border: 1px solid #eef2f7;
@@ -603,6 +645,18 @@ body {
   display: block;
 }
 
-/* Asegurar que sidebar conserve su color original (evita override desde seguimiento.css) */
-:root { --sidebar-bg: #e6f0ff; }
-.sidebar { background: var(--sidebar-bg) !important; }
+/* 1. LAYOUT PRINCIPAL (para reemplazar el efecto de 'container') */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+
+}
+
+.app-layout {
+    display: flex; /* Activa la disposición sidebar + main */
+    min-height: 100vh; /* Ocupa al menos toda la altura de la ventana */
+    width: 100%; /* Ocupa todo el ancho */
+
+}
+

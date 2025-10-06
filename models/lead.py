@@ -287,21 +287,36 @@ class Lead:
         except Exception:
             pass
         return str(id_rol).strip().lower() in ("asesor", "role_asesor")
-
-    # ============================================================
-    # Listados generales
-    # ============================================================
+    
     @staticmethod
-    def list_for_user(id_rol, user_id, q="", start_date=None, end_date=None):
-        """Lista 'Todos los leads' con filtros opcionales."""
+    def list_for_user(id_rol, user_id, q="", start_date=None, end_date=None, limit=None, offset=None):
+        """
+        Wrapper de compatibilidad para listar leads según el rol del usuario.
+        - Si limit es None devuelve la lista completa (sin paginación).
+        - Si limit es int devuelve (rows, total) para paginación.
+        """
         return Lead.search_for_user(
-            id_rol=id_rol, user_id=user_id, q=q,
-            start_date=start_date, end_date=end_date,
+            id_rol=id_rol,
+            user_id=user_id,
+            q=q,
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit,
+            offset=offset,
         )
 
+    
     @staticmethod
-    def search_for_user(id_rol, user_id, q="", start_date=None, end_date=None):
-        """Búsqueda libre en 'Todos los leads' con rango de fechas opcional."""
+    def search_for_user(id_rol, user_id, q="", start_date=None, end_date=None, limit=None, offset=None):
+        """
+        Búsqueda libre en 'Todos los leads' con rango de fechas opcional.
+        - Si limit es None -> devuelve lista aplicando resolución de nombres (comportamiento previo).
+        - Si limit es int -> devuelve (rows_resueltos, total) para paginación.
+
+        Modificado para incluir búsqueda en:
+        - l.comentario (comentario guardado en leads)
+        - s.comentario (comentario del ÚLTIMO seguimiento)
+        """
         cur = mysql.connection.cursor(DictCursor)
 
         # Normaliza entradas
@@ -309,14 +324,49 @@ class Lead:
         start_date = (start_date or "").strip() or None
         end_date   = (end_date or "").strip() or None
 
-        sql = """
-            SELECT 
+        # Usaremos FOUND_ROWS sólo si solicitamos paginación
+        use_count = (limit is not None)
+
+        # Subconsulta para obtener los datos del ÚLTIMO seguimiento (el MAX(id)) para cada lead
+        # <-- añadimos s1.comentario y s1.usuario_id para poder buscarlos/mostrarlos
+        subquery_latest_seguimiento = """
+            SELECT
+                s1.lead_id, s1.monto, s1.moneda_id, s1.proceso_id, s1.comentario, s1.usuario_id
+            FROM seguimientos s1
+            INNER JOIN (
+                SELECT lead_id, MAX(id) as max_id
+                FROM seguimientos
+                GROUP BY lead_id
+            ) s2 ON s1.id = s2.max_id AND s1.lead_id = s2.lead_id
+        """
+
+        select_clause = "SELECT "
+        if use_count:
+            select_clause += "SQL_CALC_FOUND_ROWS "
+
+        select_clause += """
                 l.id, l.codigo, l.fecha, l.telefono, l.ruc_dni, l.nombre,
                 l.canal_id, l.contacto, l.direccion, l.departamento, l.provincia,
                 l.distrito, l.bien_servicio_id, l.email, l.comentario, l.asignado_a,
-                bs.nombre AS bien_servicio
+                bs.nombre AS bien_servicio,
+                
+                -- Campos solicitados del último seguimiento y sus tablas relacionadas
+                s.monto AS ultimo_monto,
+                m.nombre_moneda AS ultimo_moneda_nombre,
+                p.nombre_proceso AS ultimo_proceso_nombre,
+                s.comentario AS ultimo_comentario,
+                s.usuario_id AS ultimo_seguimiento_usuario_id
+        """
+
+        sql = select_clause + f"""
             FROM leads l
             LEFT JOIN bienes_servicios bs ON bs.id = l.bien_servicio_id
+            -- LEFT JOIN con la subconsulta del último seguimiento
+            LEFT JOIN ({subquery_latest_seguimiento}) s ON s.lead_id = l.id
+            -- LEFT JOIN para obtener el nombre de la moneda
+            LEFT JOIN moneda m ON m.id = s.moneda_id
+            -- LEFT JOIN para obtener el nombre del proceso
+            LEFT JOIN proceso p ON p.id = s.proceso_id
             WHERE 1=1
         """
         params = []
@@ -334,7 +384,7 @@ class Lead:
             sql += " AND l.fecha <= %s"
             params.append(end_date)
 
-        # Búsqueda libre
+        # Búsqueda libre (ahora incluye l.comentario y s.comentario)
         if q:
             like = f"%{q}%"
             sql += """
@@ -342,18 +392,45 @@ class Lead:
             l.codigo LIKE %s OR l.telefono LIKE %s OR l.ruc_dni LIKE %s OR
             l.nombre LIKE %s OR l.contacto LIKE %s OR l.direccion LIKE %s OR
             l.departamento LIKE %s OR l.provincia LIKE %s OR l.distrito LIKE %s OR
-            l.email LIKE %s OR COALESCE(bs.nombre,'') LIKE %s
+            l.email LIKE %s OR COALESCE(bs.nombre,'') LIKE %s OR
+            l.comentario LIKE %s OR COALESCE(s.comentario,'') LIKE %s
             )
             """
-            params.extend([like] * 11)
+            # extendimos parámetros para incluir los dos nuevos campos de comentario
+            params.extend([like] * 13)
 
         sql += " ORDER BY l.fecha DESC, l.id DESC"
 
+        # Agregar LIMIT/OFFSET si se solicitó paginación
+        if limit is not None:
+            if offset is None:
+                offset = 0
+            sql += " LIMIT %s OFFSET %s"
+            params.extend([limit, offset])
+
         cur.execute(sql, params)
-        rows = cur.fetchall()
+        rows = cur.fetchall() or []
+
+        total = None
+        if use_count:
+            # Obtener el total ignorando LIMIT (MySQL)
+            cur.execute("SELECT FOUND_ROWS() AS total")
+            tr = cur.fetchone()
+            try:
+                # DictCursor devuelve dict
+                total = tr.get("total") if isinstance(tr, dict) else (tr["total"] if tr else 0)
+            except Exception:
+                total = 0
+
         cur.close()
 
-        return Lead._apply_name_resolution(rows)
+        rows = Lead._apply_name_resolution(rows)
+
+        if use_count:
+            return rows, int(total or 0)
+        else:
+            return rows
+
 
     # ============================================================
     # Último seguimiento = "No iniciado"

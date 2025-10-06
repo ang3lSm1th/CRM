@@ -1,78 +1,267 @@
-{% extends "base.html" %}
-{% block title %}Leads{% endblock %}
-
-{% block content %}
-
-  <div class="flex between">
-  <h2>Gestión de Leads</h2>
-  <a class="btn" href="{{ url_for('leads.create_lead') }}">➕ Nuevo Lead</a>
-</div>
-
-<link rel="stylesheet" href="{{ url_for('static', filename='css/buscador.css') }}">
-
-<form method="GET"
+{% extends "base.html" %} {% block title %}Leads{% endblock %} {% block styles
+%}
+<link
+  href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+  rel="stylesheet"
+/>
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+/>
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/buscador.css') }}"
+/>
+{% endblock %} {% block content %}
+<div class="row">
+  {# ATENCIÓN: Si tu base.html maneja el layout, elimina el col-md-12 si está
+  causando padding doble #}
+  <div style="width: 100%">
+    {# Cambiado de class="col-md-12" a un div simple con width: 100% para evitar
+    padding de Bootstrap que pueda sobrar #}
+    <div class="flex between">
+      <h2>Gestión de Leads</h2>
+      <a class="btn-new-lead" href="{{ url_for('leads.create_lead') }}"
+        >➕ Nuevo Lead</a
+      >
+    </div>
+    <form
+      method="GET"
       action="{{ url_for('leads.list_leads') }}"
-      class="mb-3 d-flex buscador">
-
-  <div class="search-wrap">
-    <input
-      type="text"
-      name="q"
-      class="form-control search-input"
-      placeholder="Buscar por cualquier campo (código, nombre, contacto, canal, etc.)"
-      value="{{ q or '' }}">
-  </div>
-
-  <input type="date" name="f_ini" class="form-control date-input" value="{{ f_ini or '' }}">
-  <input type="date" name="f_fin" class="form-control date-input" value="{{ f_fin or '' }}">
-
-  <button type="submit" class="btn btn-primary btn-search">Buscar</button>
-
-  {% if q or f_ini or f_fin %}
-    <a class="btn btn-outline-secondary btn-clear" href="{{ url_for('leads.list_leads') }}">Limpiar</a>
-  {% endif %}
-
-  <button type="button" class="btn btn-success export-btn"
-          data-table="#tabla-leads" data-filename="leads.xlsx">
-    Exportar Excel
-  </button>
-</form>
-
-{% if q or f_ini or f_fin %}
-  <div class="mb-2 text-muted">
-    Mostrando <strong>{{ total }}</strong> resultado{{ '' if total==1 else 's' }}
-    {% if q %} para: <code>{{ q }}</code>{% endif %}
-    {% if f_ini or f_fin %}
-      {% if q %} | {% endif %}rango:
-      <code>{{ f_ini or '—' }}</code> → <code>{{ f_fin or '—' }}</code>
+      class="mb-3"
+      id="filter-form"
+    >
+      <div class="row mb-2">
+        <div class="col-md-6">
+          <label for="search-input" class="form-label visually-hidden"
+            >Buscar</label
+          >
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input
+              type="text"
+              id="search-input"
+              name="q"
+              class="form-control"
+              placeholder="Buscar..."
+              value="{{ q or '' }}"
+            />
+          </div>
+        </div>
+      </div>
+      <div class="row g-2 align-items-center">
+        <div class="col-md-2">
+          <label for="f_ini" class="form-label visually-hidden"
+            >Fecha de inicio</label
+          >
+          <input
+            type="date"
+            id="f_ini"
+            name="f_ini"
+            class="form-control form-control-sm"
+            value="{{ f_ini or '' }}"
+          />
+        </div>
+        <div class="col-md-2">
+          <label for="f_fin" class="form-label visually-hidden"
+            >Fecha de fin</label
+          >
+          <input
+            type="date"
+            id="f_fin"
+            name="f_fin"
+            class="form-control form-control-sm"
+            value="{{ f_fin or '' }}"
+          />
+        </div>
+        <div class="col-md-4">
+          <div class="d-flex gap-2 align-items-center">
+            <button type="submit" class="btn btn-primary btn-sm">
+              <i class="bi bi-search"></i> Buscar
+            </button>
+            {% if q or f_ini or f_fin %}
+            <a
+              class="btn btn-outline-danger btn-sm"
+              href="{{ url_for('leads.list_leads') }}"
+            >
+              <i class="bi bi-x-circle-fill"></i> Limpiar
+            </a>
+            {% endif %}
+            <div
+              class="form-check ms-2"
+              title="Seleccione un rango de fechas para activar"
+            >
+              <input class="form-check-input" type="checkbox" value="1"
+              id="show-all-checkbox" name="show_all" {% if
+              request.args.get('show_all') in ('1','true','True') %}checked{%
+              endif           %} {% if not (f_ini or f_fin) %}disabled{% endif
+              %}>
+              <label class="form-check-label small" for="show-all-checkbox">
+                Mostrar todo (sin paginación)
+              </label>
+            </div>
+            <button
+              type="button"
+              id="export-btn"
+              class="btn btn-success btn-sm ms-2"
+              title="Exportar según fechas / tabla"
+            >
+              <i class="bi bi-file-earmark-excel"></i> Exportar
+            </button>
+          </div>
+        </div>
+        <div class="col text-end small text-muted">
+          Mostrando
+          <strong>{{ (page-1)*per_page + 1 if total>0 else 0 }}</strong>       -
+          <strong
+            >{{ ((page-1)*per_page + leads|length) if total>0 else 0 }}</strong
+          >
+          de <strong>{{ total }}</strong>       (Página {{ page }} / {{
+          total_pages }})
+        </div>
+      </div>
+    </form>
+    {% if q or f_ini or f_fin %}
+    <div class="mb-2 text-muted">
+      Mostrando <strong>{{ total }}</strong> resultado{{ '' if total==1 else 's'
+      }}   {% if q %} para: <code>{{ q }}</code>{% endif %} {% if f_ini or f_fin
+      %} {% if   q %} | {% endif %}rango: <code>{{ f_ini or '—' }}</code> →
+      <code>{{ f_fin or '—' }}</code>{% endif %}
+    </div>
+    {% endif %}
+    <div class="table-container">
+      <table
+        class="table table-striped table-hover align-middle w-100"
+        id="tabla-leads"
+      >
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Fecha</th>
+            <th>Teléfono</th>
+            <th>RUC/DNI</th>
+            <th>Nombre</th>
+            <th>Monto</th>
+            {# Nueva Columna Monto #}
+            <th>Estado/Proceso</th>
+            {# Nueva Columna Estado/Proceso #}
+            <th>Canal</th>
+            <th>Contacto</th>
+            <th>Dirección</th>
+            <th>Departamento</th>
+            <th>Provincia</th>
+            <th>Distrito</th>
+            <th>Bien/Servicio</th>
+            <th>Email</th>
+            <th>Comentario</th>
+            <th>Asignado a</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in leads %}
+          <tr ondblclick="editarLead('{{ l.codigo }}')" class="row-clickable">
+            <td>{{ l.codigo }}</td>
+            <td>{{ l.fecha }}</td>
+            <td>{{ l.telefono }}</td>
+            <td>{{ l.ruc_dni }}</td>
+            <td>{{ l.nombre }}</td>
+            <td>
+              {# MOSTRANDO MONTO Y MONEDA DEL ÚLTIMO SEGUIMIENTO #} {% if
+              l.ultimo_monto is not none and l.ultimo_monto is number %} {{
+              l.ultimo_moneda_nombre or '' }} {{"{:,.2f}".format(l.ultimo_monto) }}{% endif %}
+            </td>
+            <td>
+              {# MOSTRANDO PROCESO DEL ÚLTIMO SEGUIMIENTO #} {{
+              l.ultimo_proceso_nombre or 'N/A' }}
+            </td>
+            <td>{{ l.canal }}</td>
+            <td>{{ l.contacto }}</td>
+            <td>{{ l.direccion }}</td>
+            <td>
+              {% set depto = departamentos_map.get(l.departamento|string,
+              l.departamento) %} {% if depto and depto|string != 'None' %}{{
+              depto }}{% endif %}
+            </td>
+            <td>
+              {% set prov = provincias_map.get(l.provincia|string, l.provincia)
+              %} {% if prov and prov|string != 'None' %}{{ prov }}{% endif %}
+            </td>
+            <td>
+              {% set dist = distritos_map.get(l.distrito|string, l.distrito) %}
+              {% if dist and dist|string != 'None' %}{{ dist }}{% endif %}
+            </td>
+            <td>{{ l.bien_servicio }}</td>
+            <td>{{ l.email }}</td>
+            <td>{{ l.comentario }}</td>
+            <td>{{ l.asignado_a }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            {# COLSPAN AJUSTADO: 17 Columnas totales #}
+            <td colspan="17" class="no-data">No hay leads registrados.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if request.args.get('show_all') not in ('1','true','True') %}
+    <nav
+      aria-label="Paginación leads"
+      class="mt-3 d-flex justify-content-between align-items-center"
+    >
+      <ul class="pagination mb-0">
+        <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+          <a
+            class="page-link"
+            href="{{ url_for('leads.list_leads', q=q, f_ini=f_ini, f_fin=f_fin, page=page-1) }}"
+            aria-label="Anterior"
+          >
+            <span class="bi bi-chevron-left"></span>
+          </a>
+        </li>
+        {% set start_page = 1 %} {% set end_page = total_pages %} {% if
+        total_pages     > 7 %} {% set start_page = page - 3 if page - 3 > 1 else
+        1 %} {% set     end_page = start_page + 6 %} {% if end_page >
+        total_pages %} {% set end_page     = total_pages %} {% set start_page =
+        end_page - 6 if end_page - 6 > 0 else 1     %} {% endif %} {% endif %} 
+        {% for p in range(start_page, end_page + 1) %}
+        <li class="page-item {% if p == page %}active{% endif %}">
+          <a
+            class="page-link"
+            href="{{ url_for('leads.list_leads', q=q, f_ini=f_ini, f_fin=f_fin, page=p) }} "
+            >{{ p }}</a
+          >
+        </li>
+        {% endfor %}
+        <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+          <a
+            class="page-link"
+            href="{{ url_for('leads.list_leads', q=q, f_ini=f_ini, f_fin=f_fin, page=page+1) }}"
+            aria-label="Siguiente"
+          >
+            <span class="bi bi-chevron-right"></span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+    {% else %}
+    <div class="mt-3 d-flex justify-content-between align-items-center">
+      <div class="small text-muted">
+        Mostrando <strong>{{ leads|length }}</strong> registros (modo "Mostrar
+        todo").
+      </div>
+      <a
+        class="btn btn-sm btn-outline-secondary"
+        href="{{ url_for('leads.list_leads', q=q, f_ini=f_ini, f_fin=f_fin, page=1) }}"
+      >
+        Volver a paginar
+      </a>
+    </div>
     {% endif %}
   </div>
-{% endif %}
-
-<div class="table-container">
-  <table class="table" id="tabla-leads">
-    <thead>
-      <tr>
-        <th>Código</th><th>Fecha</th><th>Teléfono</th><th>RUC/DNI</th>
-        <th>Nombre</th><th>Canal</th><th>Contacto</th><th>Dirección</th>
-        <th>Departamento</th><th>Provincia</th><th>Distrito</th>
-        <th>Bien/Servicio</th><th>Email</th><th>Comentario</th><th>Asignado a</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for l in leads %}
-      <tr ondblclick="editarLead('{{ l.codigo }}')" class="row-clickable">
-        <td>{{ l.codigo }}</td><td>{{ l.fecha }}</td><td>{{ l.telefono }}</td><td>{{ l.ruc_dni }}</td>
-        <td>{{ l.nombre }}</td><td>{{ l.canal }}</td><td>{{ l.contacto }}</td><td>{{ l.direccion }}</td>
-        <td>{{ l.departamento }}</td><td>{{ l.provincia }}</td><td>{{ l.distrito }}</td>
-        <td>{{ l.bien_servicio }}</td><td>{{ l.email }}</td><td>{{ l.comentario }}</td><td>{{ l.asignado_a }}</td>
-      </tr>
-      {% else %}
-      <tr><td colspan="15" class="no-data">No hay leads registrados.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
 </div>
 
-<script>function editarLead(codigo){ location.href = "/leads/edit/" + codigo; }</script>
+{# Incluye el script externo que contiene la lógica de búsqueda/export/resaltado #}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
 {% endblock %}

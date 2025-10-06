@@ -1,39 +1,43 @@
-{% extends "base.html" %}
-{% block title %}Leads no iniciados{% endblock %}
-
-{% block content %}
-<div class="flex between">
-  <h2>Leads no iniciados</h2>
-</div>
-
-<link rel="stylesheet" href="{{ url_for('static', filename='css/buscador.css') }}">
-
-<form class="mb-3 d-flex" style="gap:.5rem;" onsubmit="return false;">
-  <input
-    type="text"
-    class="form-control live-search"
-    placeholder="Buscar en la tabla..."
-    id="q-sin-iniciar"
-    data-target="#tabla-sin-iniciar"
-    data-counter="#cnt-sin-iniciar"
+{% extends "base.html" %} {% block title %}Leads no iniciados{% endblock %} {%
+block content %}
+<div class="flex between"><h2>Leads no iniciados</h2></div>
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/buscador.css') }}"
+/>
+<div style="max-width: 600px">
+  <form
+    class="mb-3 d-flex align-items-center"
+    style="gap: 0.5rem"
+    onsubmit="return false;"
   >
-  <button
-    type="button"
-    class="btn btn-primary search-btn"
-    data-input="#q-sin-iniciar"
-  >Buscar</button>
-
-  <button
-    type="button"
-    class="btn btn-outline-secondary clear-btn"
-    data-input="#q-sin-iniciar"
-  >Limpiar</button>
-
-  <div class="text-muted" style="align-self:center;">
-    <small>Coincidencias: <span id="cnt-sin-iniciar">0</span></small>
-  </div>
-</form>
-
+    <input
+      type="text"
+      class="form-control form-control-sm live-search"
+      placeholder="Buscar en la tabla..."
+      id="q-sin-iniciar"
+      data-target="#tabla-sin-iniciar"
+      data-counter="#cnt-sin-iniciar"
+    />
+    <button
+      type="button"
+      class="btn btn-primary btn-sm search-btn"
+      data-input="#q-sin-iniciar"
+    >
+      Buscar
+    </button>
+    <button
+      type="button"
+      class="btn btn-outline-secondary btn-sm clear-btn"
+      data-input="#q-sin-iniciar"
+    >
+      Limpiar
+    </button>
+    <div class="text-muted" style="align-self: center">
+      <small>Coincidencias: <span id="cnt-sin-iniciar">0</span></small>
+    </div>
+  </form>
+</div>
 <div class="table-container">
   <table class="table" id="tabla-sin-iniciar">
     <thead>
@@ -82,8 +86,9 @@
     </tbody>
   </table>
 </div>
-
 <script>
-  function editarLead(codigo){ window.location.href = "/leads/edit/" + codigo; }
+  function editarLead(codigo) {
+    window.location.href = "/leads/edit/" + codigo;
+  }
 </script>
 {% endblock %}

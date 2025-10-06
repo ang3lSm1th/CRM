@@ -1,7 +1,7 @@
 /* ==========
    Tokens
 ========== */
-.create-lead-page {
+:root {
   --bg: #ffffff;
   --card-bg: #f9fbff;
   --card-bd: #dbeafe;
@@ -16,29 +16,34 @@
 }
 
 /* ==========
-   Page
+   Page & Headings
 ========== */
 .create-lead-page { background-color: var(--bg); }
+
 .create-lead-page h2 {
   color: var(--primary);
   font-weight: 700;
   border-bottom: 2px solid var(--primary-300);
   padding-bottom: 8px;
-  margin-bottom: 18px;
+  margin-bottom: 1.5rem;
   letter-spacing: .2px;
 }
 
-/* Grid 2 módulos (1 col en móvil) */
+/* ==========
+   Grid 2 columnas
+========== */
 .clp-grid {
   display: grid;
-  gap: 18px;
+  gap: 1.5rem;
+  padding-bottom: 1.5rem;
 }
+
 @media (min-width: 992px) {
-  .clp-grid { grid-template-columns: 1fr 1fr; }
+  .clp-grid { grid-template-columns: 1fr 1fr; } 
 }
 
 /* ==========
-   Module card
+   Module Card
 ========== */
 .clp-module {
   background: var(--card-bg);
@@ -48,37 +53,61 @@
   box-shadow: var(--shadow);
   transition: transform .18s ease, box-shadow .18s ease;
 }
-.clp-module:hover { transform: translateY(-1px); }
+
+.clp-module:hover { transform: translateY(-2px); }
 
 .clp-module__head {
-  padding: 14px 18px;
-  background:
-    linear-gradient(180deg, rgba(147,197,253,.28), rgba(147,197,253,0));
+  padding: 1rem 1.25rem;
+  background: linear-gradient(180deg, rgba(147,197,253,.28), rgba(147,197,253,0));
   border-bottom: 1px solid var(--card-bd);
 }
+
 .clp-module__head h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--text-900);
 }
+
 .clp-module__head p {
-  margin: 2px 0 0;
-  font-size: 12.5px;
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
   color: var(--text-600);
 }
 
 .clp-module__body {
-  padding: 18px;
+  padding: 1.5rem;
 }
 
 /* ==========
    Form
 ========== */
+/* === NUEVO: FILAS FLEX === */
+.create-lead-page .form-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.create-lead-page .form-row > .form-label {
+  margin: 0;
+  min-width: 160px; /* ajusta este valor si los labels son muy largos */
+  flex: 0 0 auto;
+}
+
+.create-lead-page .form-row > .form-control,
+.create-lead-page .form-row > .form-select,
+.create-lead-page .form-row > textarea {
+  flex: 1 1 auto;
+  width: 100%;
+}
+/* ======================== */
+
 .create-lead-page .form-label {
   font-weight: 600;
   color: var(--primary);
-  margin-bottom: 6px;
+  margin-bottom: 0.5rem; /* Se anula por .form-row */
 }
 
 .create-lead-page .form-control,
@@ -86,30 +115,26 @@
 .create-lead-page textarea {
   border: 1px solid #263241;
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: 0.75rem 1rem;
   background: #fff;
-  transition: box-shadow .15s ease, border-color .15s ease, transform .05s ease;
+  transition: all .15s ease;
 }
 
-/* Focus ring bonito */
 .create-lead-page .form-control:focus,
 .create-lead-page .form-select:focus,
 .create-lead-page textarea:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 4px var(--ring);
   outline: none;
+  transform: translateY(-1px);
 }
 
-/* Placeholder y espaciado */
+/* Placeholders & Textarea */
 .create-lead-page .form-control::placeholder,
 .create-lead-page textarea::placeholder {
   color: #94a3b8;
 }
 
-/* filas compactas */
-.create-lead-page .row { margin-bottom: 8px; }
-
-/* Textarea */
 .create-lead-page textarea { resize: vertical; min-height: 110px; }
 
 /* ==========
@@ -117,19 +142,20 @@
 ========== */
 .clp-actions {
   display: flex;
-  gap: 10px;
+  gap: 0.75rem;
   justify-content: flex-end;
-  padding-top: 6px;
-  margin-top: 6px;
+  padding-top: 1.25rem;
+  margin-top: 1.25rem;
   border-top: 1px dashed var(--muted);
 }
 
 .create-lead-page .btn {
   border-radius: 10px;
-  padding: 10px 18px;
+  padding: 0.75rem 1.5rem;
   font-weight: 600;
   letter-spacing: .2px;
   transition: transform .06s ease, box-shadow .16s ease;
+  min-width: 120px;
 }
 
 .create-lead-page .btn:active { transform: translateY(1px); }
@@ -167,42 +193,28 @@
 }
 
 .valid-hint {
-  font-size: 12px;
+  font-size: 0.8rem;
   color: #64748b;
-  margin-top: 4px;
+  margin-top: 0.25rem;
 }
 
-/* Pequeño realce al pasar sobre inputs */
 .create-lead-page .form-control:hover,
 .create-lead-page .form-select:hover,
 .create-lead-page textarea:hover {
   border-color: #334155;
+  box-shadow: 0 0 0 2px rgba(51, 65, 85, 0.1);
 }
 
-/* =========================================================
-   NUEVO — Filas flex para pegar el input al lado derecho
-   (label a la izquierda, input ocupa todo el resto)
-========================================================= */
-.create-lead-page .form-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;            /* separa label e input */
-  margin-bottom: 8px;   /* mismo ritmo que .row */
+/* ==========
+   Desplegables (SELECT)
+========== */
+.create-lead-page .form-select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%232563eb' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 16px 12px;
 }
 
-.create-lead-page .form-row > .form-label {
-  margin: 0;            /* quita el margen inferior de .form-label */
-  min-width: 160px;     /* ajusta el ancho de la etiqueta si quieres */
-  flex: 0 0 auto;
-}
-
-.create-lead-page .form-row > .form-control,
-.create-lead-page .form-row > .form-select,
-.create-lead-page .form-row > textarea {
-  flex: 1 1 auto;       /* ocupa todo lo disponible hacia la derecha */
-  width: 100%;
-}
-
-/* (Opcional) Para que el campo llegue al borde del módulo sin “aire” lateral:
-   añade .clp-module__body--flush al body del módulo donde lo quieras usar */
-.clp-module__body--flush { padding-left: 0; padding-right: 0; }

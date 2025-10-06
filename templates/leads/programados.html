@@ -16,6 +16,7 @@
     id="q-programados"
     data-target="#tabla-programados"
     data-counter="#cnt-programados"
+    style="max-width: 250px;"
   >
   <button
     type="button"
@@ -43,7 +44,7 @@
         <th>Teléfono</th>
         <th>RUC/DNI</th>
         <th>Nombre</th>
-        <th>Fecha programada</th>   {# 👈 justo después de Nombre #}
+        <th>Fecha programada</th>
         <th>Canal</th>
         <th>Contacto</th>
         <th>Dirección</th>
@@ -64,7 +65,7 @@
         <td>{{ l.telefono }}</td>
         <td>{{ l.ruc_dni }}</td>
         <td>{{ l.nombre }}</td>
-        <td>{{ l.fecha_programada or '' }}</td>  {# <- viene del último seguimiento #}
+        <td>{{ l.fecha_programada or '' }}</td>
         <td>{{ l.canal }}</td>
         <td>{{ l.contacto }}</td>
         <td>{{ l.direccion }}</td>

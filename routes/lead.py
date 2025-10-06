@@ -1,120 +1,194 @@
-# routes/lead.py
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, Response
 from utils.security import login_required, role_required, ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH, ROLE_ASESOR
 from models.lead import Lead
 from models.canal import Canal
 from models.bien_servicio import BienServicio
 from models.user import User
 import MySQLdb.cursors
-from datetime import date
+from datetime import date, datetime
 from models.proceso import Proceso
 from models.moneda import Moneda
 from models.motivonoventa import Motivonoventa
 from MySQLdb import IntegrityError
 from extensions import mysql
 import io, base64
+import csv
 import matplotlib
 matplotlib.use("Agg")  # backend sin ventana para servidores
 import matplotlib.pyplot as plt
-
-# Catálogo específico para seguimiento
+from math import ceil
 from models.canal_contacto import CanalContacto
 
-# ✅ URL base /leads
-lead_bp = Blueprint("leads", __name__, url_prefix="/leads")
 
-# =========================================================
-# Router por rol: /leads → list (Admin/Gerente/RRHH) o sin-iniciar (Asesor)
-# =========================================================
-@lead_bp.route("/")
-@login_required
-def leads_router():
-    rol = session.get("id_rol")
-    if rol in (ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH):
-        return redirect(url_for("leads.list_leads"))
-    elif rol == ROLE_ASESOR:
-        return redirect(url_for("leads.list_unstarted"))
-    flash("Rol no reconocido", "warning")
-    return redirect(url_for("auth.login"))
+# Blueprint principal de leads (namespace 'leads')
+lead_bp = Blueprint("leads", __name__)
 
-# =========================================================
-# LISTAS
-# =========================================================
-ROLES_LIST      = (ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH)                 # para admin views
-ROLES_LIST_ALL  = (ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH, ROLE_ASESOR)    # asesor puede ver todas
 
+# --- helper permiso columna "Asignado a" ---
+def user_can_view_assigned():
+    """
+    Devuelve True si el rol actual puede ver la columna 'Asignado a'.
+    Roles permitidos: ADMIN, GERENTE, RRHH
+    """
+    return session.get("id_rol") in (ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH)
+
+# Listar leads
 @lead_bp.route("/list")
-@role_required(*ROLES_LIST_ALL)
+@login_required
 def list_leads():
     q      = (request.args.get("q") or "").strip()
     f_ini  = request.args.get("f_ini") or None
     f_fin  = request.args.get("f_fin") or None
+    show_all = (request.args.get("show_all") in ('1','true','True'))
 
-    if q or f_ini or f_fin:
-        leads = Lead.search_for_user(session["id_rol"], session["user_id"], q=q, start_date=f_ini, end_date=f_fin)
+    try:
+        page = int(request.args.get("page", 1))
+        if page < 1:
+            page = 1
+    except (ValueError, TypeError):
+        page = 1
+
+    PER_PAGE = 15
+    offset = (page - 1) * PER_PAGE
+
+    # Si show_all está activo pedimos TODOS los registros (limit=None)
+    if show_all:
+        if q or f_ini or f_fin:
+            leads = Lead.search_for_user(
+                session["id_rol"],
+                session["user_id"],
+                q=q,
+                start_date=f_ini,
+                end_date=f_fin,
+                limit=None,
+                offset=None
+            )
+        else:
+            leads = Lead.list_for_user(
+                session["id_rol"],
+                session["user_id"],
+                start_date=f_ini,
+                end_date=f_fin,
+                limit=None,
+                offset=None
+            )
+        total = len(leads)
+        total_pages = 1
+        page = 1
     else:
-        leads = Lead.list_for_user(session["id_rol"], session["user_id"], start_date=f_ini, end_date=f_fin)
+        if q or f_ini or f_fin:
+            leads, total = Lead.search_for_user(
+                session["id_rol"],
+                session["user_id"],
+                q=q,
+                start_date=f_ini,
+                end_date=f_fin,
+                limit=PER_PAGE,
+                offset=offset
+            )
+        else:
+            leads, total = Lead.list_for_user(
+                session["id_rol"],
+                session["user_id"],
+                start_date=f_ini,
+                end_date=f_fin,
+                limit=PER_PAGE,
+                offset=offset
+            )
 
-    return render_template("leads/list.html", leads=leads, q=q, total=len(leads), f_ini=f_ini, f_fin=f_fin)
+        total = int(total or (len(leads) if leads is not None else 0))
+        total_pages = max(1, (total + PER_PAGE - 1) // PER_PAGE)
 
-@lead_bp.route("/programados")
-@role_required(*ROLES_LIST_ALL)
-def list_programmed():
-    q = (request.args.get("q") or "").strip()
-    leads = Lead.list_programmed_for_user(session["id_rol"], session["user_id"], q)
-    return render_template("leads/programados.html", leads=leads, q=q, total=len(leads))
+        if page > total_pages:
+            page = total_pages
 
-@lead_bp.route("/cotizados")
-@role_required(*ROLES_LIST_ALL)
-def list_quoted():
-    q = (request.args.get("q") or "").strip()
-    leads = Lead.list_quoted_for_user(session["id_rol"], session["user_id"], q)
-    return render_template("leads/cotizados.html", leads=leads, q=q, total=len(leads))
+    can_view_assigned = session.get("id_rol") in (ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH)
 
-@lead_bp.route("/cerrados")
-@role_required(*ROLES_LIST_ALL)
-def list_closed():
-    q = (request.args.get("q") or "").strip()
-    leads = Lead.list_closed_for_user(session["id_rol"], session["user_id"], q)
-    return render_template("leads/cerrados.html", leads=leads, q=q, total=len(leads))
+    # ========= OPCIÓN 2: solo cargar ids necesarios =========
+    dep_ids = set()
+    prov_ids = set()
+    dist_ids = set()
+    for l in (leads or []):
+        # soporta dicts o objetos con atributos
+        try:
+            dep_val = l.get("departamento") if isinstance(l, dict) else getattr(l, "departamento", None)
+            prov_val = l.get("provincia") if isinstance(l, dict) else getattr(l, "provincia", None)
+            dist_val = l.get("distrito") if isinstance(l, dict) else getattr(l, "distrito", None)
+        except Exception:
+            dep_val = getattr(l, "departamento", None)
+            prov_val = getattr(l, "provincia", None)
+            dist_val = getattr(l, "distrito", None)
 
-@lead_bp.route("/cerrados-no-vendidos")
-@role_required(*ROLES_LIST_ALL)
-def list_closed_lost():
-    q = (request.args.get("q") or "").strip()
-    leads = Lead.list_closed_lost_for_user(session["id_rol"], session["user_id"], q)
-    return render_template("leads/cerrados_no_vendidos.html", leads=leads, q=q, total=len(leads))
+        if dep_val is not None and str(dep_val).strip() != "":
+            dep_ids.add(str(dep_val))
+        if prov_val is not None and str(prov_val).strip() != "":
+            prov_ids.add(str(prov_val))
+        if dist_val is not None and str(dist_val).strip() != "":
+            dist_ids.add(str(dist_val))
 
-@lead_bp.route("/en-seguimiento")
-@role_required(*ROLES_LIST_ALL)
-def list_in_followup():
-    q = (request.args.get("q") or "").strip()
-    leads = Lead.list_in_followup_for_user(session["id_rol"], session["user_id"], q)
-    return render_template("leads/seguimiento_sidebar.html", leads=leads, q=q, total=len(leads))
+    departamentos_map = {}
+    provincias_map = {}
+    distritos_map = {}
 
-# =========================================================
-# SIN INICIAR (solo Asesor para el acceso directo)
-# =========================================================
-# Después (todos los roles)
-@lead_bp.route("/sin-iniciar")
-@role_required(ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH, ROLE_ASESOR)  # o usa @login_required si prefieres
-def list_unstarted():
-    q = (request.args.get("q") or "").strip()
-    leads = Lead.list_unstarted_for_user(session["id_rol"], session["user_id"], q)
-    return render_template("leads/sin_iniciar.html", leads=leads, q=q, total=len(leads))
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    try:
+        if dep_ids:
+            placeholders = ",".join(["%s"] * len(dep_ids))
+            cur.execute(
+                f"SELECT idDepartamento AS id, departamento AS nombre FROM departamentos WHERE idDepartamento IN ({placeholders})",
+                tuple(dep_ids)
+            )
+            departamentos_map = { str(r["id"]): r["nombre"] for r in (cur.fetchall() or []) }
 
+        if prov_ids:
+            placeholders = ",".join(["%s"] * len(prov_ids))
+            cur.execute(
+                f"SELECT idProvincia AS id, provincia AS nombre FROM provincia WHERE idProvincia IN ({placeholders})",
+                tuple(prov_ids)
+            )
+            provincias_map = { str(r["id"]): r["nombre"] for r in (cur.fetchall() or []) }
 
-# =========================================================
-# Crear / Editar / Eliminar
-# =========================================================
+        if dist_ids:
+            placeholders = ",".join(["%s"] * len(dist_ids))
+            cur.execute(
+                f"SELECT idDistrito AS id, distrito AS nombre FROM distrito WHERE idDistrito IN ({placeholders})",
+                tuple(dist_ids)
+            )
+            distritos_map = { str(r["id"]): r["nombre"] for r in (cur.fetchall() or []) }
+    finally:
+        cur.close()
+    # =======================================================
+
+    return render_template(
+        "leads/list.html",
+        leads=leads,
+        q=q,
+        total=total,
+        f_ini=f_ini,
+        f_fin=f_fin,
+        page=page,
+        total_pages=total_pages,
+        per_page=PER_PAGE,
+        can_view_assigned=can_view_assigned,
+        departamentos_map=departamentos_map,
+        provincias_map=provincias_map,
+        distritos_map=distritos_map
+    )
+
+# Crear lead
 @lead_bp.route("/create", methods=["GET", "POST"])
 @role_required(ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH, ROLE_ASESOR)
 def create_lead():
     if request.method == "POST":
         codigo = Lead.next_codigo()
+        
+        # 1. Obtener el ID del usuario logueado para el seguimiento inicial
+        created_by_user_id = session.get("user_id")
+        
         data = {
             "codigo": codigo,
-            "fecha": request.form.get("fecha") or date.today().strftime("%Y-%m-%d"),
+            # Asegúrate de que 'fecha' se obtiene correctamente.
+            "fecha": request.form.get("fecha") or date.today().strftime("%Y-%m-%d"), 
             "nombre": request.form["nombre"],
             "telefono": request.form.get("telefono"),
             "ruc_dni": request.form.get("ruc_dni"),
@@ -126,26 +200,39 @@ def create_lead():
             "distrito": request.form.get("distrito"),
             "canal_id": request.form.get("canal_id"),
             "bien_servicio_id": request.form.get("bien_servicio_id"),
-            "asignado_a": (session["user_id"] if session["id_rol"] == ROLE_ASESOR else request.form.get("asignado_a")),
+            # Asignado: el usuario logueado si es ASESOR, o el seleccionado en el form si no.
+            "asignado_a": (created_by_user_id if session["id_rol"] == ROLE_ASESOR else request.form.get("asignado_a")),
             "comentario": request.form.get("comentario"),
         }
+        
+        try:
+            # 2. Llamada al método que inserta el Lead Y el Seguimiento "No Iniciado"
+            Lead.create(data, created_by_user_id=created_by_user_id)
+            
+            # 3. Mostrar el mensaje de éxito (con la categoría 'lead_created' para tu modal)
+            flash(f"✅ Lead {codigo} creado correctamente. ¿Qué deseas hacer ahora?", "lead_created") 
+            
+            # 4. Redirigir de vuelta al formulario de creación
+            return redirect(url_for("leads.create_lead"))
 
-        # Inserta lead + seguimiento "No iniciado" automático
-        Lead.create(data, created_by_user_id=session.get("user_id"))
-
-        flash("✅ Lead creado correctamente", "success")
-        return redirect(url_for("leads.list_leads"))
-
+        except Exception as e:
+            # Manejo básico de errores de base de datos
+            flash(f"❌ Error al crear el Lead: {e}", "danger")
+            # Redirigir de vuelta al formulario para que intente de nuevo
+            return redirect(url_for("leads.create_lead"))
+    
+    # Manejo del método GET (mostrar el formulario)
     return render_template(
         "leads/create.html",
         codigo=Lead.next_codigo(),
         fecha_hoy=date.today().strftime("%Y-%m-%d"),
         canales=Canal.get_all(),
         bienes_servicios=BienServicio.get_all(),
-        asesores=(User.get_by_role(ROLE_ASESOR) if session["id_rol"] != ROLE_ASESOR else [User.get_by_id(session["user_id"])]),
+        asesores=( User.get_by_role(ROLE_ASESOR) if session["id_rol"] != ROLE_ASESOR else [User.get_by_id(session["user_id"])] ),
         es_asesor=(session["id_rol"] == ROLE_ASESOR),
     )
 
+# Editar lead
 @lead_bp.route("/edit/<codigo>", methods=["GET", "POST"])
 @role_required(ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH, ROLE_ASESOR)
 def edit_lead(codigo):
@@ -172,7 +259,9 @@ def edit_lead(codigo):
             "comentario": request.form.get("comentario"),
         }
         Lead.update_by_codigo(data)
-        return redirect(url_for("leads.list_leads"))
+        flash("✅ Lead actualizado correctamente.", "success")
+        # Redirige a la misma vista de edición para permanecer en la página edit
+        return redirect(url_for("leads.edit_lead", codigo=codigo))
 
     return render_template(
         "leads/edit.html",
@@ -183,6 +272,8 @@ def edit_lead(codigo):
         es_asesor=(session["id_rol"] == ROLE_ASESOR),
     )
 
+
+# Eliminar lead
 @lead_bp.route("/delete/<codigo>", methods=["POST"])
 @role_required(ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH)
 def delete_lead(codigo):
@@ -199,20 +290,16 @@ def delete_lead(codigo):
     flash("🗑️ Lead eliminado correctamente", "success")
     return redirect(url_for("leads.list_leads"))
 
-# =========================================================
-# SEGUIMIENTO (permiso amplio)
-# =========================================================
+# Seguimiento de lead
 @lead_bp.route("/seguimiento/<codigo>", methods=["GET", "POST"])
 @role_required(ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH, ROLE_ASESOR)
 def seguimiento_lead(codigo):
-    lead = Lead.get_by_codigo(codigo)  # dict
+    lead = Lead.get_by_codigo(codigo)
     if not lead:
         flash("❌ Lead no encontrado", "danger")
         return redirect(url_for("leads.list_leads"))
 
     lead_id = lead["id"]
-
-    # usuario que registra (asignado o el logueado)
     usuario_id = lead.get("asignado_a") or session.get("user_id")
     if not usuario_id:
         flash("No se pudo determinar el usuario que registra el seguimiento.", "danger")
@@ -222,14 +309,13 @@ def seguimiento_lead(codigo):
 
     if request.method == "POST":
         nn = lambda v: (v if v not in ("", None) else None)
-
-        proceso_id         = request.form.get("proceso_id", type=int)
-        canal_contacto_id  = request.form.get("canal_contacto", type=int)
-        comentario         = nn(request.form.get("comentario"))
-        fecha_programada   = nn(request.form.get("fecha_programada"))
+        proceso_id = request.form.get("proceso_id", type=int)
+        canal_contacto = request.form.get("canal_contacto", type=int)  # <- corregido
+        comentario = nn(request.form.get("comentario"))
+        fecha_programada = nn(request.form.get("fecha_programada"))
         motivo_no_venta_id = request.form.get("motivo_no_venta_id", type=int)
-        cotizacion         = nn(request.form.get("cotizacion"))
-        moneda_id          = request.form.get("moneda_id", type=int)
+        cotizacion = nn(request.form.get("cotizacion"))
+        moneda_id = request.form.get("moneda_id", type=int)
 
         monto = None
         monto_raw = nn(request.form.get("monto"))
@@ -244,28 +330,39 @@ def seguimiento_lead(codigo):
         try:
             cur.execute("""
                 INSERT INTO seguimientos
-                  (lead_id, usuario_id, fecha_seguimiento, proceso_id, fecha_programada,
-                   motivo_no_venta_id, cotizacion, monto, moneda_id, comentario,
-                   canal_contacto, fecha_guardado)
-                VALUES
-                  (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
-            """, (
-                lead_id, usuario_id, fecha_seguimiento, proceso_id, fecha_programada,
+                (lead_id, usuario_id, fecha_seguimiento, proceso_id, fecha_programada,
                 motivo_no_venta_id, cotizacion, monto, moneda_id, comentario,
-                canal_contacto_id
+                canal_contacto, fecha_guardado)
+                VALUES
+                (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            """, (
+                lead_id,
+                usuario_id,
+                fecha_seguimiento,
+                proceso_id,
+                fecha_programada,
+                motivo_no_venta_id,
+                cotizacion,
+                monto,
+                moneda_id,
+                comentario,
+                canal_contacto
             ))
             mysql.connection.commit()
             flash("✅ Seguimiento guardado.", "success")
-        except IntegrityError:
-            flash("❌ Error al guardar el seguimiento.", "danger")
+        except IntegrityError as e:
+            if "uq_cotizacion" in str(e).lower() or "cotizacion" in str(e).lower():
+                flash("⚠️ El código de cotización ya existe. Ingresa uno diferente.", "danger")
+            else:
+                flash("❌ Error al guardar el seguimiento.", "danger")
         finally:
             cur.close()
 
         return redirect(url_for("leads.seguimiento_lead", codigo=codigo))
 
-    # GET: combos y tabla
+
     procesos = Proceso.get_all()
-    canales_contacto = CanalContacto.get_all()
+    canales  = CanalContacto.get_all()
     monedas  = Moneda.get_all()
     motivos  = Motivonoventa.get_all()
     bienes   = BienServicio.get_all()
@@ -288,7 +385,8 @@ def seguimiento_lead(codigo):
 
     cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     cur.execute("""
-        SELECT s.* FROM seguimientos s
+        SELECT s.*
+        FROM seguimientos s
         WHERE s.lead_id = %s
         ORDER BY s.fecha_guardado DESC, s.id DESC
     """, (lead_id,))
@@ -296,7 +394,6 @@ def seguimiento_lead(codigo):
     ultimo = seguimientos[0] if seguimientos else None
     cur.close()
 
-    # preset por query param (opcional)
     preset = (request.args.get("preset") or "").strip().lower()
     preset_map = {
         "no_iniciado": "no iniciado",
@@ -308,7 +405,9 @@ def seguimiento_lead(codigo):
     }
     default_proceso_id = None
     hay_ultimo = bool(ultimo and (ultimo.get("proceso_id") is not None))
-    if not hay_ultimo:
+    hay_post   = False
+
+    if not hay_ultimo and not hay_post:
         target_name = preset_map.get(preset)
         if target_name:
             for p in procesos:
@@ -329,7 +428,7 @@ def seguimiento_lead(codigo):
         "leads/seguimiento.html",
         lead=lead,
         procesos=procesos,
-        canales_contacto=canales_contacto,
+        canales=canales,
         monedas=monedas,
         motivos=motivos,
         seguimientos=seguimientos,
@@ -343,287 +442,64 @@ def seguimiento_lead(codigo):
         lock_proceso=lock_proceso,
     )
 
-# =========================================================
-# Reporte rápido (solo Admin / Gerente / RRHH)
-# =========================================================
-@lead_bp.route("/reporte-rapido", methods=["GET"])
-@role_required(*ROLES_LIST)
-def reporte_rapido():
-    f_ini = (request.args.get("f_ini") or "").strip() or None
-    f_fin = (request.args.get("f_fin") or "").strip() or None
+# Rutas adicionales (sin-iniciar, en-seguimiento, programados, cotizados, cerrados, cerrados-no-vendidos)
+@lead_bp.route("/sin-iniciar")
+@login_required
+def list_unstarted():
+    q = (request.args.get("q") or "").strip()
+    leads = Lead.list_unstarted_for_user(session["id_rol"], session["user_id"], q)
+    return render_template("leads/sin_iniciar.html", leads=leads, q=q, total=len(leads), can_view_assigned=user_can_view_assigned())
 
-    last_sql = """
-      SELECT s1.*
-      FROM seguimientos s1
-      LEFT JOIN seguimientos s2
-        ON s2.lead_id = s1.lead_id
-       AND (s2.fecha_guardado > s1.fecha_guardado
-         OR (s2.fecha_guardado = s1.fecha_guardado AND s2.id > s1.id))
-      WHERE s2.id IS NULL
-    """
+@lead_bp.route("/en-seguimiento")
+@login_required
+def list_in_followup():
+    q = (request.args.get("q") or "").strip()
+    leads = Lead.list_in_followup_for_user(session["id_rol"], session["user_id"], q)
+    return render_template("leads/seguimiento_sidebar.html", leads=leads, q=q, total=len(leads), can_view_assigned=user_can_view_assigned())
 
-    base_sql = f"""
-      SELECT
-        l.id AS lead_id,
-        l.codigo,
-        l.fecha AS fecha_lead,
-        l.nombre,
-        l.contacto,
-        l.telefono,
-        l.asignado_a,
-        u.nombre  AS asesor_nombre,
-        u.usuario AS asesor_usuario,
-        l.canal_id AS canal_recepcion_id,
-        ls.proceso_id,
-        ls.canal_contacto,
-        ls.monto,
-        ls.moneda_id
-      FROM leads l
-      LEFT JOIN ({last_sql}) ls ON ls.lead_id = l.id
-      LEFT JOIN usuarios u ON u.id = l.asignado_a
-      WHERE 1=1
-    """
-    params = []
-    if f_ini:
-        base_sql += " AND l.fecha >= %s"
-        params.append(f_ini)
-    if f_fin:
-        base_sql += " AND l.fecha <= %s"
-        params.append(f_fin)
+@lead_bp.route("/programados")
+@login_required
+def list_programmed():
+    q = (request.args.get("q") or "").strip()
+    leads = Lead.list_programmed_for_user(session["id_rol"], session["user_id"], q)
+    return render_template("leads/programados.html", leads=leads, q=q, total=len(leads), can_view_assigned=user_can_view_assigned())
 
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cur.execute(base_sql, params)
-    rows = cur.fetchall()
-    cur.close()
+@lead_bp.route("/cotizados")
+@login_required
+def list_quoted():
+    q = (request.args.get("q") or "").strip()
+    leads = Lead.list_quoted_for_user(session["id_rol"], session["user_id"], q)
+    return render_template("leads/cotizados.html", leads=leads, q=q, total=len(leads), can_view_assigned=user_can_view_assigned())
 
-    total_leads = len(rows)
+@lead_bp.route("/cerrados")
+@login_required
+def list_closed():
+    q = (request.args.get("q") or "").strip()
+    leads = Lead.list_closed_for_user(session["id_rol"], session["user_id"], q)
+    return render_template("leads/cerrados.html", leads=leads, q=q, total=len(leads), can_view_assigned=user_can_view_assigned())
 
-    # Catálogos
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cur.execute("SELECT id, nombre_proceso FROM proceso")
-    procesos = {r["id"]: r["nombre_proceso"] for r in cur.fetchall()}
-    cur.close()
+@lead_bp.route("/cerrados-no-vendidos")
+@login_required
+def list_closed_lost():
+    q = (request.args.get("q") or "").strip()
+    leads = Lead.list_closed_lost_for_user(session["id_rol"], session["user_id"], q)
+    return render_template("leads/cerrados_no_vendidos.html", leads=leads, q=q, total=len(leads), can_view_assigned=user_can_view_assigned())
 
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cur.execute("SELECT id, nombre FROM canal_contacto")
-    canales_contacto = {r["id"]: r["nombre"] for r in cur.fetchall()}
-    cur.close()
-
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cur.execute("SELECT id, nombre FROM canales_recepcion")
-    canales_recepcion = {r["id"]: r["nombre"] for r in cur.fetchall()}
-    cur.close()
-
-    # Agregados
-    proc_counts, canal_counts = {}, {}
-
-    total_no_iniciados = 0
-    total_seguimiento = 0
-    total_programados = 0
-    total_cotizados = 0
-    total_cerrados = 0
-    total_cerrados_no_vendidos = 0
-
-    # ELPPA por asesor
-    elppa = {}
-
-    # Resumen Cotizado
-    cotizado_tbl = {
-        "Cotizado": {"cant": 0, "usd": 0.0, "pen": 0.0},
-        "Cotizado Cerrado": {"cant": 0, "usd": 0.0, "pen": 0.0},
-        "Cotizado Cerrado no vendido": {"cant": 0, "usd": 0.0, "pen": 0.0},
-    }
-    USD_ID, PEN_ID = 1, 2
-
-    # Conteo comparativo por canal
-    recep_counts = {}     # canales de recepción
-    contacto_counts = {}  # canales de contacto (seguimiento)
-
-    for r in rows:
-        pname = procesos.get(r.get("proceso_id"), "Sin proceso")
-        proc_counts[pname] = proc_counts.get(pname, 0) + 1
-
-        # Para la tabla "Por Canal" (mantenemos “Sin canal” aquí)
-        cname_tabla = canales_contacto.get(r.get("canal_contacto"), "Sin canal")
-        canal_counts[cname_tabla] = canal_counts.get(cname_tabla, 0) + 1
-
-        # Para los gráficos: NO contamos "Sin canal"
-        rid = r.get("canal_recepcion_id")
-        rname = canales_recepcion.get(rid)
-        if rname:
-            recep_counts[rname] = recep_counts.get(rname, 0) + 1
-
-        
-
-        pnorm = (pname or "").strip().lower()
-
-        # Datos del asesor
-        asesor_id   = r.get("asignado_a")
-        asesor      = (r.get("asesor_nombre") or "").strip()
-        asesor_user = (r.get("asesor_usuario") or "").strip()
-        incluir_en_elppa = bool(asesor_id and asesor)
-
-        # Estado + totales globales
-        estado_key = None
-        cotizado_key = None
-        if r.get("proceso_id") is None or "no iniciado" in pnorm:
-            estado_key = "no_iniciados";            total_no_iniciados += 1
-        elif "seguimiento" in pnorm:
-            estado_key = "seguimiento";             total_seguimiento += 1
-        elif "programado" in pnorm:
-            estado_key = "programados";             total_programados += 1
-        elif "cotizado" in pnorm:
-            estado_key = "cotizados";               total_cotizados += 1
-            cotizado_key = "Cotizado"
-        elif "cerrado no vendido" in pnorm:
-            estado_key = "cerrados_no_vendidos";    total_cerrados_no_vendidos += 1
-            cotizado_key = "Cotizado Cerrado no vendido"
-        elif "cerrado" in pnorm:
-            estado_key = "cerrados";                total_cerrados += 1
-            cotizado_key = "Cotizado Cerrado"
-
-        # ELPPA (solo asesores válidos)
-        if incluir_en_elppa and estado_key:
-            if asesor not in elppa:
-                elppa[asesor] = {
-                    "usuario": asesor_user,
-                    "no_iniciados": 0,
-                    "seguimiento": 0,
-                    "programados": 0,
-                    "cotizados": 0,
-                    "cerrados": 0,
-                    "cerrados_no_vendidos": 0,
-                }
-            elppa[asesor][estado_key] += 1
-
-        # Montos para "Cotizado"
-        if cotizado_key:
-            monto = r.get("monto")
-            moneda_id = r.get("moneda_id")
-            cotizado_tbl[cotizado_key]["cant"] += 1
-            if monto is not None:
-                try:
-                    m = float(monto)
-                    if moneda_id == USD_ID:
-                        cotizado_tbl[cotizado_key]["usd"] += m
-                    elif moneda_id == PEN_ID:
-                        cotizado_tbl[cotizado_key]["pen"] += m
-                except (TypeError, ValueError):
-                    pass
-
-    proc_counts = sorted(proc_counts.items(), key=lambda x: x[1], reverse=True)
-    canal_counts = sorted(recep_counts.items(), key=lambda x: x[1], reverse=True)
-
-    cotizado_rows = [
-        ("Cotizado", cotizado_tbl["Cotizado"]),
-        ("Cotizado Cerrado", cotizado_tbl["Cotizado Cerrado"]),
-        ("Cotizado Cerrado no vendido", cotizado_tbl["Cotizado Cerrado no vendido"]),
-    ]
-
-    # === Barras agrupadas para "Cotizado" (montos S/ vs $ por estado)
-    def make_grouped_bar_base64(labels, pen_vals, usd_vals, xlabel="Monto total"):
-        if not labels:
-            return None
-        n = len(labels)
-        ys = list(range(n))
-        h = 0.36
-        ys_pen = [y - h/2 for y in ys]
-        ys_usd = [y + h/2 for y in ys]
-        fig_h = max(3.8, 0.60 * n + 1.8)
-        fig, ax = plt.subplots(figsize=(9.5, fig_h), dpi=160)
-        b_pen = ax.barh(ys_pen, pen_vals, height=h, label="Soles",   color="#10b981")
-        b_usd = ax.barh(ys_usd, usd_vals, height=h, label="Dólares", color="#6366f1")
-        ax.set_yticks(ys); ax.set_yticklabels(labels); ax.invert_yaxis()
-        ax.set_xlabel(xlabel); ax.grid(True, axis="x", alpha=.25)
-        maxv = max([0] + pen_vals + usd_vals); x_pad = max(1, maxv * 0.10); x_right = maxv + x_pad
-        ax.set_xlim(0, x_right)
-        def annotate(bars):
-            for r in bars:
-                v = r.get_width()
-                if v <= 0: continue
-                x_label = min(v + x_pad * 0.10, x_right - x_pad * 0.06)
-                ax.text(x_label, r.get_y() + r.get_height()/2, f"{v:,.2f}", va="center", ha="left", fontsize=9, color="#111")
-        annotate(b_pen); annotate(b_usd)
-        ax.legend(loc="lower right")
-        plt.tight_layout()
-        buf = io.BytesIO(); fig.savefig(buf, format="png", bbox_inches="tight", transparent=True); plt.close(fig)
-        return base64.b64encode(buf.getvalue()).decode("ascii")
-
-    # ===== Barras horizontales (una serie) para canales
-    def make_single_bar_base64(labels, values, top_n=12, xlabel="Cantidad de leads", bar_color=None):
-        items = [(lbl, val) for lbl, val in zip(labels, values) if lbl and str(lbl).strip()]
-        if not items: return None
-        items.sort(key=lambda x: x[1], reverse=True)
-        if top_n and len(items) > top_n: items = items[:top_n]
-        labels = [it[0] for it in items]; values = [it[1] for it in items]
-        n = len(labels); ys = list(range(n)); fig_h = max(3.5, 0.48 * n + 1.5)
-        fig, ax = plt.subplots(figsize=(9.5, fig_h), dpi=160)
-        ax.barh(ys, values, color=(bar_color or "#2563eb"))
-        ax.set_yticks(ys); ax.set_yticklabels(labels); ax.invert_yaxis()
-        ax.set_xlabel(xlabel); ax.grid(True, axis="x", alpha=.25)
-        maxv = max([0] + values); x_pad = max(1, maxv * 0.10); x_right = maxv + x_pad
-        ax.set_xlim(0, x_right)
-        for y, v in zip(ys, values):
-            if v <= 0: continue
-            x_label = v + x_pad * 0.10; ha = "left"; color = "#111"
-            if v >= x_right * 0.92: x_label = v - x_pad * 0.12; ha = "right"; color = "white"
-            x_label = min(x_label, x_right - x_pad * 0.06)
-            ax.text(x_label, y, f"{v}", va="center", ha=ha, fontsize=9, color=color)
-        plt.tight_layout()
-        buf = io.BytesIO(); fig.savefig(buf, format="png", bbox_inches="tight", transparent=True); plt.close(fig)
-        return base64.b64encode(buf.getvalue()).decode("ascii")
-
-    # Datos para gráficos por canal
-    names_recep = list(recep_counts.keys())
-    vals_recep  = [recep_counts[n] for n in names_recep]
-
-    
-
-    BLUE   = "#2563eb"
-    ORANGE = "#f59e0b"
-
-    bar_recepcion_png = make_single_bar_base64(
-        names_recep, vals_recep, top_n=12, xlabel="Leads por canal de recepción", bar_color=BLUE
-    )
-    
-
-    # Montos agrupados para cotizados
-    labels_cot = [lbl for (lbl, _) in cotizado_rows]
-    pen_vals   = [row["pen"] for (_, row) in cotizado_rows]
-    usd_vals   = [row["usd"] for (_, row) in cotizado_rows]
-    cotizado_bar_png = make_grouped_bar_base64(labels_cot, pen_vals, usd_vals, xlabel="Monto total por estado")
-
-    return render_template(
-        "leads/rapido.html",
-        f_ini=f_ini, f_fin=f_fin,
-        total_leads=total_leads,
-        proc_counts=proc_counts,
-        canal_counts=canal_counts,
-        total_no_iniciados=total_no_iniciados,
-        total_seguimiento=total_seguimiento,
-        total_programados=total_programados,
-        total_cotizados=total_cotizados,
-        total_cerrados=total_cerrados,
-        total_cerrados_no_vendidos=total_cerrados_no_vendidos,
-        elppa=elppa,
-        cotizado_rows=cotizado_rows,
-        cotizado_bar_png=cotizado_bar_png,
-        bar_recepcion_png=bar_recepcion_png,
-    )
 
 # API: listar departamentos
+
 @lead_bp.route("/api/departamentos", methods=["GET"])
 def api_list_departamentos():
     cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     try:
-        # columnas reales: idDepartamento, departamento
         cur.execute("SELECT idDepartamento, departamento FROM departamentos ORDER BY departamento")
         rows = cur.fetchall() or []
-        # devolver { id, nombre } para que el frontend no cambie
         return jsonify([{"id": r["idDepartamento"], "nombre": r["departamento"]} for r in rows]), 200
     except Exception as e:
-        # opcional: print(e) para debug en consola
-        return jsonify({"error": "No se pudo obtener departamentos"}), 500
+        # ¡AÑADÍ ESTA LÍNEA CRÍTICA DE DEBUGGING!
+        print(f"ERROR DE CONEXIÓN O CONSULTA A LA BASE DE DATOS: {e}") 
+        # Devolvemos el error real para verlo en la pestaña Network del navegador.
+        return jsonify({"error": f"Error de DB: {e}"}), 500
     finally:
         cur.close()
 
@@ -665,6 +541,8 @@ def api_distritos_by_prov(provincia_id):
     finally:
         cur.close()
 
+
+
 # Endpoint: devuelve programadas para hoy (filtradas por asignado si es ASESOR)
 @lead_bp.route("/notifications/panel", methods=["GET"])
 def notifications_panel():
@@ -680,11 +558,12 @@ def notifications_panel():
     from datetime import date
     hoy = date.today().strftime("%Y-%m-%d")
 
+
     cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     try:
         # 1) PROGRAMADAS PARA HOY (tomando el último seguimiento por lead)
         base_sql = """
-            SELECT l.id, l.codigo, l.nombre, su.fecha_programada, l.asignado_a, su.usuario_id
+            SELECT l.id, l.codigo, l.nombre, su.fecha_programada, su.usuario_id
             FROM leads l
             JOIN (
               SELECT s1.lead_id, s1.id AS last_id
@@ -701,20 +580,23 @@ def notifications_panel():
         """
         params = [hoy]
 
+
         # Asesores ven solo sus programadas; roles superiores ven todas
         if user_role == ROLE_ASESOR:
             base_sql += " AND (l.asignado_a = %s OR su.usuario_id = %s)"
             params.extend([user_id, user_id])
 
+
         base_sql += " ORDER BY su.fecha_programada ASC, l.id DESC"
         cur.execute(base_sql, params)
         programadas = cur.fetchall() or []
+
 
         # 2) SIN INICIAR: **solo** para ASESORES (otros roles no reciben esta lista)
         sin_iniciar = []
         if user_role == ROLE_ASESOR:
             sin_sql = """
-                SELECT l.id, l.codigo, l.nombre, l.fecha, l.asignado_a
+                SELECT l.id, l.codigo, l.nombre, l.fecha
                 FROM leads l
                 JOIN (
                   SELECT s1.lead_id, s1.id AS last_id
@@ -733,6 +615,7 @@ def notifications_panel():
             cur.execute(sin_sql, (user_id,))
             sin_iniciar = cur.fetchall() or []
 
+
         # Normalizar la salida (convertir fechas a string cuando aplique)
         def normalize(rows, date_field=None):
             out = []
@@ -747,10 +630,12 @@ def notifications_panel():
                 out.append(item)
             return out
 
+
         return jsonify({
             "programadas": normalize(programadas, "fecha_programada"),
             "sin_iniciar": normalize(sin_iniciar, None)
         }), 200
+
 
     except Exception as e:
         # Puedes habilitar un print para debug temporalmente:
@@ -758,3 +643,4 @@ def notifications_panel():
         return jsonify({"error": "No se pudo obtener notificaciones"}), 500
     finally:
         cur.close()
+     

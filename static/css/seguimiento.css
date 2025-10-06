@@ -32,37 +32,77 @@
   box-shadow:0 6px 14px rgba(11,59,130,.18);
 }
 
-/* ====== Grid 2 columnas ====== */
-.seguimiento .seguimiento-grid{
-  display:grid;
-  gap:26px;
-  grid-template-columns: 1fr 1fr;
-  align-items:start;
-}
-@media (max-width: 980px){
-  .seguimiento .seguimiento-grid{ grid-template-columns: 1fr; }
-}
+/* ---------------------------------------------------------------------- */
+/* === MODIFICACIONES CLAVE PARA EL SCROLL Y TAMAÑO DE LAS TARJETAS === */
+/* ---------------------------------------------------------------------- */
 
-/* ====== Cards más grandes ====== */
-.seguimiento .card{
+/* Tarjeta GRANDE de fondo (la que contiene todo el formulario) */
+/* Agregamos una clase `main-card-bg` al HTML para esta tarjeta */
+.seguimiento .card.main-card-bg {
   border:1px solid var(--border);
   border-radius:var(--radius-lg);
   box-shadow:var(--shadow-1);
   background:#fff;
-  padding: 2rem;           /* antes era p-3 (~1rem). Ahora más grande */
-  min-height: 100%;        /* hace que se estiren en la grid */
+  padding: 2rem; /* El padding original de la tarjeta va aquí */
+  /*     La altura mínima se establece para que no se vea vacía, pero no crecerá sin control.
+    El scrollable-content-wrapper manejará el desbordamiento.
+  */
+  min-height: 500px; /* Puedes ajustar este valor si quieres un mínimo diferente */
+  display: flex; /* Permite que el contenido (scrollable-content-wrapper) se expanda dentro */
+  flex-direction: column;
 }
 
-/* ====== Ajustar grid para que las columnas se vean más anchas ====== */
-.seguimiento .seguimiento-grid{
-  display:grid;
-  gap:30px;
-  grid-template-columns: 1.2fr 1fr; /* izquierda más ancha que derecha */
-  align-items:start;
+/* Contenedor que aplica la altura máxima y el scroll (AHORA DENTRO DE main-card-bg) */
+.seguimiento .scrollable-content-wrapper {
+  /*     Calcula la altura disponible: 100% del padre (main-card-bg) menos el padding
+    de la tarjeta grande y el posible padding-bottom del scrollbar.
+  */
+  max-height: calc(100vh - 200px); /* Ajusta '200px' si necesitas más/menos espacio en la parte superior/inferior de la pantalla */
+  overflow-y: auto; /* Activa la barra de desplazamiento vertical */
+  flex-grow: 1; /* Permite que este contenedor use todo el espacio vertical disponible */
+  
+  /* Añade un pequeño padding para que el scrollbar no se pegue a la derecha
+    y no cubra el contenido del grid.
+  */
+  padding-right: 25px; 
+}
+
+
+.seguimiento .seguimiento-grid {
+ display: grid;
+ gap: 32px;
+ grid-template-columns: 1.25fr 1fr;
+ align-items: start;
+ max-width: min(1700px, 95vw);
+ margin-left: 0; 
+ margin-right: auto;
 }
 @media (max-width: 980px){
   .seguimiento .seguimiento-grid{ grid-template-columns: 1fr; }
 }
+
+/* Tarjetas individuales (izquierda y derecha) */
+.seguimiento .seguimiento-grid > .card{
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-1);
+  background:#fff;
+  padding: 0; /* Quitar padding de la tarjeta individual, el p-4 dentro la maneja */
+  min-height: auto !important; /* Asegura que la tarjeta se ajuste al contenido, NO se estire */
+}
+
+/*
+  La clase 'p-4' dentro de 'card-body' es la que aplica el padding interno a cada tarjeta.
+  La mantenemos intacta para que los campos tengan espacio.
+*/
+.seguimiento .card-body .p-4 {
+  padding: 1.5rem !important; /* Ajusta si el 2rem original era p-4 de Bootstrap */
+}
+
+
+/* ---------------------------------------------------------------------- */
+/* === RESTO DE TUS ESTILOS (SIN CAMBIOS) === */
+/* ---------------------------------------------------------------------- */
 
 /* ====== Espacio extra entre label y select en “Canal de recepción” ====== */
 .seguimiento .control-line{
@@ -154,7 +194,7 @@
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 14px;
-  overflow: hidden;                     /* mantiene bordes redondeados */
+  overflow: hidden;                    /* mantiene bordes redondeados */
   font-size: 14px;
 }
 
@@ -260,16 +300,17 @@
 
 
 /* === Cards más amplias (como en la maqueta) === */
-.seguimiento .card{ padding: 2rem; }
+/* Esta regla no debe tener padding ahora que lo movimos a .main-card-bg */
+/* .seguimiento .card{ padding: 2rem; } */ /* Comentado o eliminado */
 
 /* === Layout 2 columnas (ya lo tenías; subo un poco el ancho izq) === */
-.seguimiento .seguimiento-grid{
+/* .seguimiento .seguimiento-grid{
   display:grid;
   gap:26px;
   grid-template-columns: 1.15fr 1fr;
   align-items:start;
-}
-@media (max-width: 980px){ .seguimiento .seguimiento-grid{ grid-template-columns:1fr; } }
+} */ /* Ya definidos arriba y mejorados */
+/* @media (max-width: 980px){ .seguimiento .seguimiento-grid{ grid-template-columns:1fr; } } */
 
 /* === Alineación label/control === */
 .seguimiento{ --label-col: 210px; } /* ajusta si quieres más/menos ancho */
@@ -318,3 +359,175 @@
 /* ====== Espaciados ====== */
 .seguimiento .mb-3{margin-bottom:.9rem!important}
 .seguimiento .mb-4{margin-bottom:1.1rem!important}
+
+/* ===========================
+   AJUSTE FINAL: Cards más anchas y sin scroll interno
+   Pegar AL FINAL de seguimiento.css
+   =========================== */
+
+/* Caja global para cálculo de tamaños seguro */
+.seguimiento, .seguimiento * {
+  box-sizing: border-box;
+}
+
+/* Un poco más de espacio para labels dentro del scope .seguimiento */
+.seguimiento { 
+  --label-col: 240px;    /* aumenta espacio para etiquetas y evita saltos */
+  padding: 20px 18px;
+  width: 100%;
+}
+
+/* Grid principal: ocupa casi todo el ancho (95vw) hasta un tope razonable.
+   La columna derecha (edición) es ligeramente más amplia para los inputs. */
+.seguimiento .seguimiento-grid {
+    display: grid;
+    gap: 32px;
+    grid-template-columns: 1.25fr 1fr;
+    align-items: start;
+    max-width: min(1700px, 95vw);
+    
+    /* CRÍTICO: Asegúrate de que solo tengas la alineación a la izquierda */
+    margin-left: 0; 
+    margin-right: auto;
+}
+
+/* Asegurar que las cards no tengan scroll interno y el contenido fluya */
+.seguimiento .card {
+  overflow: visible !important;
+  max-height: none !important;
+  height: auto !important;
+  min-width: 0;                          /* permite que inputs se ajusten correctamente */
+  display: flex;
+  flex-direction: column;
+  padding: 2.6rem;
+  border-radius: var(--radius-lg);
+}
+
+/* Cuerpo de la card sin scroll */
+.seguimiento .card .card-body,
+.seguimiento .card .p-4 {
+  overflow: visible !important;
+  max-height: none;
+}
+
+/* Formularios: ocuparán todo el ancho disponible sin forzar el grid */
+.seguimiento .form-control,
+.seguimiento .form-select,
+.seguimiento textarea {
+  min-width: 0; 
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Control-line: columna de label adaptable usando la variable aumentada */
+.seguimiento .control-line {
+  display: grid;
+  grid-template-columns: minmax(120px, var(--label-col)) 1fr;
+  gap: 14px 20px;
+  align-items: center;
+}
+
+/* Tablas y elementos anchos: no generarán scroll dentro de la card */
+.seguimiento .table-modern {
+  max-width: 100%;
+  overflow: visible;
+  word-break: break-word;
+}
+
+/* MOBILE: si la pantalla es muy estrecha, permitimos deslizar el grid lateralmente,
+   pero cada card seguirá sin scroll interno. */
+@media (max-width: 980px) {
+  .seguimiento .seguimiento-grid {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(320px, 86vw);
+    gap: 18px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 12px;
+    scroll-snap-type: x proximity;
+  }
+
+  .seguimiento .card {
+    min-width: 320px;
+    min-height: 520px;
+    padding: 1.6rem;
+    overflow: visible !important;
+    scroll-snap-align: start;
+  }
+
+  .seguimiento h2 { font-size: clamp(1.05rem, 3.5vw, 1.4rem); }
+}
+
+/* Barra de scroll discreta para el grid en móvil */
+.seguimiento .seguimiento-grid::-webkit-scrollbar{
+  height: 8px;
+}
+.seguimiento .seguimiento-grid::-webkit-scrollbar-thumb{
+  border-radius: 999px;
+  background: rgba(11,59,130,0.12);
+}
+
+/* Evitar desbordes de texto largos */
+.seguimiento .form-label,
+.seguimiento .table-modern td,
+.seguimiento .table-modern th {
+  word-break: break-word;
+}
+
+/* ===========================
+   Cards amplias sin aplastarse
+   =========================== */
+.seguimiento .seguimiento-grid {
+  display: grid;
+  grid-template-columns: 0.5fr 0.5fr;   /* derecha más ancha */
+  gap: 32px;
+  align-items: start;
+  min-width: 1400px;                  /* ancho mínimo del grid */
+  overflow-x: auto;                   /* si no cabe → scroll horizontal */
+  padding-bottom: 12px;
+}
+
+/* Cards grandes con ancho mínimo fijo */
+.seguimiento .card {
+  min-width: 600px;   /* asegura que nunca se aplasten */
+  padding: 2rem;
+  border-radius: var(--radius-lg);
+  overflow: visible;
+}
+
+/* Botón más cómodo */
+.seguimiento .actions-center .btn {
+  min-width: 120px;
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
+}
+
+/* Scrollbar visible pero discreto */
+.seguimiento .seguimiento-grid::-webkit-scrollbar {
+  height: 10px;
+}
+.seguimiento .seguimiento-grid::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(11,59,130,0.25);
+}
+
+.form-editar {
+ width: 100%; /* Asegura que ocupe todo el ancho de su padre */
+ margin-left: 0;
+ margin-right: auto;  
+  /* Si tu form tiene un max-width en algún otro lugar, elimínalo
+       o asegúrate de que sea 100% */
+}
+/* Alinea el encabezado (título y botones) con el .seguimiento-grid */
+.seguimiento .seguimiento-grid-header {
+    /* Estas propiedades replican el margen y ancho del .seguimiento-grid */
+    max-width: min(1700px, 95vw); 
+    
+    /* Forzamos la alineación a la izquierda */
+    margin-left: 0; 
+    margin-right: auto;
+    
+    /* Si ves mucho espacio entre los botones y el form, puedes ajustar el margin-bottom */
+    margin-bottom: 20px;
+}
