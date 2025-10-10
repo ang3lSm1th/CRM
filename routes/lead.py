@@ -18,6 +18,7 @@ matplotlib.use("Agg")  # backend sin ventana para servidores
 import matplotlib.pyplot as plt
 from math import ceil
 from models.canal_contacto import CanalContacto
+from functools import wraps
 
 
 # Blueprint principal de leads (namespace 'leads')
@@ -32,13 +33,189 @@ def user_can_view_assigned():
     """
     return session.get("id_rol") in (ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH)
 
+
+# ----------------------------------------------------------------------
+# FUNCIÓN AUXILIAR CENTRALIZADA PARA PAGINACIÓN Y GEO-CARGADO (¡NUEVO!)
+# ----------------------------------------------------------------------
+
+def _get_geoloc_maps(leads):
+    """
+    Carga los nombres de Departamento, Provincia, Distrito
+    para los IDs encontrados en la lista de leads.
+    """
+    dep_ids = set()
+    prov_ids = set()
+    dist_ids = set()
+    
+    for l in (leads or []):
+        # Lógica de extracción de IDs de tu código original
+        try:
+            dep_val = l.get("departamento") if isinstance(l, dict) else getattr(l, "departamento", None)
+            prov_val = l.get("provincia") if isinstance(l, dict) else getattr(l, "provincia", None)
+            dist_val = l.get("distrito") if isinstance(l, dict) else getattr(l, "distrito", None)
+        except Exception:
+            dep_val = getattr(l, "departamento", None)
+            prov_val = getattr(l, "provincia", None)
+            dist_val = getattr(l, "distrito", None)
+
+        if dep_val is not None and str(dep_val).strip() != "":
+            dep_ids.add(str(dep_val))
+        if prov_val is not None and str(prov_val).strip() != "":
+            prov_ids.add(str(prov_val))
+        if dist_val is not None and str(dist_val).strip() != "":
+            dist_ids.add(str(dist_val))
+
+    departamentos_map = {}
+    provincias_map = {}
+    distritos_map = {}
+
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    try:
+        # Lógica para cargar departamentos
+        if dep_ids:
+            placeholders = ",".join(["%s"] * len(dep_ids))
+            cur.execute(
+                f"SELECT idDepartamento AS id, departamento AS nombre FROM departamentos WHERE idDepartamento IN ({placeholders})",
+                tuple(dep_ids)
+            )
+            departamentos_map = { str(r["id"]): r["nombre"] for r in (cur.fetchall() or []) }
+
+        # Lógica para cargar provincias
+        if prov_ids:
+            placeholders = ",".join(["%s"] * len(prov_ids))
+            cur.execute(
+                f"SELECT idProvincia AS id, provincia AS nombre FROM provincia WHERE idProvincia IN ({placeholders})",
+                tuple(prov_ids)
+            )
+            provincias_map = { str(r["id"]): r["nombre"] for r in (cur.fetchall() or []) }
+
+        # Lógica para cargar distritos
+        if dist_ids:
+            placeholders = ",".join(["%s"] * len(dist_ids))
+            cur.execute(
+                f"SELECT idDistrito AS id, distrito AS nombre FROM distrito WHERE idDistrito IN ({placeholders})",
+                tuple(dist_ids)
+            )
+            distritos_map = { str(r["id"]): r["nombre"] for r in (cur.fetchall() or []) }
+    finally:
+        cur.close()
+
+    return departamentos_map, provincias_map, distritos_map
+
+def _list_leads_by_status(list_func, template_name):
+    """
+    Función auxiliar para manejar la lógica de paginación, búsqueda,
+    y renderizado para las listas de leads por estado.
+
+    :param list_func: La función del modelo Lead a llamar (ej: Lead.list_unstarted_for_user).
+    :param template_name: El nombre de la plantilla a renderizar (ej: "leads/sin_iniciar.html").
+    """
+    q = (request.args.get("q") or "").strip()
+    f_ini = request.args.get("f_ini") or None
+    f_fin = request.args.get("f_fin") or None
+    show_all = (request.args.get("show_all") in ('1','true','True'))
+
+    # Lógica de Paginación
+    try:
+        page = int(request.args.get("page", 1))
+        if page < 1:
+            page = 1
+    except (ValueError, TypeError):
+        page = 1
+
+    PER_PAGE = 15
+    offset = (page - 1) * PER_PAGE
+
+    leads, total = [], 0
+
+    # === INICIO DE LA CORRECCIÓN CLAVE ===
+    # 💡 Se construye el diccionario de argumentos condicionalmente.
+    
+    # Argumentos comunes a todas las funciones
+    kwargs = {
+        'id_rol': session["id_rol"],
+        'user_id': session["user_id"],
+        'q': q,
+    }
+
+    # Asumimos que Lead.search_for_user es la única que soporta f_ini/f_fin.
+    # Si la función es *diferente* a Lead.search_for_user (es decir, una de estado),
+    # NO añadimos start_date ni end_date.
+
+    # Solo las funciones de lista general o búsqueda (list_for_user, search_for_user)
+    # deberían recibir fechas. Las de estado (unstarted, quoted) no.
+    if hasattr(list_func, '__name__') and ('search_for_user' in list_func.__name__ or 'list_for_user' in list_func.__name__):
+         kwargs['start_date'] = f_ini
+         kwargs['end_date'] = f_fin
+    
+    # Asignar límite/offset de forma condicional para manejar show_all
+    if not show_all:
+        kwargs['limit'] = PER_PAGE
+        kwargs['offset'] = offset
+    else:
+        # Para show_all, el modelo debe devolver todos, sin limit/offset.
+        # Si el modelo tiene valores por defecto para limit/offset, puede que haya que pasar None.
+        kwargs['limit'] = None
+        kwargs['offset'] = None
+
+
+    # Llama a la función del modelo
+    leads_result = list_func(**kwargs)
+    
+    # === FIN DE LA CORRECCIÓN CLAVE ===
+
+    # Procesamiento de resultados
+    if isinstance(leads_result, tuple) and len(leads_result) == 2:
+        leads, total = leads_result
+    elif isinstance(leads_result, list):
+        leads = leads_result
+        total = len(leads)
+    else:
+        leads = []
+        total = 0
+        
+
+    total = int(total or (len(leads) if leads is not None else 0))
+    
+    if show_all:
+        total_pages = 1
+        page = 1
+    else:
+        total_pages = max(1, ceil(total / PER_PAGE)) # Usamos ceil importado
+        if page > total_pages:
+            page = total_pages
+        
+    # Cargar los nombres de geolocalización
+    departamentos_map, provincias_map, distritos_map = _get_geoloc_maps(leads)
+
+
+    return render_template(
+        template_name,
+        leads=leads,
+        q=q,
+        total=total,
+        f_ini=f_ini,
+        f_fin=f_fin,
+        page=page,
+        total_pages=total_pages,
+        per_page=PER_PAGE,
+        can_view_assigned=user_can_view_assigned(),
+        departamentos_map=departamentos_map,
+        provincias_map=provincias_map,
+        distritos_map=distritos_map,
+        show_all=show_all
+    )
+
+
+
 # Listar leads
 @lead_bp.route("/list")
 @login_required
 def list_leads():
-    q      = (request.args.get("q") or "").strip()
-    f_ini  = request.args.get("f_ini") or None
-    f_fin  = request.args.get("f_fin") or None
+    # ... Tu función list_leads original (SIN CAMBIOS)
+    q       = (request.args.get("q") or "").strip()
+    f_ini   = request.args.get("f_ini") or None
+    f_fin   = request.args.get("f_fin") or None
     show_all = (request.args.get("show_all") in ('1','true','True'))
 
     try:
@@ -105,58 +282,7 @@ def list_leads():
     can_view_assigned = session.get("id_rol") in (ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH)
 
     # ========= OPCIÓN 2: solo cargar ids necesarios =========
-    dep_ids = set()
-    prov_ids = set()
-    dist_ids = set()
-    for l in (leads or []):
-        # soporta dicts o objetos con atributos
-        try:
-            dep_val = l.get("departamento") if isinstance(l, dict) else getattr(l, "departamento", None)
-            prov_val = l.get("provincia") if isinstance(l, dict) else getattr(l, "provincia", None)
-            dist_val = l.get("distrito") if isinstance(l, dict) else getattr(l, "distrito", None)
-        except Exception:
-            dep_val = getattr(l, "departamento", None)
-            prov_val = getattr(l, "provincia", None)
-            dist_val = getattr(l, "distrito", None)
-
-        if dep_val is not None and str(dep_val).strip() != "":
-            dep_ids.add(str(dep_val))
-        if prov_val is not None and str(prov_val).strip() != "":
-            prov_ids.add(str(prov_val))
-        if dist_val is not None and str(dist_val).strip() != "":
-            dist_ids.add(str(dist_val))
-
-    departamentos_map = {}
-    provincias_map = {}
-    distritos_map = {}
-
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    try:
-        if dep_ids:
-            placeholders = ",".join(["%s"] * len(dep_ids))
-            cur.execute(
-                f"SELECT idDepartamento AS id, departamento AS nombre FROM departamentos WHERE idDepartamento IN ({placeholders})",
-                tuple(dep_ids)
-            )
-            departamentos_map = { str(r["id"]): r["nombre"] for r in (cur.fetchall() or []) }
-
-        if prov_ids:
-            placeholders = ",".join(["%s"] * len(prov_ids))
-            cur.execute(
-                f"SELECT idProvincia AS id, provincia AS nombre FROM provincia WHERE idProvincia IN ({placeholders})",
-                tuple(prov_ids)
-            )
-            provincias_map = { str(r["id"]): r["nombre"] for r in (cur.fetchall() or []) }
-
-        if dist_ids:
-            placeholders = ",".join(["%s"] * len(dist_ids))
-            cur.execute(
-                f"SELECT idDistrito AS id, distrito AS nombre FROM distrito WHERE idDistrito IN ({placeholders})",
-                tuple(dist_ids)
-            )
-            distritos_map = { str(r["id"]): r["nombre"] for r in (cur.fetchall() or []) }
-    finally:
-        cur.close()
+    departamentos_map, provincias_map, distritos_map = _get_geoloc_maps(leads)
     # =======================================================
 
     return render_template(
@@ -174,6 +300,9 @@ def list_leads():
         provincias_map=provincias_map,
         distritos_map=distritos_map
     )
+
+# ... [create_lead, edit_lead, delete_lead, seguimiento_lead] ...
+# Estas funciones se mantienen sin cambios ya que no son listas.
 
 # Crear lead
 @lead_bp.route("/create", methods=["GET", "POST"])
@@ -442,49 +571,58 @@ def seguimiento_lead(codigo):
         lock_proceso=lock_proceso,
     )
 
-# Rutas adicionales (sin-iniciar, en-seguimiento, programados, cotizados, cerrados, cerrados-no-vendidos)
+# --- RUTAS DE LISTAS POR ESTADO CON PAGINACIÓN Y BÚSQUEDA (MODIFICADAS) ---
+
 @lead_bp.route("/sin-iniciar")
 @login_required
 def list_unstarted():
-    q = (request.args.get("q") or "").strip()
-    leads = Lead.list_unstarted_for_user(session["id_rol"], session["user_id"], q)
-    return render_template("leads/sin_iniciar.html", leads=leads, q=q, total=len(leads), can_view_assigned=user_can_view_assigned())
+    return _list_leads_by_status(
+        Lead.list_unstarted_for_user, 
+        "leads/sin_iniciar.html"
+    )
 
 @lead_bp.route("/en-seguimiento")
 @login_required
 def list_in_followup():
-    q = (request.args.get("q") or "").strip()
-    leads = Lead.list_in_followup_for_user(session["id_rol"], session["user_id"], q)
-    return render_template("leads/seguimiento_sidebar.html", leads=leads, q=q, total=len(leads), can_view_assigned=user_can_view_assigned())
+    return _list_leads_by_status(
+        Lead.list_in_followup_for_user, 
+        "leads/seguimiento_sidebar.html"
+    )
 
 @lead_bp.route("/programados")
 @login_required
 def list_programmed():
-    q = (request.args.get("q") or "").strip()
-    leads = Lead.list_programmed_for_user(session["id_rol"], session["user_id"], q)
-    return render_template("leads/programados.html", leads=leads, q=q, total=len(leads), can_view_assigned=user_can_view_assigned())
+    return _list_leads_by_status(
+        Lead.list_programmed_for_user, 
+        "leads/programados.html"
+    )
 
 @lead_bp.route("/cotizados")
 @login_required
 def list_quoted():
-    q = (request.args.get("q") or "").strip()
-    leads = Lead.list_quoted_for_user(session["id_rol"], session["user_id"], q)
-    return render_template("leads/cotizados.html", leads=leads, q=q, total=len(leads), can_view_assigned=user_can_view_assigned())
+    return _list_leads_by_status(
+        Lead.list_quoted_for_user, 
+        "leads/cotizados.html"
+    )
 
 @lead_bp.route("/cerrados")
 @login_required
 def list_closed():
-    q = (request.args.get("q") or "").strip()
-    leads = Lead.list_closed_for_user(session["id_rol"], session["user_id"], q)
-    return render_template("leads/cerrados.html", leads=leads, q=q, total=len(leads), can_view_assigned=user_can_view_assigned())
+    return _list_leads_by_status(
+        Lead.list_closed_for_user, 
+        "leads/cerrados.html"
+    )
 
 @lead_bp.route("/cerrados-no-vendidos")
 @login_required
 def list_closed_lost():
-    q = (request.args.get("q") or "").strip()
-    leads = Lead.list_closed_lost_for_user(session["id_rol"], session["user_id"], q)
-    return render_template("leads/cerrados_no_vendidos.html", leads=leads, q=q, total=len(leads), can_view_assigned=user_can_view_assigned())
+    return _list_leads_by_status(
+        Lead.list_closed_lost_for_user, 
+        "leads/cerrados_no_vendidos.html"
+    )
 
+# ... [APIs y Notificaciones] ...
+# Estas funciones se mantienen sin cambios.
 
 # API: listar departamentos
 
@@ -540,7 +678,6 @@ def api_distritos_by_prov(provincia_id):
         return jsonify({"error": "No se pudo obtener distritos"}), 500
     finally:
         cur.close()
-
 
 
 # Endpoint: devuelve programadas para hoy (filtradas por asignado si es ASESOR)
@@ -642,5 +779,4 @@ def notifications_panel():
         # print("notifications_panel error:", e)
         return jsonify({"error": "No se pudo obtener notificaciones"}), 500
     finally:
-        cur.close()
-     
+        cur.close() 

@@ -103,7 +103,7 @@
               <label class="form-label mb-0">E-mail</label>
               <input type="email" name="email" class="form-control" value="{{ lead.email }}">
             </div>
-
+            
                           <div class="mb-2 control-line">
               <label class="form-label mb-0">Asignar</label>
               {% if not es_asesor %}
@@ -116,10 +116,10 @@
                       </span>
                     {% endif %}
                   </div>
-                  <div class="d-flex" style="gap:.5rem;">
+                  <div class="d-flex" style="gap: .5rem;">
                     <select name="asignado_a" id="asignado_a" class="form-select">
                       <option value="">-- Seleccionar asesor --</option>
-                      {% for asesor in asesores %}
+                      {% for asesor in asesores | sort(attribute='nombre') %}
                         <option value="{{ asesor['id'] }}" {% if lead['asignado_a'] == asesor['id'] %}selected{% endif %}>
                           {{ asesor['nombre'] }}
                         </option>
@@ -132,6 +132,7 @@
                 <input type="text" class="form-control" value="{{ session['username'] }}" disabled>
               {% endif %}
             </div>
+
 
             <div class="mb-3 control-line control-line--area">
               <label class="form-label mb-0">Comentario</label>

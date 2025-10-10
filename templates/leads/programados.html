@@ -1,95 +1,154 @@
+{# templates/list_programmed.html #}
 {% extends "base.html" %}
 {% block title %}Leads programados{% endblock %}
 
 {% block content %}
-<div class="flex between">
-  <h2>Leads programados</h2>
-</div>
-
 <link rel="stylesheet" href="{{ url_for('static', filename='css/buscador.css') }}">
 
-<form class="mb-3 d-flex" style="gap:.5rem;" onsubmit="return false;">
-  <input
-    type="text"
-    class="form-control live-search"
-    placeholder="Buscar en la tabla..."
-    id="q-programados"
-    data-target="#tabla-programados"
-    data-counter="#cnt-programados"
-    style="max-width: 250px;"
-  >
-  <button
-    type="button"
-    class="btn btn-primary search-btn"
-    data-input="#q-programados"
-  >Buscar</button>
+{% set current_q = q or '' %}
+{% set total_leads = total if total is defined else leads|length %}
 
-  <button
-    type="button"
-    class="btn btn-outline-secondary clear-btn"
-    data-input="#q-programados"
-  >Limpiar</button>
-
-  <div class="text-muted" style="align-self:center;">
-    <small>Coincidencias: <span id="cnt-programados">0</span></small>
-  </div>
-</form>
-
-<div class="table-container">
-  <table class="table" id="tabla-programados">
-    <thead>
-      <tr>
-        <th>Código</th>
-        <th>Fecha</th>
-        <th>Teléfono</th>
-        <th>RUC/DNI</th>
-        <th>Nombre</th>
-        <th>Fecha programada</th>
-        <th>Canal</th>
-        <th>Contacto</th>
-        <th>Dirección</th>
-        <th>Departamento</th>
-        <th>Provincia</th>
-        <th>Distrito</th>
-        <th>Bien/Servicio</th>
-        <th>Email</th>
-        <th>Comentario</th>
-        <th>Asignado a</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for l in leads %}
-      <tr ondblclick="irSeguimiento('{{ l.codigo }}')" class="row-clickable">
-        <td>{{ l.codigo }}</td>
-        <td>{{ l.fecha }}</td>
-        <td>{{ l.telefono }}</td>
-        <td>{{ l.ruc_dni }}</td>
-        <td>{{ l.nombre }}</td>
-        <td>{{ l.fecha_programada or '' }}</td>
-        <td>{{ l.canal }}</td>
-        <td>{{ l.contacto }}</td>
-        <td>{{ l.direccion }}</td>
-        <td>{{ l.departamento }}</td>
-        <td>{{ l.provincia }}</td>
-        <td>{{ l.distrito }}</td>
-        <td>{{ l.bien_servicio }}</td>
-        <td>{{ l.email }}</td>
-        <td>{{ l.comentario }}</td>
-        <td>{{ l.asignado_a }}</td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="16" class="no-data">No hay leads programados.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Leads programados <span class="badge bg-secondary">{{ total_leads }}</span></h2>
 </div>
 
+<div style="max-width: 900px;">
+    <form id="filter-form" method="GET" action="{{ url_for('leads.list_programmed') }}" class="mb-3">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-5 d-flex">
+                <label for="search-input" class="visually-hidden">Buscar</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input
+                        id="search-input"
+                        name="q"
+                        type="text"
+                        class="form-control form-control-sm"
+                        placeholder="Buscar (nombre, código, comentario, etc.)"
+                        value="{{ current_q }}"
+                        autocomplete="off"
+                    />
+                </div>
+                <button type="submit" id="btn-search" class="btn btn-primary btn-sm ms-2">Buscar</button>
+                
+                <button type="button" id="btn-clear" class="btn btn-outline-secondary btn-sm ms-1">Limpiar</button>
+            </div>
+
+            <div class="col-md-4 d-flex align-items-center justify-content-end gap-2 ms-auto">
+                <div class="text-muted small">Total: <span id="tabla-leads-count">{{ total_leads }}</span></div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="table-responsive table-container">
+    <table class="table table-striped table-hover align-middle" id="tabla-leads" role="table">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Fecha</th>
+                <th>Teléfono</th>
+                <th>RUC/DNI</th>
+                <th>Nombre</th>
+                <th>Fecha programada</th>
+                <th>Canal</th>
+                <th>Contacto</th>
+                <th>Dirección</th>
+                <th>Departamento</th>
+                <th>Provincia</th>
+                <th>Distrito</th>
+                <th>Bien/Servicio</th>
+                <th>Email</th>
+                <th>Comentario</th>
+                <th>Asignado a</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for l in leads %}
+            <tr class="row-clickable" ondblclick="irSeguimiento('{{ l.codigo}}')">
+                <td class="cell">{{ l.codigo or '' }}</td>
+                <td class="cell">{{ l.fecha or '' }}</td>
+                <td class="cell">{{ l.telefono or '' }}</td>
+                <td class="cell">{{ l.ruc_dni or '' }}</td>
+                <td class="cell">{{ l.nombre or '' }}</td>
+                <td class="cell"><span class="text-danger fw-bold">{{ l.fecha_programada or 'N/A' }}</span></td>
+                <td class="cell">{{ l.canal or '' }}</td>
+                <td class="cell">{{ l.contacto or '' }}</td>
+                <td class="cell">{{ l.direccion or '' }}</td>
+                <td class="cell">{{ l.departamento or '' }}</td>
+                <td class="cell">{{ l.provincia or '' }}</td>
+                <td class="cell">{{ l.distrito or '' }}</td>
+                <td class="cell">{{ l.bien_servicio or '' }}</td>
+                <td class="cell">{{ l.email or '' }}</td>
+                <td class="cell comentario" title="{{ l.comentario or '' }}">{{ (l.comentario or '')|truncate(40, True) }}</td>
+                <td class="cell">{{ l.asignado_a or '' }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="16" class="no-data text-center text-muted">No hay leads programados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{# --- Paginación --- #}
+{% if total_pages is defined and total_pages > 1 %}
+<nav aria-label="Paginación leads" class="mt-3 d-flex justify-content-center">
+    <ul class="pagination mb-0">
+        <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('leads.list_programmed', q=current_q, page=(page-1)|max(1)) }}" aria-label="Anterior">
+                <span class="bi bi-chevron-left"></span>
+            </a>
+        </li>
+        
+        {% set pages_to_show = 7 %}
+        {% set start_page = (page - (pages_to_show // 2))|max(1) %}
+        {% set end_page = (start_page + pages_to_show - 1)|min(total_pages) %}
+
+        {% if end_page - start_page + 1 < pages_to_show %}
+            {% set start_page = (end_page - pages_to_show + 1)|max(1) %}
+        {% endif %}
+
+        {% for p in range(start_page, end_page + 1) %}
+        <li class="page-item {% if p == page %}active{% endif %}">
+            <a class="page-link" href="{{ url_for('leads.list_programmed', q=current_q, page=p) }}">{{ p }}</a>
+        </li>
+        {% endfor %}
+        
+        <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('leads.list_programmed', q=current_q, page=(page+1)|min(total_pages)) }}" aria-label="Siguiente">
+                <span class="bi bi-chevron-right"></span>
+            </a>
+        </li>
+    </ul>
+</nav>
+{% endif %}
+
 <script>
-  function irSeguimiento(codigo){
-    // Abre la vista de seguimiento y, si no hay valor aún, marca el proceso "Programado"
+document.addEventListener('DOMContentLoaded', function() {
+    // 🎯 CAMBIO 2: Añadir manejador de evento para el nuevo botón 'Limpiar'
+    const btnClear = document.getElementById('btn-clear');
+    if (btnClear) {
+        btnClear.addEventListener('click', () => {
+            // Redirige a la URL base (sin el query string) para resetear la búsqueda y paginación.
+            window.location.href = window.location.pathname;
+        });
+    }
+
+    // Manejador del doble clic (mantenido)
+    const rows = document.querySelectorAll('.row-clickable');
+    rows.forEach(row => {
+        row.addEventListener('dblclick', function() {
+            const codigo = this.querySelector('.cell').textContent.trim();
+            irSeguimiento(codigo);
+        });
+    });
+});
+
+function irSeguimiento(codigo){
+    // Abre la vista de seguimiento con el preset 'programado'
     window.location.href = "/leads/seguimiento/" + codigo + "?preset=programado";
-  }
+}
 </script>
 {% endblock %}

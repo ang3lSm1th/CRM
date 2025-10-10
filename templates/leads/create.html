@@ -86,7 +86,7 @@
                                 <option value="{{ bs.id }}">{{ bs.nombre }}</option>
                             {% endfor %}
                         </select>
-                    </div>
+                        </div>
                         <div class="form-row">
                             <label for="asignado_a" class="form-label">ASIGNADO</label>
                             {% if es_asesor %}
@@ -95,7 +95,7 @@
                             {% else %}
                                 <select id="asignado_a" name="asignado_a" class="form-select" required>
                                     <option value="">-- Seleccione un asesor --</option>
-                                    {% for asesor in asesores %}
+                                    {% for asesor in asesores | sort(attribute='nombre') %}
                                         <option value="{{ asesor.id }}">{{ asesor.nombre }}</option>
                                     {% endfor %}
                                 </select>
