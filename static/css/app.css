@@ -29,10 +29,51 @@
   justify-content: space-between;
   padding: 15px 10px;
   box-sizing: border-box;
-  position: fixed; /* <-- Lo mantenemos fijo */
-  top: 0;
-  left: 0;
-  z-index: 1000; /* <-- Añadimos z-index para que esté siempre encima */
+  position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    
+    /* HABILITAR TRANSICIÓN PARA EL DESLIZAMIENTO */
+    transition: left 0.3s ease-in-out;
+    
+    /* HABILITAR SCROLL INVISIBLE */
+    overflow-y: auto; 
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+}
+.sidebar::-webkit-scrollbar {
+    display: none; /* Oculta la barra de desplazamiento */
+}
+
+.sidebar.hidden {
+    /* Mueve la barra fuera de la vista (asumiendo 250px de ancho) */
+    left: -250px; 
+}
+
+.sidebar.hidden ~ .content-area {
+    margin-left: 0px; 
+}
+
+.content-area {
+    /* Margen inicial para dejar espacio al sidebar */
+    margin-left: 250px;
+    /* Necesitas una transición para que el margen también se anime */
+    transition: margin-left 0.3s ease-in-out;
+}
+
+#toggle-sidebar {
+    position: fixed;
+    top: 15px;
+    /* Posición inicial: justo a la derecha del sidebar (0 + 250px) */
+    left: 250px; 
+    z-index: 1001;
+    transition: left 0.3s ease-in-out;
+    border-radius: 0 5px 5px 0; /* Estilo para que se vea como una pestaña */
+}
+.sidebar.hidden ~ #toggle-sidebar {
+    /* Mueve el botón a la izquierda (0px) */
+    left: 0px; 
 }
 
 .content {
@@ -41,7 +82,6 @@
     flex-direction: column;
     /* Los demás estilos de .content no se modifican */
    
-
 }
 
 /* Logo, Menú, etc. ... (el resto del sidebar se mantiene igual) */
@@ -109,7 +149,7 @@
 
 .main-section {
     width: 110%; /* Ocupa el 100% de .content */
-    margin-left: 280px;
+    margin-left: 30px;
     min-width: calc(100% - 250px); 
     padding: 20px 20px 40px 20px;/* Mantiene un padding interno para que el contenido no se pegue */
     background: #f4f6f9;
@@ -658,5 +698,226 @@ html, body {
     min-height: 100vh; /* Ocupa al menos toda la altura de la ventana */
     width: 100%; /* Ocupa todo el ancho */
 
+}
+
+
+/* ==========
+   Tokens
+========== */
+:root {
+  --bg: #ffffff;
+  --card-bg: #f9fbff;
+  --card-bd: #dbeafe;
+  --primary: #2563eb;
+  --primary-700: #1e40af;
+  --primary-300: #93c5fd;
+  --text-900: #0f172a;
+  --text-600: #475569;
+  --muted: #e2e8f0;
+  --ring: rgba(37, 99, 235, 0.35);
+  --shadow: 0 8px 24px rgba(2, 32, 71, .08);
+}
+
+/* ==========
+   Page & Headings
+========== */
+.create-lead-page { background-color: var(--bg); }
+
+.create-lead-page h2 {
+  color: var(--primary);
+  font-weight: 700;
+  border-bottom: 2px solid var(--primary-300);
+  padding-bottom: 8px;
+  margin-bottom: 1.5rem;
+  letter-spacing: .2px;
+}
+
+/* ==========
+   Grid 2 columnas
+========== */
+.clp-grid {
+  display: grid;
+  gap: 1.5rem;
+  padding-bottom: 1.5rem;
+}
+
+@media (min-width: 992px) {
+  .clp-grid { grid-template-columns: 1fr 1fr; } 
+}
+
+/* ==========
+   Module Card
+========== */
+.clp-module {
+  background: var(--card-bg);
+  border: 1px solid var(--card-bd);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.clp-module:hover { transform: translateY(-2px); }
+
+.clp-module__head {
+  padding: 1rem 1.25rem;
+  background: linear-gradient(180deg, rgba(147,197,253,.28), rgba(147,197,253,0));
+  border-bottom: 1px solid var(--card-bd);
+}
+
+.clp-module__head h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-900);
+}
+
+.clp-module__head p {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-600);
+}
+
+.clp-module__body {
+  padding: 1.5rem;
+}
+
+/* ==========
+   Form
+========== */
+/* === NUEVO: FILAS FLEX === */
+.create-lead-page .form-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.create-lead-page .form-row > .form-label {
+  margin: 0;
+  min-width: 160px; /* ajusta este valor si los labels son muy largos */
+  flex: 0 0 auto;
+}
+
+.create-lead-page .form-row > .form-control,
+.create-lead-page .form-row > .form-select,
+.create-lead-page .form-row > textarea {
+  flex: 1 1 auto;
+  width: 100%;
+}
+/* ======================== */
+
+.create-lead-page .form-label {
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 0.5rem; /* Se anula por .form-row */
+}
+
+.create-lead-page .form-control,
+.create-lead-page .form-select,
+.create-lead-page textarea {
+  border: 1px solid #263241;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  transition: all .15s ease;
+}
+
+.create-lead-page .form-control:focus,
+.create-lead-page .form-select:focus,
+.create-lead-page textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px var(--ring);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+/* Placeholders & Textarea */
+.create-lead-page .form-control::placeholder,
+.create-lead-page textarea::placeholder {
+  color: #94a3b8;
+}
+
+.create-lead-page textarea { resize: vertical; min-height: 110px; }
+
+/* ==========
+   Buttons
+========== */
+.clp-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end; /* Esta es la alineación que queremos */
+    padding-top: 1.25rem;
+    margin-top: 1.25rem;
+    border-top: 1px dashed var(--muted);
+}
+
+.create-lead-page .btn { /* ESTA CLASE APLICA LA ANIMACIÓN */
+    border-radius: 10px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    letter-spacing: .2px;
+    transition: transform .06s ease, box-shadow .16s ease;
+    min-width: 120px;
+}
+
+.create-lead-page .btn:active { transform: translateY(1px); }
+
+.create-lead-page .btn-primary {
+  background-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 16px rgba(37,99,235,.18);
+}
+.create-lead-page .btn-primary:hover {
+  background-color: var(--primary-700) !important;
+  border-color: var(--primary-700) !important;
+}
+
+.create-lead-page .btn-secondary {
+  background-color: #e0f2fe;
+  border-color: #bae6fd;
+  color: #0c4a6e;
+}
+.create-lead-page .btn-secondary:hover {
+  background-color: #bae6fd;
+  color: #075985;
+}
+
+/* ==========
+   Helpers / estados
+========== */
+.is-invalid,
+.create-lead-page .form-control.is-invalid,
+.create-lead-page .form-select.is-invalid,
+.create-lead-page textarea.is-invalid {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239,68,68,.15);
+}
+
+.valid-hint {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+}
+
+.create-lead-page .form-control:hover,
+.create-lead-page .form-select:hover,
+.create-lead-page textarea:hover {
+  border-color: #334155;
+  box-shadow: 0 0 0 2px rgba(51, 65, 85, 0.1);
+}
+
+/* ==========
+   Desplegables (SELECT)
+========== */
+.create-lead-page .form-select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%232563eb' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 16px 12px;
 }
 

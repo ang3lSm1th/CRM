@@ -141,21 +141,22 @@
    Buttons
 ========== */
 .clp-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  padding-top: 1.25rem;
-  margin-top: 1.25rem;
-  border-top: 1px dashed var(--muted);
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end; /* Esta es la alineación que queremos */
+    padding-top: 1.25rem;
+    margin-top: 1.25rem;
+    margin-left: 1px;
+    border-top: 1px dashed var(--muted);
 }
 
-.create-lead-page .btn {
-  border-radius: 10px;
-  padding: 0.75rem 1.5rem;
-  font-weight: 600;
-  letter-spacing: .2px;
-  transition: transform .06s ease, box-shadow .16s ease;
-  min-width: 120px;
+.create-lead-page .btn { /* ESTA CLASE APLICA LA ANIMACIÓN */
+    border-radius: 10px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    letter-spacing: .2px;
+    transition: transform .06s ease, box-shadow .16s ease;
+    min-width: 120px;
 }
 
 .create-lead-page .btn:active { transform: translateY(1px); }
