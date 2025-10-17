@@ -1,23 +1,29 @@
-{% extends "base_login.html" %} {% block title %}Login - CRM{% endblock %} {%
-block content %}
+{% extends "base_login.html" %} 
+
+{% block title %}Login - CRM{% endblock %} 
+
+{% block content %}
 
 <div class="login-container">
-  <!-- Columna izquierda -->
   <div class="left">
     <div class="overlay"></div>
     <div class="form-card">
       <h2>Bienvenido Usuario</h2>
       <p>Por favor ingrese sus datos</p>
       <form method="POST" class="form">
-        {% with messages = get_flashed_messages(with_categories=true) %} {% if
-        messages %}
+        
+        {% with messages = get_flashed_messages(with_categories=true) %} 
+        {% if messages %}
         <div class="flash-container">
           {% for category, message in messages %}
           <div class="flash flash-{{ category }}">{{ message }}</div>
-          <p>                    <!-- espacio  -->                 </p> 
+          
+                          </p> --> 
+          
           {% endfor %}
         </div>
-        {% endif %} {% endwith %}
+        {% endif %} 
+        {% endwith %}
 
         <div class="input-group">
           <i class="fa fa-user"></i>
@@ -42,7 +48,6 @@ block content %}
     </div>
   </div>
 
-  <!-- Columna derecha -->
   <div class="right">
     <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" />
   </div>

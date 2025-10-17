@@ -4,13 +4,52 @@
 
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/createleads.css') }}?v=4">
+<style>
+    .lead-table-container {
+        max-height: 200px;
+        overflow-y: auto;
+        margin-top: 15px;
+        margin-bottom: 10px;
+    }
+    .lead-table-container table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .lead-table-container th, .lead-table-container td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+        font-size: 0.9em;
+    }
+    .lead-table-container thead th {
+        background-color: #f8f9fa;
+        position: sticky;
+        top: 0;
+    }
+    .form-control.is-invalid, .form-select.is-invalid {
+        border-color: #dc3545;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="create-lead-page">
     <h2 class="mb-4">➕ Crear Lead</h2>
 
-    <form method="POST" action="{{ url_for('leads.create_lead') }}">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            {# Excluir la categoría 'warning_duplicate' que se maneja con el modal #}
+            {% if category != 'warning_duplicate' %}
+                <div class="alert alert-{{ category }}" role="alert">
+                    {{ message | safe }}
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('leads.create_lead') }}" id="createLeadForm">
+        <input type="hidden" name="force_save" id="forceSaveInput" value="false">
+
         <div class="clp-grid">
             <section class="clp-module">
                 <header class="clp-module__head">
@@ -18,42 +57,44 @@
                     <p>Identificación y contacto</p>
                 </header>
                 <div class="clp-module__body">
+                    {# Repoblación del formulario usando 'lead_data' o las variables iniciales #}
                     <div class="form-row">
                         <label for="codigo" class="form-label">Código</label>
-                        <input type="text" id="codigo" name="codigo" class="form-control" value="{{ codigo }}" readonly>
+                        <input type="text" id="codigo" name="codigo" class="form-control" value="{{ lead_data.codigo if lead_data else codigo }}" readonly>
                     </div>
                     <div class="form-row">
                         <label for="fecha" class="form-label">Fecha</label>
-                        <input type="date" id="fecha" name="fecha" class="form-control" value="{{ fecha_hoy }}">
+                        <input type="date" id="fecha" name="fecha" class="form-control" value="{{ lead_data.fecha if lead_data else fecha_hoy }}">
                     </div>
                     <div class="form-row">
                         <label for="nombre" class="form-label">CLIENTE</label>
-                        <input type="text" id="nombre" name="nombre" class="form-control">
+                        <input type="text" id="nombre" name="nombre" class="form-control" value="{{ lead_data.nombre if lead_data }}">
                     </div>
                     <div class="form-row">
                         <label for="ruc_dni" class="form-label">DNI/RUC</label>
-                        <input type="text" id="ruc_dni" name="ruc_dni" class="form-control">
+                        <input type="text" id="ruc_dni" name="ruc_dni" class="form-control" value="{{ lead_data.ruc_dni if lead_data }}">
                     </div>
                     <div class="form-row">
                         <label for="telefono" class="form-label">TELÉFONO/CELULAR</label>
-                        <input type="text" id="telefono" name="telefono" class="form-control">
+                        <input type="text" id="telefono" name="telefono" class="form-control" value="{{ lead_data.telefono if lead_data }}">
                     </div>
                     <div class="form-row">
                         <label for="contacto" class="form-label">CONTACTO</label>
-                        <input type="text" id="contacto" name="contacto" class="form-control">
+                        <input type="text" id="contacto" name="contacto" class="form-control" value="{{ lead_data.contacto if lead_data }}">
                     </div>
                     <div class="form-row">
                         <label for="email" class="form-label">CORREO</label>
-                        <input type="email" id="email" name="email" class="form-control">
+                        <input type="email" id="email" name="email" class="form-control" value="{{ lead_data.email if lead_data }}">
                     </div>
                     <div class="form-row">
                         <label for="direccion" class="form-label">DIRECCIÓN</label>
-                        <input type="text" id="direccion" name="direccion" class="form-control">
+                        <input type="text" id="direccion" name="direccion" class="form-control" value="{{ lead_data.direccion if lead_data }}">
                     </div>
                     <div class="form-row">
                         <label for="departamento" class="form-label">DEPARTAMENTO</label>
                         <select id="departamento" name="departamento" class="form-select">
                             <option value="">-- Seleccione departamento --</option>
+                            {# El JS se encargará de cargar los departamentos #}
                         </select>
                     </div>
                     <div class="form-row">
@@ -82,7 +123,7 @@
                         <select id="bien_servicio_id" name="bien_servicio_id" class="form-select" required>
                             <option value="">-- Seleccione un bien o servicio --</option>
                             {% for bs in bienes_servicios %}
-                                <option value="{{ bs.id }}">{{ bs.nombre }}</option>
+                                <option value="{{ bs.id }}" {% if lead_data.bien_servicio_id|string == bs.id|string %}selected{% endif %}>{{ bs.nombre }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -95,7 +136,7 @@
                             <select id="asignado_a" name="asignado_a" class="form-select" required>
                                 <option value="">-- Seleccione un asesor --</option>
                                 {% for asesor in asesores | sort(attribute='nombre') %}
-                                    <option value="{{ asesor.id }}">{{ asesor.nombre }}</option>
+                                    <option value="{{ asesor.id }}" {% if lead_data.asignado_a|string == asesor.id|string %}selected{% endif %}>{{ asesor.nombre }}</option>
                                 {% endfor %}
                             </select>
                         {% endif %}
@@ -105,13 +146,13 @@
                         <select id="canal_id" name="canal_id" class="form-select" required>
                             <option value="">-- Seleccione un canal --</option>
                             {% for canal in canales %}
-                                <option value="{{ canal.id }}">{{ canal.nombre }}</option>
+                                <option value="{{ canal.id }}" {% if lead_data.canal_id|string == canal.id|string %}selected{% endif %}>{{ canal.nombre }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="form-row">
                         <label for="comentario" class="form-label">COMENTARIO</label>
-                        <textarea id="comentario" name="comentario" class="form-control" rows="5"></textarea>
+                        <textarea id="comentario" name="comentario" class="form-control" rows="5">{{ lead_data.comentario if lead_data }}</textarea>
                     </div>
                     
                     <div class="clp-actions mt-4 d-flex justify-content-center gap-2">
@@ -123,17 +164,159 @@
         </div>
     </form>
 </div>
+
+<div class="modal fade" id="leadCreatedModal" tabindex="-1" aria-labelledby="leadCreatedModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="leadCreatedModalLabel">¡Lead Creado!</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p id="successMessage"></p>
+                <p class="mb-0">¿Qué desea hacer ahora?</p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <a id="btnGoToSeguimiento" href="#" class="btn btn-primary">Ir a Seguimiento</a>
+                <a href="{{ url_for('leads.create_lead') }}" class="btn btn-success">Crear Otro Lead</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="leadDuplicateModal" tabindex="-1" aria-labelledby="leadDuplicateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="leadDuplicateModalLabel">⚠️ Advertencia de Duplicado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="lead text-center">Ya existe un Lead con el mismo DNI/RUC o Teléfono.</p>
+                <p class="small text-muted text-center mb-3">
+                    {# Usamos la variable que el backend construyó y envió #}
+                    La duplicidad fue detectada usando: <strong>{{ duplicate_message }}</strong>
+                </p>
+                
+                <div class="lead-table-container">
+                    <table class="table table-bordered table-striped table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Estado</th>
+                                <th>Asignado a</th>
+                                <th>Última Actualización</th>
+                                <th class="text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {# Aquí llenamos la tabla con la LISTA de leads duplicados que viene de Flask #}
+                            {% if duplicate_leads %}
+                                {% for lead in duplicate_leads %}
+                                <tr>
+                                    <td>{{ lead.codigo }}</td>
+                                    {# Nota: Asumo que la clave es 'estado_actual' o similar, ajusta si es solo 'estado' #}
+                                    <td>{{ lead.estado_actual or lead.estado or 'N/A' }}</td>
+                                    <td>{{ lead.asignado_a_nombre or 'N/A' }}</td>
+                                    <td>{{ lead.ultima_actualizacion or 'N/A' }}</td>
+                                    <td class="text-center">
+                                        {# Aquí asumo que tienes una ruta para ver/editar un lead por código #}
+                                        <a href="{{ url_for('leads.seguimiento_lead', codigo=lead.codigo) }}" class="btn btn-sm btn-info text-white">Seguimiento</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No se encontraron leads duplicados con el DNI/RUC o Teléfono ingresado.</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+            <div class="modal-footer justify-content-center flex-wrap gap-2">
+                {# Redirigir al seguimiento del PRIMER lead duplicado #}
+                {% if duplicate_leads %}
+                    <a href="{{ url_for('leads.seguimiento_lead', codigo=duplicate_leads[0].codigo) }}" class="btn btn-warning text-dark">Ir al Lead Existente</a>
+                {% endif %}
+                
+                <button type="button" id="btnForceSave" class="btn btn-danger">Guardar de Todas Formas</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+// =========================================================================
+// VARIABLES GLOBALES (Para uso en JavaScript externo o interno)
+// =========================================================================
 window.UBIGEO_API = {
     departamentos: "{{ url_for('leads.api_list_departamentos') }}",
     provincias: "{{ url_for('leads.api_provincias_by_dep', departamento_id=0) }}".replace("/0", ""),
     distritos: "{{ url_for('leads.api_distritos_by_prov', provincia_id=0) }}".replace("/0", "")
 };
+
+// =========================================================================
+// LÓGICA DE DISPARO DEL MODAL Y FORZADO DE GUARDADO
+// =========================================================================
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Lógica para disparar el modal de duplicado automáticamente
+    const showDuplicate = {{ 'true' if show_duplicate_warning else 'false' }};
+    const duplicateModal = new bootstrap.Modal(document.getElementById('leadDuplicateModal'));
+    
+    if (showDuplicate) {
+        duplicateModal.show();
+    }
+
+    // 2. Lógica para el botón "Guardar de Todas Formas"
+    const btnForceSave = document.getElementById('btnForceSave');
+    const forceSaveInput = document.getElementById('forceSaveInput');
+    const createLeadForm = document.getElementById('createLeadForm');
+
+    if (btnForceSave && forceSaveInput && createLeadForm) {
+        btnForceSave.addEventListener('click', function() {
+            // Establece el flag oculto en 'true'
+            forceSaveInput.value = 'true'; 
+            // Envía el formulario (el backend lo procesará como forzado)
+            createLeadForm.submit(); 
+        });
+    }
+
+    // 3. Lógica para repoblar UBIGEO (si se regresó por un error)
+    const initialDep = "{{ lead_data.departamento if lead_data.departamento else '' }}";
+    const initialProv = "{{ lead_data.provincia if lead_data.provincia else '' }}";
+    const initialDist = "{{ lead_data.distrito if lead_data.distrito else '' }}";
+
+    // Si hay un departamento inicial, ejecuta la lógica de carga al inicio
+    if (initialDep) {
+        // Ejecuta la función de carga/repoblación del ubigeo
+        // Necesitas asegurarte de que tu 'js/app.js' contenga las funciones loadDepartamentos/loadProvincias
+        // y que estas soporten un valor inicial para seleccionar.
+        
+        // Carga y selecciona el Departamento (asumiendo que loadDepartamentos existe en app.js)
+        if (window.loadDepartamentos) {
+             window.loadDepartamentos(initialDep);
+        }
+        
+        // Carga y selecciona la Provincia
+        if (window.loadProvincias && initialProv) {
+             window.loadProvincias(initialDep, initialProv);
+        }
+        
+        // Carga y selecciona el Distrito
+        if (window.loadDistritos && initialDist) {
+             window.loadDistritos(initialProv, initialDist);
+        }
+    }
+    
+});
 </script>
 
 <script src="{{ url_for('static', filename='js/app.js') }}?v=1" defer></script>

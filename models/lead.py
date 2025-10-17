@@ -8,8 +8,19 @@ from models.canal import Canal
 from models.user import User
 from models.proceso import Proceso
 
+# ============================================================
+# EXCEPCIÓN PERSONALIZADA PARA DUPLICADOS
+# ============================================================
+class LeadDuplicatedError(Exception):
+    """Excepción lanzada cuando se intenta crear un lead con DNI/RUC o Teléfono duplicado."""
+    def __init__(self, message, existing_lead_data=None):
+        super().__init__(message)
+        # existing_lead_data ahora es una LISTA de leads duplicados
+        self.existing_lead_data = existing_lead_data 
+
 
 class Lead:
+    # (El método __init__ sigue igual)
     def __init__(
         self,
         id,
@@ -57,45 +68,141 @@ class Lead:
             if pname.strip().lower() == name.strip().lower():
                 return p["id"] if isinstance(p, dict) else getattr(p, "id", None)
         return None
+    
+    # ============================================================
+    # FUNCIÓN CLAVE: Buscar duplicados y obtener sus datos (CORREGIDA PARA LISTA)
+    # ============================================================
+    @staticmethod
+    def find_duplicate_lead_data(ruc_dni: str, telefono: str):
+        """
+        Busca leads existentes por ruc_dni o telefono (diferente de vacío).
+        Si los encuentra, devuelve una LISTA de sus datos clave.
+        """
+        ruc_dni_search = (ruc_dni or "").strip()
+        telefono_search = (telefono or "").strip()
+        
+        # Si no hay criterios de búsqueda, retorna None
+        if not ruc_dni_search and not telefono_search:
+            return None
+            
+        cur = mysql.connection.cursor(DictCursor)
+        
+        # 1. Subconsulta para el último seguimiento
+        subquery_latest_seguimiento = """
+            SELECT
+                s1.lead_id, s1.proceso_id, s1.fecha_guardado, s1.usuario_id
+            FROM seguimientos s1
+            INNER JOIN (
+                SELECT lead_id, MAX(id) as max_id
+                FROM seguimientos
+                GROUP BY lead_id
+            ) s2 ON s1.id = s2.max_id AND s1.lead_id = s2.lead_id
+        """
+
+        # 2. Consulta principal para obtener TODOS los leads y sus datos de seguimiento
+        # Hemos eliminado 'LIMIT 1' para obtener todos los duplicados
+        sql = f"""
+            SELECT 
+                l.id, l.codigo, l.asignado_a, l.ruc_dni AS ruc_dni_original, l.telefono AS telefono_original,
+                s.fecha_guardado AS ultima_actualizacion, 
+                p.nombre_proceso AS estado_actual,
+                s.usuario_id AS ultimo_seguimiento_usuario_id
+            FROM leads l
+            LEFT JOIN ({subquery_latest_seguimiento}) s ON s.lead_id = l.id
+            LEFT JOIN proceso p ON p.id = s.proceso_id
+            WHERE 
+                (NULLIF(l.ruc_dni, '') = %s AND NULLIF(%s, '') IS NOT NULL) 
+                OR (NULLIF(l.telefono, '') = %s AND NULLIF(%s, '') IS NOT NULL)
+            ORDER BY l.id DESC 
+        """
+        
+        params = [ruc_dni_search, ruc_dni_search, telefono_search, telefono_search]
+
+        try:
+            cur.execute(sql, params)
+            lead_list = cur.fetchall()
+        finally:
+            cur.close()
+            
+        if lead_list:
+            # 3. Aplicar resolución de nombres a TODA la lista
+            processed_list = Lead._apply_name_resolution(lead_list)
+            
+            # Agregamos la información del campo que causó la duplicidad para el frontend
+            for result in processed_list:
+                duplicate_field = "Desconocido"
+                if ruc_dni_search and ruc_dni_search == result.get('ruc_dni_original'):
+                    duplicate_field = "DNI/RUC"
+                elif telefono_search and telefono_search == result.get('telefono_original'):
+                    duplicate_field = "Teléfono"
+                
+                result['duplicate_field_used'] = duplicate_field
+                
+                # Opcional: limpiar campos originales
+                del result['ruc_dni_original']
+                del result['telefono_original']
+            
+            return processed_list
+        
+        return None
 
     # ------------------------
     # Crear lead (+ seguimiento "No iniciado")
     # ------------------------
+    # Función corregida para models/lead.py
+
     @staticmethod
-    def create(data, created_by_user_id=None):
+    def create(data, created_by_user_id=None, force_save: bool = False):
         """
-        Crea el lead y, si se pasa created_by_user_id, inserta un seguimiento
-        inicial con proceso 'No iniciado' para que aparezca en la vista.
+        Crea el lead. Antes de insertar, verifica duplicados. 
+        Si hay duplicados:
+            - Si force_save es False, lanza LeadDuplicatedError.
+            - Si force_save es True, omite la excepción y guarda el lead.
         """
+        
+        # 0) VALIDACIÓN DE DUPLICADOS: Ahora devuelve una lista si hay coincidencias
+        existing_leads_list = Lead.find_duplicate_lead_data(
+            data.get("ruc_dni", "").strip(), 
+            data.get("telefono", "").strip()
+        )
+        
+        if existing_leads_list:
+            # --- CORRECCIÓN CLAVE: Integrar el flag force_save ---
+            if not force_save:
+                # Lanza una excepción con la LISTA de leads duplicados solo si NO se fuerza el guardado
+                msg = "El DNI/RUC o el Teléfono ya existen en otros leads."
+                raise LeadDuplicatedError(msg, existing_lead_data=existing_leads_list)
+            
+            # Si force_save es True, el flujo de ejecución CONTINÚA A LA INSERCIÓN.
+
         cur = mysql.connection.cursor()
         try:
-            # 1) Insertar el lead
+            # 1) Insertar el lead (Este código no fue modificado)
             cur.execute(
                 """
                 INSERT INTO leads
                 (codigo, fecha, nombre, telefono, ruc_dni, email, contacto, direccion,
-                 departamento, provincia, distrito, canal_id, bien_servicio_id, asignado_a, comentario)
+                departamento, provincia, distrito, canal_id, bien_servicio_id, asignado_a, comentario)
                 VALUES (%(codigo)s, %(fecha)s, %(nombre)s, %(telefono)s, %(ruc_dni)s,
-                         %(email)s, %(contacto)s, %(direccion)s, %(departamento)s, %(provincia)s,
-                         %(distrito)s, %(canal_id)s, %(bien_servicio_id)s, %(asignado_a)s, %(comentario)s)
+                        %(email)s, %(contacto)s, %(direccion)s, %(departamento)s, %(provincia)s,
+                        %(distrito)s, %(canal_id)s, %(bien_servicio_id)s, %(asignado_a)s, %(comentario)s)
                 """,
                 data,
             )
             lead_id = cur.lastrowid
 
-            # 2) Seguimiento "No iniciado"
+            # 2) Seguimiento "No iniciado" (Este código no fue modificado)
             if created_by_user_id:
-                # Usar el helper centralizado
                 proc_id = Lead._get_proceso_id_by_name("no iniciado")
                 if proc_id:
                     cur.execute(
                         """
                         INSERT INTO seguimientos
-                          (lead_id, usuario_id, fecha_seguimiento, proceso_id, fecha_programada,
+                        (lead_id, usuario_id, fecha_seguimiento, proceso_id, fecha_programada,
                             motivo_no_venta_id, cotizacion, monto, moneda_id, comentario,
                             canal_contacto, fecha_guardado)
                         VALUES
-                          (%s, %s, %s, %s, NULL, NULL, NULL, NULL, NULL, %s, NULL, NOW())
+                        (%s, %s, %s, %s, NULL, NULL, NULL, NULL, NULL, %s, NULL, NOW())
                         """,
                         (
                             lead_id,
@@ -114,6 +221,9 @@ class Lead:
         finally:
             cur.close()
 
+    # (El resto de la clase, incluyendo next_codigo, get_by_id, update, y los helpers de listado por proceso, sigue igual)
+    # ...
+    
     # ------------------------
     # Generar código auto-incrementable
     # ------------------------
@@ -276,8 +386,8 @@ class Lead:
                     or getattr(u, "email", None)
                     or str(uid)
                 )
-                
-            cache[uid] = str(display) # Aseguramos string
+            # Aseguramos string y evitamos None si la búsqueda falló
+            cache[uid] = str(display) if display is not None else str(uid) 
         return cache
 
     @staticmethod
@@ -320,7 +430,7 @@ class Lead:
             if id_rol == ROLE_ASESOR:
                 return True
         except ImportError:
-            pass # Si falla la importación, asumimos que ROLE_ASESOR no está definido
+            pass 
             
         return str(id_rol).strip().lower() in ("asesor", "role_asesor")
     
@@ -368,22 +478,13 @@ class Lead:
             # Normaliza entradas
             q = (q or "").strip()
             start_date = (start_date or "").strip() or None
-            end_date   = (end_date or "").strip() or None
+            end_date  = (end_date or "").strip() or None
 
             # Usaremos FOUND_ROWS sólo si solicitamos paginación
             use_count = (limit is not None)
 
-            # Subconsulta para obtener los datos del ÚLTIMO seguimiento (el MAX(id)) para cada lead
-            subquery_latest_seguimiento = """
-                SELECT
-                    s1.lead_id, s1.monto, s1.moneda_id, s1.proceso_id, s1.comentario, s1.usuario_id
-                FROM seguimientos s1
-                INNER JOIN (
-                    SELECT lead_id, MAX(id) as max_id
-                    FROM seguimientos
-                    GROUP BY lead_id
-                ) s2 ON s1.id = s2.max_id AND s1.lead_id = s2.lead_id
-            """
+            # Subconsulta para obtener los datos del ÚLTIMO seguimiento
+            subquery_latest_seguimiento = Lead._SUBQUERY_LATEST_SEGUIMIENTO_BASE 
             
             select_clause = "SELECT "
             if use_count:
@@ -499,8 +600,6 @@ class Lead:
         LEFT JOIN motivo_no_venta mnv ON mnv.id = su.motivo_no_venta_id
     """
     
-    # models/lead.py (Función _execute_process_list_query CORREGIDA)
-
     @staticmethod
     def _execute_process_list_query(process_name, id_rol, user_id, q="", custom_order_field=None, extra_search_fields=None, limit=None, offset=None):
         """
@@ -560,19 +659,17 @@ class Lead:
             
             # === FIN DE CONSTRUCCIÓN DE LA CLÁUSULA WHERE ===
 
-            # 💡 SOLUCIÓN OPERATIONALERROR: Determinar qué JOINs necesita el COUNT basado en extra_search_fields
+            # 💡 CORRECCIÓN DE JOIN EN COUNT 💡: Determinar qué JOINs necesita el COUNT basado en extra_search_fields
             count_join_clauses = ""
             if extra_search_fields:
-                extra_search_fields_str = str(extra_search_fields)
+                extra_search_fields_str = " ".join(extra_search_fields)
                 
-                # Necesita JOIN con 'moneda' (m) si busca en moneda, monto o cotizacion
-                if any(f in extra_search_fields_str for f in ["m.nombre_moneda", "su.monto", "su.cotizacion"]):
+                # Solo necesita JOIN con 'moneda' (m) si busca en m.nombre_moneda
+                if "m.nombre_moneda" in extra_search_fields_str:
                     count_join_clauses += " LEFT JOIN moneda m ON m.id = su.moneda_id"
                     
                 # Necesita JOIN con 'motivos_no_venta' (mnv) si busca en ese campo
                 if "mnv.motivo_no_venta" in extra_search_fields_str:
-                    # NOTA: Usamos LEFT JOIN para que el COUNT no se rompa si el lead no tiene un mnv_id, 
-                    # aunque es poco probable en Cerrado No Vendido.
                     count_join_clauses += " LEFT JOIN motivo_no_venta mnv ON mnv.id = su.motivo_no_venta_id"
 
 
@@ -600,7 +697,7 @@ class Lead:
             if custom_order_field:
                 order_by_clause = f" ORDER BY {custom_order_field}, su.fecha_guardado DESC, l.id DESC"
             
-            # 💡 CORRECCIÓN CLAVE: Concatenar where_clause directamente.
+            # Concatenar where_clause directamente.
             sql_final = base_sql_select + where_clause + order_by_clause 
 
             # Agregar paginación
@@ -611,6 +708,8 @@ class Lead:
                     sql_final += " OFFSET %s"
                     params.append(offset)
             
+            # La lista 'params' ya contiene los parámetros para la cláusula WHERE.
+            # Se usan secuencialmente, primero para el WHERE y luego para LIMIT/OFFSET.
             cur.execute(sql_final, params)
             rows = cur.fetchall()
             
@@ -714,3 +813,5 @@ class Lead:
             limit=limit, 
             offset=offset
         )
+    
+    

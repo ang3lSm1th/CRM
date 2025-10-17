@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, Response
 from utils.security import login_required, role_required, ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH, ROLE_ASESOR
-from models.lead import Lead
+# 1. IMPORTAR LA EXCEPCIÓN LeadDuplicatedError (MODIFICADO)
+from models.lead import Lead, LeadDuplicatedError 
 from models.canal import Canal
 from models.bien_servicio import BienServicio
 from models.user import User
@@ -14,7 +15,7 @@ from extensions import mysql
 import io, base64
 import csv
 import matplotlib
-matplotlib.use("Agg")  # backend sin ventana para servidores
+matplotlib.use("Agg") # backend sin ventana para servidores
 import matplotlib.pyplot as plt
 from math import ceil
 from models.canal_contacto import CanalContacto
@@ -145,8 +146,8 @@ def _list_leads_by_status(list_func, template_name):
     # Solo las funciones de lista general o búsqueda (list_for_user, search_for_user)
     # deberían recibir fechas. Las de estado (unstarted, quoted) no.
     if hasattr(list_func, '__name__') and ('search_for_user' in list_func.__name__ or 'list_for_user' in list_func.__name__):
-         kwargs['start_date'] = f_ini
-         kwargs['end_date'] = f_fin
+          kwargs['start_date'] = f_ini
+          kwargs['end_date'] = f_fin
     
     # Asignar límite/offset de forma condicional para manejar show_all
     if not show_all:
@@ -213,9 +214,9 @@ def _list_leads_by_status(list_func, template_name):
 @login_required
 def list_leads():
     # ... Tu función list_leads original (SIN CAMBIOS)
-    q       = (request.args.get("q") or "").strip()
-    f_ini   = request.args.get("f_ini") or None
-    f_fin   = request.args.get("f_fin") or None
+    q = (request.args.get("q") or "").strip()
+    f_ini = request.args.get("f_ini") or None
+    f_fin = request.args.get("f_fin") or None
     show_all = (request.args.get("show_all") in ('1','true','True'))
 
     try:
@@ -301,22 +302,24 @@ def list_leads():
         distritos_map=distritos_map
     )
 
-# ... [create_lead, edit_lead, delete_lead, seguimiento_lead] ...
-# Estas funciones se mantienen sin cambios ya que no son listas.
-
-# Crear lead
+# ... [edit_lead, delete_lead, seguimiento_lead] ...
+# Crear lead (MODIFICADA para manejar LeadDuplicatedError Y force_save)
+# --- RUTA DE CREACIÓN DE LEAD (CORREGIDA PARA MANEJAR LeadDuplicatedError) ---
+# --- RUTA DE CREACIÓN DE LEAD (CORREGIDA PARA MANEJAR LeadDuplicatedError Y UndefinedError) ---
 @lead_bp.route("/create", methods=["GET", "POST"])
 @role_required(ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH, ROLE_ASESOR)
 def create_lead():
+    
+    # ----------------------------------------------------------------------
+    # 1. Bloque POST (El usuario intenta crear un Lead)
+    # ----------------------------------------------------------------------
     if request.method == "POST":
         codigo = Lead.next_codigo()
-        
-        # 1. Obtener el ID del usuario logueado para el seguimiento inicial
         created_by_user_id = session.get("user_id")
         
+        # Recolección de datos del formulario (para usar en repoblación si falla)
         data = {
             "codigo": codigo,
-            # Asegúrate de que 'fecha' se obtiene correctamente.
             "fecha": request.form.get("fecha") or date.today().strftime("%Y-%m-%d"), 
             "nombre": request.form["nombre"],
             "telefono": request.form.get("telefono"),
@@ -329,37 +332,151 @@ def create_lead():
             "distrito": request.form.get("distrito"),
             "canal_id": request.form.get("canal_id"),
             "bien_servicio_id": request.form.get("bien_servicio_id"),
-            # Asignado: el usuario logueado si es ASESOR, o el seleccionado en el form si no.
             "asignado_a": (created_by_user_id if session["id_rol"] == ROLE_ASESOR else request.form.get("asignado_a")),
             "comentario": request.form.get("comentario"),
         }
         
+        force_save = request.form.get("force_save") == 'true'
+
         try:
-            # 2. Llamada al método que inserta el Lead Y el Seguimiento "No Iniciado"
-            Lead.create(data, created_by_user_id=created_by_user_id)
+            Lead.create(data, created_by_user_id=created_by_user_id, force_save=force_save)
             
-            # 3. Mostrar el mensaje de éxito (con la categoría 'lead_created' para tu modal)
             flash(f"✅ Lead {codigo} creado correctamente. ¿Qué deseas hacer ahora?", "lead_created") 
             
-            # 4. Redirigir de vuelta al formulario de creación
             return redirect(url_for("leads.create_lead"))
 
+        except LeadDuplicatedError as e:
+            # Lógica de manejo de duplicados (ya corregida)
+            duplicate_leads = e.existing_lead_data
+            lead_data_first = duplicate_leads[0] if duplicate_leads else {}
+            duplicate_field = lead_data_first.get('duplicate_field_used') 
+            
+            if duplicate_field == 'DNI/RUC':
+                duplicate_message = f"La duplicidad fue detectada usando DNI/RUC ({data.get('ruc_dni')})."
+            elif duplicate_field == 'Teléfono':
+                duplicate_message = f"La duplicidad fue detectada usando Teléfono ({data.get('telefono')})."
+            else:
+                duplicate_message = "La duplicidad fue detectada, pero el campo de coincidencia es desconocido."
+
+            flash(f"⚠️ {e.args[0]}", "warning_duplicate") 
+            
+            # Recargar datos de selección para repoblar el formulario
+            canales = Canal.get_all()
+            bienes_servicios = BienServicio.get_all()
+            asesores = User.get_by_role(ROLE_ASESOR) if session["id_rol"] != ROLE_ASESOR else [User.get_by_id(session["user_id"])]
+            
+            # 5. Renderizamos el formulario, pasando TODOS los datos necesarios
+            return render_template(
+                "leads/create.html",
+                # PASAMOS LOS DATOS INGRESADOS para repoblar el formulario (data)
+                lead_data=data,  
+                
+                duplicate_leads=duplicate_leads,
+                duplicate_message=duplicate_message,
+                show_duplicate_warning=True,
+                
+                # Datos de selección necesarios
+                codigo=data.get("codigo"),
+                fecha_hoy=data.get("fecha") or date.today().strftime("%Y-%m-%d"),
+                canales=canales,
+                bienes_servicios=bienes_servicios,
+                asesores=asesores,
+                es_asesor=(session["id_rol"] == ROLE_ASESOR),
+            )
+        
         except Exception as e:
-            # Manejo básico de errores de base de datos
-            flash(f"❌ Error al crear el Lead: {e}", "danger")
-            # Redirigir de vuelta al formulario para que intente de nuevo
-            return redirect(url_for("leads.create_lead"))
+            flash(f"❌ Ocurrió un error inesperado al crear el Lead: {e}", "danger")
+            # En caso de otro error, pasamos 'data' para que los campos no se borren
+            return render_template(
+                "leads/create.html",
+                lead_data=data,
+                codigo=data.get("codigo"),
+                fecha_hoy=data.get("fecha") or date.today().strftime("%Y-%m-%d"),
+                canales=Canal.get_all(),
+                bienes_servicios=BienServicio.get_all(),
+                asesores=( User.get_by_role(ROLE_ASESOR) if session["id_rol"] != ROLE_ASESOR else [User.get_by_id(session["user_id"])] ),
+                es_asesor=(session["id_rol"] == ROLE_ASESOR),
+                # Variables de duplicado vacías para evitar UndefinedError
+                duplicate_leads=[], 
+                duplicate_message="",
+                show_duplicate_warning=False,
+            )
     
-    # Manejo del método GET (mostrar el formulario)
+    # ----------------------------------------------------------------------
+    # 2. Bloque GET (Carga inicial del formulario)
+    # ----------------------------------------------------------------------
+    
+    # PASAMOS lead_data como un DICCIONARIO VACÍO.
+    # Esto evita el Jinja2 UndefinedError en la carga inicial (GET).
     return render_template(
         "leads/create.html",
+        lead_data={}, # <--- CORRECCIÓN CLAVE
         codigo=Lead.next_codigo(),
         fecha_hoy=date.today().strftime("%Y-%m-%d"),
         canales=Canal.get_all(),
         bienes_servicios=BienServicio.get_all(),
         asesores=( User.get_by_role(ROLE_ASESOR) if session["id_rol"] != ROLE_ASESOR else [User.get_by_id(session["user_id"])] ),
         es_asesor=(session["id_rol"] == ROLE_ASESOR),
+        
+        # Variables de duplicado vacías para evitar UndefinedError
+        duplicate_leads=[], 
+        duplicate_message="",
+        show_duplicate_warning=False,
     )
+
+# API: Busca todos los leads duplicados por DNI/RUC o Teléfono (¡NUEVA RUTA!)
+@lead_bp.route("/api/duplicates/<value>", methods=["GET"])
+@login_required
+def api_search_duplicates(value):
+    """
+    Busca leads que coincidan con el DNI/RUC o Teléfono proporcionado en 'value'.
+    Devuelve una lista JSON de leads con campos clave para el modal.
+    """
+    if not value or len(value.strip()) < 1:
+        return jsonify([]), 200
+
+    search_val = value.strip()
+    
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    try:
+        # Se asume que el 'value' puede ser DNI/RUC o Teléfono. Buscamos por ambos.
+        # Solo trae los datos necesarios para la tabla del modal.
+        sql = """
+            SELECT 
+                l.codigo, 
+                p.nombre_proceso AS estado, 
+                u.nombre AS asignado_a,
+                MAX(s.fecha_guardado) AS ultima_actualizacion
+            FROM leads l
+            JOIN usuarios u ON u.id = l.asignado_a
+            JOIN seguimientos s ON s.lead_id = l.id
+            JOIN proceso p ON p.id = s.proceso_id
+            WHERE 
+                l.ruc_dni = %s OR l.telefono = %s
+            GROUP BY l.id
+            ORDER BY ultima_actualizacion DESC
+        """
+        cur.execute(sql, (search_val, search_val))
+        leads = cur.fetchall() or []
+        
+        # Formatear la fecha para que sea más legible en JavaScript
+        def format_lead_data(lead):
+            return {
+                "codigo": lead["codigo"],
+                "estado": lead["estado"],
+                "asignado_a": lead["asignado_a"],
+                "ultima_actualizacion": str(lead["ultima_actualizacion"]).split('.')[0] if lead["ultima_actualizacion"] else "N/A"
+            }
+            
+        return jsonify([format_lead_data(l) for l in leads]), 200
+    
+    except Exception as e:
+        print(f"Error en api_search_duplicates: {e}")
+        return jsonify({"error": "Error al buscar leads duplicados"}), 500
+    finally:
+        cur.close()
+
+# ... [El resto de tus APIs y la función notifications_panel siguen aquí] ...
 
 # Editar lead
 @lead_bp.route("/edit/<codigo>", methods=["GET", "POST"])
@@ -439,7 +556,7 @@ def seguimiento_lead(codigo):
     if request.method == "POST":
         nn = lambda v: (v if v not in ("", None) else None)
         proceso_id = request.form.get("proceso_id", type=int)
-        canal_contacto = request.form.get("canal_contacto", type=int)  # <- corregido
+        canal_contacto = request.form.get("canal_contacto", type=int) # <- corregido
         comentario = nn(request.form.get("comentario"))
         fecha_programada = nn(request.form.get("fecha_programada"))
         motivo_no_venta_id = request.form.get("motivo_no_venta_id", type=int)
@@ -491,10 +608,10 @@ def seguimiento_lead(codigo):
 
 
     procesos = Proceso.get_all()
-    canales  = CanalContacto.get_all()
-    monedas  = Moneda.get_all()
-    motivos  = Motivonoventa.get_all()
-    bienes   = BienServicio.get_all()
+    canales = CanalContacto.get_all()
+    monedas = Moneda.get_all()
+    motivos = Motivonoventa.get_all()
+    bienes = BienServicio.get_all()
 
     proc_map = {}
     for p in procesos:
@@ -509,7 +626,7 @@ def seguimiento_lead(codigo):
         bs_map[bid] = bname
 
     bien_servicio_nombre = bs_map.get(lead.get("bien_servicio_id") or lead.get("bien_servicio"))
-    lead_nombre   = lead.get("nombre") or lead.get("nombre_completo") or lead.get("razon_social") or ""
+    lead_nombre = lead.get("nombre") or lead.get("nombre_completo") or lead.get("razon_social") or ""
     lead_contacto = lead.get("contacto") or lead.get("persona_contacto") or ""
 
     cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
@@ -534,7 +651,7 @@ def seguimiento_lead(codigo):
     }
     default_proceso_id = None
     hay_ultimo = bool(ultimo and (ultimo.get("proceso_id") is not None))
-    hay_post   = False
+    hay_post = False
 
     if not hay_ultimo and not hay_post:
         target_name = preset_map.get(preset)
@@ -779,4 +896,6 @@ def notifications_panel():
         # print("notifications_panel error:", e)
         return jsonify({"error": "No se pudo obtener notificaciones"}), 500
     finally:
-        cur.close() 
+        cur.close()
+
+        

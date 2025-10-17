@@ -38,9 +38,6 @@
     transition: left 0.3s ease-in-out;
     
     /* HABILITAR SCROLL INVISIBLE */
-    overflow-y: auto; 
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
 }
 .sidebar::-webkit-scrollbar {
     display: none; /* Oculta la barra de desplazamiento */

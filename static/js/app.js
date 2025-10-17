@@ -662,3 +662,147 @@ document.addEventListener('DOMContentLoaded', function(){
     try { initNotifModule(); } catch (e) { console.error('initNotifModule error', e); }
   });
 })();
+// =========================================================================
+    // 2. Lógica de Modales de Flash (Duplicado y Éxito) y Botones
+    // =========================================================================
+
+    const flashMessages = window.FLASH_MESSAGES || [];
+    const $form = document.querySelector('form[action*="/leads/crear"]');
+    const $forceSaveInput = document.getElementById('forceSaveInput');
+    const $rucDniInput = document.getElementById('ruc_dni');
+    const $telefonoInput = document.getElementById('telefono');
+    
+    // Elementos del Modal de Duplicados
+    const $modalEl = document.getElementById('leadDuplicateModal');
+    const $duplicateField = document.getElementById('duplicateField');
+    const $firstLeadRow = document.getElementById('firstLeadRow');
+    const $additionalLeadsContainer = document.getElementById('additionalLeadsContainer');
+    const $additionalLeadsTableBody = document.getElementById('additionalLeadsTableBody');
+    const $toggleAdditionalLeads = document.getElementById('toggleAdditionalLeads');
+    const $btnGoToExisting = document.getElementById('btnGoToExistingLead');
+    const $btnForceSave = document.getElementById('btnForceSave');
+
+    /** Genera una fila de tabla para un lead. */
+    function createLeadRow(lead) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${lead.codigo}</td>
+            <td>${lead.estado}</td>
+            <td>${lead.asignado_a}</td>
+            <td>${lead.ultima_actualizacion}</td>
+            <td class="text-center">
+                <a href="${window.URL_SEGUIMIENTO_PREFIX}${lead.codigo}" class="btn btn-sm btn-outline-primary">Ver</a>
+            </td>
+        `;
+        return row;
+    }
+
+    /** Maneja la carga de la tabla de leads duplicados. */
+    async function loadDuplicateLeads(searchValue, searchParam) {
+        $firstLeadRow.innerHTML = '';
+        $additionalLeadsTableBody.innerHTML = '';
+        $additionalLeadsContainer.style.display = 'none';
+        $toggleAdditionalLeads.style.display = 'none';
+
+        if (!searchValue || !window.URL_DUPLICATES_API) return;
+
+        try {
+            const url = window.URL_DUPLICATES_API + searchValue;
+            const response = await fetch(url);
+            const leads = await response.json(); // Esperamos un array de leads
+
+            if (leads.length > 0) {
+                // 1. Mostrar el PRIMER Lead en la sección principal
+                const firstLead = leads[0];
+                $firstLeadRow.appendChild(createLeadRow(firstLead));
+                $btnGoToExisting.href = `${window.URL_SEGUIMIENTO_PREFIX}${firstLead.codigo}`;
+                $btnGoToExisting.disabled = false;
+                
+                // 2. Si hay MÁS leads, mostrarlos en la sección adicional
+                if (leads.length > 1) {
+                    const additionalLeads = leads.slice(1);
+                    
+                    additionalLeads.forEach(lead => {
+                        $additionalLeadsTableBody.appendChild(createLeadRow(lead));
+                    });
+
+                    $toggleAdditionalLeads.style.display = 'block';
+                    $toggleAdditionalLeads.textContent = `Mostrar los ${leads.length - 1} Leads Adicionales`;
+                    
+                    // Manejar el toggle
+                    $toggleAdditionalLeads.onclick = () => {
+                        const isHidden = $additionalLeadsContainer.style.display === 'none';
+                        $additionalLeadsContainer.style.display = isHidden ? 'block' : 'none';
+                        $toggleAdditionalLeads.textContent = isHidden ? 'Ocultar Leads Adicionales' : `Mostrar los ${leads.length - 1} Leads Adicionales`;
+                    };
+                }
+            }
+        } catch (error) {
+            console.error('Error al cargar leads duplicados:', error);
+            // Mostrar un mensaje de error en el modal si falla la API
+            $firstLeadRow.innerHTML = `<tr><td colspan="5" class="text-danger text-center">Error al cargar la lista de leads relacionados.</td></tr>`;
+            $btnGoToExisting.disabled = true;
+        }
+    }
+
+
+    flashMessages.forEach(flash => {
+        const { category, message } = flash;
+
+        // --- Manejo de éxito de creación (lead_created) ---
+        if (category === 'lead_created') {
+            const match = message.match(/Lead (L\d+) creado/i);
+            const leadCode = match ? match[1] : null;
+
+            if (leadCode) {
+                const modal = new bootstrap.Modal(document.getElementById('leadCreatedModal')); 
+                document.getElementById('successMessage').textContent = message;
+                document.getElementById('btnGoToSeguimiento').href = window.URL_SEGUIMIENTO_PREFIX + leadCode;
+                modal.show();
+            }
+        }
+        
+        // --- Manejo de duplicado de creación (warning_duplicate) ---
+        if (category === 'warning_duplicate') {
+            // Ejemplo de mensaje esperado: "Duplicado detectado por DNI/RUC."
+            const matchField = message.match(/Duplicado detectado por ([A-Z\/]+)\./i);
+            const duplicatedFieldType = matchField ? matchField[1] : 'Desconocido'; 
+
+            // 1. Configuración de parámetros de búsqueda
+            let searchValue = '';
+            let searchParam = '';
+            
+            if (duplicatedFieldType.includes('DNI/RUC') && $rucDniInput) {
+                searchValue = $rucDniInput.value.trim();
+                searchParam = 'ruc_dni';
+            } else if (duplicatedFieldType.includes('TELÉFONO') && $telefonoInput) {
+                searchValue = $telefonoInput.value.trim();
+                searchParam = 'telefono';
+            }
+            
+            // 2. Mostrar tipo de duplicidad
+            $duplicateField.textContent = duplicatedFieldType;
+
+            // 3. Cargar datos de duplicados desde la API y configurar tabla/botones
+            if (searchValue) {
+                loadDuplicateLeads(searchValue);
+            } else {
+                $firstLeadRow.innerHTML = `<tr><td colspan="5" class="text-muted text-center">No se encontró el valor de búsqueda (DNI/RUC o Teléfono) para consultar leads.</td></tr>`;
+                $btnGoToExisting.disabled = true;
+            }
+
+            // 4. Manejar el botón "Guardar de Todas Formas"
+            if ($btnForceSave && $forceSaveInput && $form) {
+                $btnForceSave.onclick = function() {
+                    $forceSaveInput.value = 'true';
+                    const modalInstance = bootstrap.Modal.getInstance($modalEl) || new bootstrap.Modal($modalEl);
+                    modalInstance.hide(); 
+                    $form.submit();
+                };
+            }
+            
+            // 5. Mostrar modal
+            const modal = new bootstrap.Modal($modalEl);
+            modal.show();
+        }
+    });
