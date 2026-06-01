@@ -1,0 +1,322 @@
+.mk-roadmap-container {
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+.mk-roadmap-container {
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.mk-roadmap-container.is-updating {
+  opacity: 0.72;
+  transform: translateY(2px);
+}
+
+.mk-title-wrap {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.mk-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.mk-kpi-card {
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+  border: 1px solid #e7ecf4;
+  background: linear-gradient(140deg, #ffffff, #f5f9ff);
+  box-shadow: 0 8px 20px rgba(28, 53, 89, 0.08);
+}
+
+.mk-kpi-campaign {
+  border-left: 5px solid var(--primary-600);
+}
+
+.mk-kpi-feria {
+  border-left: 5px solid var(--success-600);
+}
+
+.mk-kpi-special {
+  border-left: 5px solid var(--warning-600);
+}
+
+.mk-period-filter {
+  border: 1px solid var(--primary-200);
+  background: linear-gradient(180deg, var(--primary-50), #ffffff);
+}
+
+.mk-period-form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.mk-period-chips {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.mk-period-chip {
+  border: 1px solid var(--primary-300);
+  background: #ffffff;
+  color: var(--primary-700);
+  border-radius: 9999px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+}
+
+.mk-period-chip:hover {
+  background: var(--primary-50);
+}
+
+.mk-period-chip.is-active {
+  background: var(--primary-600);
+  border-color: var(--primary-600);
+  color: #ffffff;
+  box-shadow: var(--shadow-primary);
+}
+
+.mk-custom-range {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.mk-period-active {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.88rem;
+}
+
+.mk-period-active-label {
+  color: var(--secondary-600);
+  font-weight: 600;
+}
+
+.mk-period-active-value {
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  background: var(--primary-100);
+  color: var(--primary-700);
+  font-weight: 700;
+}
+
+.mk-period-active-range {
+  color: var(--secondary-700);
+}
+
+.mk-kpi-label {
+  font-size: 0.88rem;
+  color: #51627b;
+  margin-bottom: 0.35rem;
+}
+
+.mk-kpi-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0f2138;
+  line-height: 1.1;
+}
+
+.mk-rois-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.mk-rois-stack {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.mk-rois-panel {
+  position: relative;
+}
+
+.mk-rois-card {
+  border: 1px solid #dce5f1;
+  border-radius: 14px;
+  padding: 1rem;
+  background: #ffffff;
+}
+
+.mk-rois-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #12243e;
+}
+
+.mk-rois-formula {
+  margin-top: 0.2rem;
+  font-size: 0.82rem;
+  color: #5e6f86;
+}
+
+.mk-rois-context {
+  margin-top: 0.45rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1c3257;
+}
+
+.mk-rois-value {
+  margin-top: 0.55rem;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-700);
+  line-height: 1.05;
+}
+
+.mk-rois-meta {
+  margin-top: 0.25rem;
+  color: #334a66;
+  font-size: 0.9rem;
+}
+
+.mk-rois-panel .form-select-sm {
+  min-width: 280px;
+}
+
+.mk-rois-tables {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.mk-rois-table-wrap th {
+  font-size: 0.8rem;
+  color: #526581;
+  white-space: nowrap;
+}
+
+.mk-rois-table-wrap td {
+  font-size: 0.88rem;
+}
+
+.mk-rois-col-action {
+  width: 140px;
+  white-space: nowrap;
+}
+
+.mk-rois-col-action .btn {
+  min-width: 110px;
+}
+
+.mk-campaign-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.9rem;
+}
+
+.mk-metric-card {
+  border: 1px solid #dce5f1;
+  border-radius: 12px;
+  padding: 0.85rem;
+  background: #ffffff;
+}
+
+.mk-metric-label {
+  font-size: 0.84rem;
+  color: #5b6d86;
+}
+
+.mk-metric-value {
+  margin-top: 0.2rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-700);
+}
+
+.mk-metric-formula {
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+  color: #6a7f9b;
+}
+
+.mk-metric-meta {
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  color: #3a4f6b;
+}
+
+.mk-subtotal-card {
+  border: 1px dashed #bccbe0;
+  border-radius: 10px;
+  padding: 0.85rem 0.9rem;
+  background: #f9fbff;
+}
+
+.mk-subtotals-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.mk-subtotal-title {
+  font-weight: 700;
+  color: #1a3154;
+  margin-bottom: 0.35rem;
+}
+
+@keyframes mkFadeRise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mk-period-filter,
+.mk-kpi-grid,
+.mk-rois-stack,
+.mk-rois-tables,
+.mk-campaign-metrics-grid,
+.mk-subtotals {
+  animation: mkFadeRise 0.42s ease both;
+}
+
+.mk-period-filter { animation-delay: 0.02s; }
+.mk-kpi-grid { animation-delay: 0.08s; }
+.mk-rois-stack { animation-delay: 0.14s; }
+.mk-rois-tables { animation-delay: 0.2s; }
+.mk-campaign-metrics-grid { animation-delay: 0.26s; }
+.mk-subtotals { animation-delay: 0.32s; }
+
+@media (max-width: 767px) {
+  .mk-title-wrap {
+    flex-direction: column;
+  }
+
+  .mk-rois-panel .form-select-sm {
+    min-width: 210px;
+  }
+
+  .mk-rois-stack {
+    grid-template-columns: 1fr;
+  }
+
+  .mk-custom-range {
+    grid-template-columns: 1fr;
+  }
+
+  .mk-period-active {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+}

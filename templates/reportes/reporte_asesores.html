@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes-reporte-asesores.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 animate-fade-in">
+    <div class="row mb-4 animate-slide-in-left">
+        <div class="col-12">
+            <h2 class="mb-3 text-gradient">
+                <i class="bi bi-graph-up me-2"></i> Reporte de Asesores
+            </h2>
+            <p class="text-muted">
+                Vista general del desempeño de cada asesor en cotizaciones y ventas
+            </p>
+        </div>
+    </div>
+
+    <!-- Filtro de periodo -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <form method="get" class="row g-2 align-items-center">
+                <div class="col-auto">
+                    <label class="form-label mb-0">Periodo</label>
+                    <select name="period" id="rep-period" class="form-select form-select-sm">
+                        <option value="all" {% if period == 'all' %}selected{% endif %}>Todos</option>
+                        <option value="today" {% if period == 'today' %}selected{% endif %}>Hoy</option>
+                        <option value="last_week" {% if period == 'last_week' %}selected{% endif %}>Última semana</option>
+                        <option value="last_month" {% if period == 'last_month' %}selected{% endif %}>Último mes</option>
+                        <option value="custom" {% if period == 'custom' %}selected{% endif %}>Personalizado</option>
+                    </select>
+                </div>
+                <div class="col-auto" id="rep-dates" style="display: {% if period == 'custom' %}flex{% else %}none{% endif %}; gap:0.5rem;">
+                    <input type="date" name="date_from" id="rep-date-from" class="form-control form-control-sm" value="{{ date_from }}">
+                    <input type="date" name="date_to" id="rep-date-to" class="form-control form-control-sm" value="{{ date_to }}">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-sm btn-primary">Aplicar</button>
+                    <a href="{{ url_for('reportes.reporte_asesores') }}" class="btn btn-sm btn-outline-secondary">Limpiar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tarjetas de Resumen -->
+    <div class="row mb-4">
+        <div class="col-md-4 animate-scale-in" style="animation-delay: 0.1s">
+            <div class="card border-0 shadow-lg hover-lift">
+                <div class="card-body bg-gradient-primary text-white rounded-xl">
+                    <h5 class="card-title">
+                        <i class="bi bi-file-earmark-text me-2"></i> Total Cotizado
+                    </h5>
+                    <h3 class="mb-0">S/ {{ totales.monto_cotizado|number_format }}</h3>
+                    <small>{{ totales.cantidad_cotizaciones }} cotizaciones</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 animate-scale-in" style="animation-delay: 0.2s">
+            <div class="card border-0 shadow-lg hover-lift">
+                <div class="card-body bg-gradient-success text-white rounded-xl">
+                    <h5 class="card-title">
+                        <i class="bi bi-check-circle me-2"></i> Ventas Cerradas
+                    </h5>
+                    <h3 class="mb-0">S/ {{ totales.monto_cerrado|number_format }}</h3>
+                    <small>{{ totales.cantidad_cerrados }} ventas</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 animate-scale-in" style="animation-delay: 0.3s">
+            <div class="card border-0 shadow-lg hover-lift">
+                <div class="card-body" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; border-radius: 1rem;">
+                    <h5 class="card-title">
+                        <i class="bi bi-x-circle me-2"></i> Ventas No Cerradas
+                    </h5>
+                    <h3 class="mb-0">S/ {{ totales.monto_no_cerrado|number_format }}</h3>
+                    <small>{{ totales.cantidad_no_cerrados }} oportunidades perdidas</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    
+    {# Tarjetas de totales por negocio removidas por solicitud. #}
+
+    <!-- Tabla de Asesores -->
+    <div class="card shadow-lg animate-fade-in-up" style="animation-delay: 0.4s">
+        <div class="card-header bg-gradient-primary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-people me-2"></i> Desempeño por Asesor
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="tablaAsesores">
+                    <thead>
+                        <tr>
+                            <th><i class="bi bi-person me-1"></i> Asesor</th>
+                            <th><i class="bi bi-person-badge me-1"></i> Usuario</th>
+                            <th class="text-end">Cotizaciones</th>
+                            <th class="text-end">Monto Cotizado</th>
+                            <th class="text-end">Ventas Cerradas</th>
+                            <th class="text-end">Monto Cerrado</th>
+                            <th class="text-end">Ventas No Cerradas</th>
+                            <th class="text-end">Monto No Cerrado</th>
+                            <th class="text-end">Tasa de Conversión</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for asesor in asesores %}
+                        {% set total_oportunidades = asesor.cantidad_cotizaciones + asesor.cantidad_cerrados %}
+                        {% set tasa_conversion = (asesor.cantidad_cerrados / total_oportunidades * 100) if total_oportunidades > 0 else 0 %}
+                        <tr>
+                            <td>
+                                <strong>{{ asesor.asesor_nombre or 'Sin nombre' }}</strong>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ asesor.asesor_usuario }}</span>
+                            </td>
+                            <td class="text-end">
+                                <span class="badge bg-info">{{ asesor.cantidad_cotizaciones }}</span>
+                            </td>
+                            <td class="text-end">
+                                <strong>S/ {{ (asesor.monto_cotizado or 0)|number_format }}</strong>
+                            </td>
+                            <td class="text-end">
+                                <span class="badge bg-success">{{ asesor.cantidad_cerrados }}</span>
+                            </td>
+                            <td class="text-end">
+                                <strong class="text-success">S/ {{ (asesor.monto_cerrado or 0)|number_format }}</strong>
+                            </td>
+                            <td class="text-end">
+                                <span class="badge bg-danger">{{ asesor.cantidad_no_cerrados }}</span>
+                            </td>
+                            <td class="text-end">
+                                <strong class="text-danger">S/ {{ (asesor.monto_no_cerrado or 0)|number_format }}</strong>
+                            </td>
+                            <td class="text-end">
+                                {% if tasa_conversion > 75 %}
+                                    <span class="badge bg-success">{{ "%.1f"|format(tasa_conversion) }}%</span>
+                                {% elif tasa_conversion > 50 %}
+                                    <span class="badge bg-warning">{{ "%.1f"|format(tasa_conversion) }}%</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ "%.1f"|format(tasa_conversion) }}%</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="9" class="text-center text-muted">
+                                <i class="fas fa-info-circle"></i> No hay datos de asesores disponibles
+                            </td>
+                                
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-secondary">
+                        <tr>
+                            <th colspan="2">TOTALES</th>
+                            <th class="text-end">{{ totales.cantidad_cotizaciones }}</th>
+                            <th class="text-end">S/ {{ totales.monto_cotizado|number_format }}</th>
+                            <th class="text-end">{{ totales.cantidad_cerrados }}</th>
+                            <th class="text-end">S/ {{ totales.monto_cerrado|number_format }}</th>
+                            <th class="text-end">{{ totales.cantidad_no_cerrados }}</th>
+                            <th class="text-end">S/ {{ totales.monto_no_cerrado|number_format }}</th>
+                            <th class="text-end">
+                                {% set tasa_total = (totales.cantidad_cerrados / (totales.cantidad_cotizaciones + totales.cantidad_cerrados) * 100) if (totales.cantidad_cotizaciones + totales.cantidad_cerrados) > 0 else 0 %}
+                                {{ "%.1f"|format(tasa_total) }}%
+                            </th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botones de Acción -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <a href="{{ url_for('reportes.analisis_clientes') }}" class="btn btn-primary">
+                <i class="fas fa-chart-bar"></i> Ver Análisis de Clientes
+            </a>
+            <button onclick="window.print()" class="btn btn-secondary">
+                <i class="fas fa-print"></i> Imprimir Reporte
+            </button>
+            <button onclick="exportarExcel()" class="btn btn-success">
+                <i class="fas fa-file-excel"></i> Exportar a Excel
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/reportes-reporte-asesores.js') }}" defer></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const sel = document.getElementById('rep-period');
+    const dates = document.getElementById('rep-dates');
+    if (sel && dates) {
+        sel.addEventListener('change', function () {
+            if (sel.value === 'custom') dates.style.display = 'flex';
+            else dates.style.display = 'none';
+        });
+    }
+});
+</script>
+{% endblock %}

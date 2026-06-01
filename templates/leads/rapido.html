@@ -1,0 +1,719 @@
+{% extends "base.html" %}
+{% block content %}
+
+
+<section class="reporte-rapido">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">📈 Resumen de Reporte</h2>
+    <button type="button" id="btn-export-all" class="btn btn-success">
+      <i class="bi bi-file-earmark-excel"></i> Exportar Todo el Reporte
+    </button>
+  </div>
+
+  {# Aviso para asesores: indicamos que están viendo sólo sus leads #}
+  {% if session.get('id_rol') == 'asesor' %}
+    <div class="alert alert-info mb-3" role="alert" style="display:flex;align-items:center;gap:.6rem;">
+      <i class="fa-solid fa-user-check"></i>
+      <div>
+        <strong>Mostrando sólo tus leads.</strong>
+        <div class="small text-muted">Usuario: {{ session.get('nombre') }} — Este reporte está filtrado a los leads asignados a ti.</div>
+      </div>
+    </div>
+  {% endif %}
+
+  <form id="rapido-filter-form" method="GET" class="mb-3 d-flex" style="gap:.5rem;flex-wrap:wrap;align-items:center;">
+    <div class="btn-group" role="group" aria-label="Filtros rápidos">
+      <button type="button" class="btn btn-outline-primary" onclick="setRangeDays(0)">Hoy</button>
+      <button type="button" class="btn btn-outline-primary" onclick="setRangeDays(7)">Última semana</button>
+      <button type="button" class="btn btn-outline-primary" onclick="setRangeDays(30)">Último mes</button>
+    </div>
+
+    <div style="display:flex;gap:.5rem;align-items:center;">
+      <label class="small text-muted" style="margin:0 .5rem 0 1rem;">Rango:</label>
+      <div class="position-relative date-input-group me-1">
+        <input type="date" id="f_ini" name="f_ini" class="form-control pe-5" value="{{ f_ini or '' }}">
+        <span class="date-icon position-absolute top-50 end-0 translate-middle-y me-3" style="cursor:pointer;">
+          <i class="bi bi-calendar-date fs-5 text-secondary"></i>
+        </span>
+      </div>
+      <div class="position-relative date-input-group me-1">
+        <input type="date" id="f_fin" name="f_fin" class="form-control pe-5" value="{{ f_fin or '' }}">
+        <span class="date-icon position-absolute top-50 end-0 translate-middle-y me-3" style="cursor:pointer;">
+          <i class="bi bi-calendar-date fs-5 text-secondary"></i>
+        </span>
+      </div>
+      <button class="btn btn-primary" type="submit">Aplicar</button>
+      {% if f_ini or f_fin %}
+        <a class="btn btn-outline-secondary" href="{{ url_for(request.endpoint) }}">Limpiar</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <!-- ===== KPI CARD ===== -->
+  <div class="kpi-card mb-3">
+    <div class="kpi-header">Resumen General de Leads</div>
+
+    <div class="kpi-total-label">Total de leads</div>
+    <div class="kpi-total-value">
+      {{ "{:,.0f}".format(total_leads).replace(",", ".") }}
+    </div>
+
+    <div class="kpi-stats">
+      <div class="kpi-stat">
+        <div class="label"><span class="kpi-dot gray"></span>Lead sin iniciar</div>
+        <div class="value">{{ "{:,.0f}".format(total_no_iniciados).replace(",", ".") }}</div>
+      </div>
+      <div class="kpi-stat">
+        <div class="label"><span class="kpi-dot blue"></span>Lead en seguimiento</div>
+        <div class="value">{{ "{:,.0f}".format(total_seguimiento).replace(",", ".") }}</div>
+      </div>
+      <div class="kpi-stat">
+        <div class="label"><span class="kpi-dot amber"></span>Lead programado</div>
+        <div class="value">{{ "{:,.0f}".format(total_programados).replace(",", ".") }}</div>
+      </div>
+      <div class="kpi-stat">
+        <div class="label"><span class="kpi-dot cyan"></span>Lead cotizado</div>
+        <div class="value">{{ "{:,.0f}".format(total_cotizados).replace(",", ".") }}</div>
+      </div>
+      <div class="kpi-stat">
+        <div class="label"><span class="kpi-dot green"></span>Lead cerrado (vendido)</div>
+        <div class="value">{{ "{:,.0f}".format(total_cerrados).replace(",", ".") }}</div>
+      </div>
+      <div class="kpi-stat">
+        <div class="label"><span class="kpi-dot rose"></span>Lead cerrado (no vendido)</div>
+        <div class="value">{{ "{:,.0f}".format(total_cerrados_no_vendidos).replace(",", ".") }}</div>
+      </div>
+    </div>
+  </div>
+
+    <!-- ===== Por Negocio (Orbes / Lovol) ===== -->
+    {% set orbes = stats_by_negocio.get('orbes', {}) if stats_by_negocio is defined else {} %}
+    {% set lovol = stats_by_negocio.get('lovol', {}) if stats_by_negocio is defined else {} %}
+
+    <div class="d-flex gap-2 mb-3" style="flex-wrap:wrap;">
+      <div class="card p-3" style="flex:1;min-width:220px;">
+        <div class="small text-muted">Orbes</div>
+        <div class="h4">{{ orbes.total_leads|default(0) }}</div>
+        <div class="small text-muted">Cotizados: {{ orbes.total_cotizados|default(0) }}</div>
+      </div>
+      <div class="card p-3" style="flex:1;min-width:220px;">
+        <div class="small text-muted">Lovol</div>
+        <div class="h4">{{ lovol.total_leads|default(0) }}</div>
+        <div class="small text-muted">Cotizados: {{ lovol.total_cotizados|default(0) }}</div>
+      </div>
+    </div>
+
+    <!-- ===== Asesores ===== -->
+  <h3 class="mt-4">👥 Estados de leads por Asesor</h3>
+
+  <form class="mb-2 d-flex" style="gap:.5rem;flex-wrap:wrap;" onsubmit="return false;">
+    <input
+      type="text"
+      class="form-control live-search"
+      placeholder="Buscar asesor…"
+      id="q-elppa"
+      data-target="#tabla-elppa"
+      data-counter="#cnt-elppa"
+      style="max-width:320px;"
+    >
+    <button type="button" class="btn btn-primary search-btn" data-input="#q-elppa">Buscar</button>
+    <button type="button" class="btn btn-outline-secondary clear-btn" data-input="#q-elppa">Limpiar</button>
+    <button type="button" class="btn btn-outline-success export-btn" data-table="#tabla-elppa" data-filename="Asesores.xlsx">Exportar</button>
+    <div class="text-muted" style="align-self:center;">
+      <small>Coincidencias: <span id="cnt-elppa">0</span></small>
+    </div>
+  </form>
+
+  <div class="card p-3 mb-3">
+    <table class="table table-people" id="tabla-elppa">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th class="text-end">Leads asignados</th>
+          <th class="text-end">Lead sin iniciar</th>
+          <th class="text-end">Lead en proceso</th>
+          <th class="text-end">Lead completado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set ns = namespace(printed=false) %}
+        {% for asesor, d in elppa|dictsort %}
+          {% if asesor and asesor|trim|lower != 'sin asignar' %}
+            {% set ns.printed = true %}
+            {% set total_asign = d.no_iniciados + d.seguimiento + d.programados + d.cotizados + d.cerrados + d.cerrados_no_vendidos %}
+            {% set en_proceso = d.seguimiento + d.programados + d.cotizados %}
+            {% set completado = d.cerrados + d.cerrados_no_vendidos %}
+            <tr>
+              <td><span class="person-name">{{ asesor }}</span></td>
+              <td class="text-end"><span class="num-badge">{{ "{:,.0f}".format(total_asign).replace(",", ".") }}</span></td>
+              <td class="text-end">{{ "{:,.0f}".format(d.no_iniciados).replace(",", ".") }}</td>
+              <td class="text-end">{{ "{:,.0f}".format(en_proceso).replace(",", ".") }}</td>
+              <td class="text-end">{{ "{:,.0f}".format(completado).replace(",", ".") }}</td>
+            </tr>
+          {% endif %}
+        {% endfor %}
+        {% if not ns.printed %}
+          <tr class="no-data"><td colspan="6" class="text-center text-muted">Sin datos</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== Cotizado ===== -->
+  <h3 class="mt-4">📄 Cotizado</h3>
+
+  <form class="mb-2 d-flex" style="gap:.5rem;flex-wrap:wrap;" onsubmit="return false;">
+    <input
+      type="text"
+      class="form-control live-search"
+      placeholder="Buscar en cotizados…"
+      id="q-cotizado"
+      data-target="#tabla-cotizado"
+      data-counter="#cnt-cotizado"
+      style="max-width:320px;"
+    >
+    <button type="button" class="btn btn-primary search-btn" data-input="#q-cotizado">Buscar</button>
+    <button type="button" class="btn btn-outline-secondary clear-btn" data-input="#q-cotizado">Limpiar</button>
+    <button type="button" class="btn btn-outline-success export-btn" data-table="#tabla-cotizado" data-filename="Cotizados.xlsx">Exportar</button>
+    <div class="text-muted" style="align-self:center;">
+      <small>Coincidencias: <span id="cnt-cotizado">0</span></small>
+    </div>
+  </form>
+
+  <div class="card p-3 mb-3">
+    <table class="table table-modern table-sm" id="tabla-cotizado">
+      <thead>
+        <tr>
+          <th>Nombre Cotizado</th>
+          <th class="text-end">Cantidad</th>
+          <th class="text-end">Monto Total S/.</th>
+          <th class="text-end">Monto Total $</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for label, data in cotizado_rows %}
+          <tr>
+            <td>{{ label }}</td>
+            <td class="text-end">{{ data.cant }}</td>
+            <td class="text-end">{{ data.pen|number_format }}</td>
+            <td class="text-end">{{ data.usd|number_format }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4" class="text-center text-muted">Sin datos</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if cotizado_bar_png %}
+      <div class="card p-3 mb-3" style="max-width:820px;margin-inline:auto;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h4 class="mb-0" style="text-align:center;flex-grow:1;">Montos Cotizados por estado (S/ vs $)</h4>
+          <button type="button" class="btn btn-sm btn-outline-success export-chart-btn" data-img="#chart-cotizado" data-filename="grafico_cotizados.png" title="Exportar gráfico">
+            <i class="bi bi-download"></i> Exportar
+          </button>
+        </div>
+        <img
+          id="chart-cotizado"
+          src="data:image/png;base64,{{ cotizado_bar_png }}"
+          alt="Montos Cotizados por estado"
+          style="display:block;margin:0 auto;max-width:100%;height:auto;"
+        >
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- ===== Por Canal ===== -->
+  <h3 class="mt-4">📊 Por Canal de Recepción</h3>
+
+  <form class="mb-2 d-flex" style="gap:.5rem;flex-wrap:wrap;" onsubmit="return false;">
+    <input
+      type="text"
+      class="form-control live-search"
+      placeholder="Buscar en canales…"
+      id="q-canales"
+      data-target="#tabla-canales"
+      data-counter="#cnt-canales"
+      style="max-width:320px;"
+    >
+    <button type="button" class="btn btn-primary search-btn" data-input="#q-canales">Buscar</button>
+    <button type="button" class="btn btn-outline-secondary clear-btn" data-input="#q-canales">Limpiar</button>
+    <button type="button" class="btn btn-outline-success export-btn" data-table="#tabla-canales" data-filename="Canales.xlsx">Exportar</button>
+    <div class="text-muted" style="align-self:center;">
+      <small>Coincidencias: <span id="cnt-canales">0</span></small>
+    </div>
+  </form>
+
+  <div class="row" style="display:grid;grid-template-columns:1fr;gap:1rem;">
+    <div class="card p-3">
+      <table class="table table-modern table-sm" id="tabla-canales">
+        <thead><tr><th>Canal</th><th class="text-end">Cantidad</th></tr></thead>
+        <tbody>
+          {% set ns = namespace(printed=false) %}
+          {% for nombre, cnt in canal_counts %}
+            {% if nombre and nombre|trim and nombre|trim|lower != 'sin canal' %}
+              {% set ns.printed = true %}
+              <tr>
+                <td>{{ nombre }}</td>
+                <td class="text-end">{{ cnt }}</td>
+              </tr>
+            {% endif %}
+          {% endfor %}
+          {% if not ns.printed %}
+            <tr>
+              <td colspan="2" class="text-center text-muted">Sin datos</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+
+      {% if bar_recepcion_png %}
+        <div class="card p-3 mb-3" style="max-width:1000px;margin-inline:auto;">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h4 class="mb-0" style="text-align:center;flex-grow:1;">Canales de Recepción (Top 12)</h4>
+            <button type="button" class="btn btn-sm btn-outline-success export-chart-btn" data-img="#chart-recepcion" data-filename="grafico_recepcion.png" title="Exportar gráfico">
+              <i class="bi bi-download"></i> Exportar
+            </button>
+          </div>
+          <img
+            id="chart-recepcion"
+            src="data:image/png;base64,{{ bar_recepcion_png }}"
+            alt="Canales de Recepción"
+            style="display:block;margin:0 auto;max-width:100%;height:auto;"
+          >
+        </div>
+      {% endif %}
+
+      {% if bar_contacto_png %}
+        <div class="card p-3 mb-3" style="max-width:1000px;margin-inline:auto;">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h4 class="mb-0" style="text-align:center;flex-grow:1;">Canales de Contacto (Top 12)</h4>
+            <button type="button" class="btn btn-sm btn-outline-success export-chart-btn" data-img="#chart-contacto" data-filename="grafico_contacto.png" title="Exportar gráfico">
+              <i class="bi bi-download"></i> Exportar
+            </button>
+          </div>
+          <img
+            id="chart-contacto"
+            src="data:image/png;base64,{{ bar_contacto_png }}"
+            alt="Canales de Contacto"
+            style="display:block;margin:0 auto;max-width:100%;height:auto;"
+          >
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+</section>
+
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+  // Sets f_ini to (today - days) and f_fin to today, then submits the form.
+  function setRangeDays(days){
+    var form = document.getElementById('rapido-filter-form');
+    var f_ini = document.getElementById('f_ini');
+    var f_fin = document.getElementById('f_fin');
+    var today = new Date();
+    var end = today.toISOString().slice(0,10);
+    var startDate = new Date(today.getTime() - (days * 24 * 60 * 60 * 1000));
+    var start = startDate.toISOString().slice(0,10);
+
+    // If days==0 (Hoy), make both same day
+    if(days === 0){
+      start = end;
+    }
+
+    if(f_ini) f_ini.value = start;
+    if(f_fin) f_fin.value = end;
+
+    if(form) form.submit();
+  }
+
+  // ==== Funciones de búsqueda y exportación ====
+  document.addEventListener('DOMContentLoaded', function() {
+    
+    // Helper para quitar acentos
+    function stripDiacritics(s){ 
+      return s ? s.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""; 
+    }
+
+    // Función de búsqueda en tabla
+    function searchInTable(inputSelector, tableSelector, counterSelector) {
+      const input = document.querySelector(inputSelector);
+      const table = document.querySelector(tableSelector);
+      const counter = document.querySelector(counterSelector);
+      
+      if (!input || !table) return;
+
+      const query = input.value.trim().toLowerCase();
+      const queryNorm = stripDiacritics(query);
+      let visibleCount = 0;
+
+      const rows = table.querySelectorAll('tbody tr');
+      rows.forEach(row => {
+        // Ignorar filas con clase "no-data"
+        if (row.classList.contains('no-data')) return;
+        
+        const text = stripDiacritics(row.textContent.toLowerCase());
+        const match = text.includes(queryNorm);
+        
+        row.style.display = match ? '' : 'none';
+        if (match) visibleCount++;
+      });
+
+      if (counter) counter.textContent = visibleCount;
+    }
+
+    // Función para limpiar búsqueda
+    function clearSearch(inputSelector, tableSelector, counterSelector) {
+      const input = document.querySelector(inputSelector);
+      const table = document.querySelector(tableSelector);
+      const counter = document.querySelector(counterSelector);
+      
+      if (!input || !table) return;
+
+      input.value = '';
+      
+      const rows = table.querySelectorAll('tbody tr');
+      rows.forEach(row => {
+        if (!row.classList.contains('no-data')) {
+          row.style.display = '';
+        }
+      });
+
+      if (counter) {
+        const visibleRows = Array.from(rows).filter(row => 
+          !row.classList.contains('no-data') && row.style.display !== 'none'
+        );
+        counter.textContent = visibleRows.length;
+      }
+    }
+
+    // Función para exportar tabla a Excel
+    function exportTableToExcel(tableSelector, filename) {
+      const table = document.querySelector(tableSelector);
+      if (!table) return;
+
+      const aoa = [];
+      
+      // Headers
+      const headRow = table.querySelector('thead tr');
+      if (headRow) {
+        aoa.push(Array.from(headRow.querySelectorAll('th')).map(th => th.textContent.trim()));
+      }
+
+      // Rows (solo visibles)
+      const rows = table.querySelectorAll('tbody tr');
+      rows.forEach(row => {
+        if (row.style.display !== 'none' && !row.classList.contains('no-data')) {
+          const rowData = Array.from(row.querySelectorAll('td')).map(td => {
+            let txt = td.textContent.trim();
+            // Intentar convertir a número
+            if (/^-?\d+([.,]\d+)?$/.test(txt)) {
+              const n = Number(txt.replace(/\./g, '').replace(',', '.'));
+              if (!isNaN(n)) return n;
+            }
+            return txt;
+          });
+          aoa.push(rowData);
+        }
+      });
+
+      // Crear workbook
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      
+      // Auto-width
+      const maxCols = Math.max(...aoa.map(r => r.length));
+      const cols = [];
+      for (let c = 0; c < maxCols; c++) {
+        let w = 8;
+        for (let r = 0; r < aoa.length; r++) {
+          const v = aoa[r][c] == null ? "" : String(aoa[r][c]);
+          if (v.length > w) w = v.length;
+        }
+        cols.push({ wch: Math.min(40, Math.max(8, w + 2)) });
+      }
+      ws["!cols"] = cols;
+
+      XLSX.utils.book_append_sheet(wb, ws, "Datos");
+      XLSX.writeFile(wb, filename);
+    }
+
+    // Función para exportar imagen a PNG
+    function downloadImageAsPNG(imgElement, filename) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      canvas.width = imgElement.naturalWidth || imgElement.width;
+      canvas.height = imgElement.naturalHeight || imgElement.height;
+      
+      ctx.drawImage(imgElement, 0, 0);
+      
+      canvas.toBlob(function(blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+    }
+
+    // Event listeners para botones de búsqueda
+    document.querySelectorAll('.search-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const inputSelector = this.getAttribute('data-input');
+        const input = document.querySelector(inputSelector);
+        if (!input) return;
+        
+        const targetSelector = input.getAttribute('data-target');
+        const counterSelector = input.getAttribute('data-counter');
+        
+        searchInTable(inputSelector, targetSelector, counterSelector);
+      });
+    });
+
+    // Event listeners para botones de limpiar
+    document.querySelectorAll('.clear-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const inputSelector = this.getAttribute('data-input');
+        const input = document.querySelector(inputSelector);
+        if (!input) return;
+        
+        const targetSelector = input.getAttribute('data-target');
+        const counterSelector = input.getAttribute('data-counter');
+        
+        clearSearch(inputSelector, targetSelector, counterSelector);
+      });
+    });
+
+    // Event listeners para inputs (búsqueda en tiempo real)
+    document.querySelectorAll('.live-search').forEach(input => {
+      input.addEventListener('input', function() {
+        const targetSelector = this.getAttribute('data-target');
+        const counterSelector = this.getAttribute('data-counter');
+        const inputSelector = '#' + this.id;
+        
+        searchInTable(inputSelector, targetSelector, counterSelector);
+      });
+
+      // Enter key
+      input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const targetSelector = this.getAttribute('data-target');
+          const counterSelector = this.getAttribute('data-counter');
+          const inputSelector = '#' + this.id;
+          
+          searchInTable(inputSelector, targetSelector, counterSelector);
+        }
+      });
+    });
+
+    // Event listeners para botones de exportar
+    document.querySelectorAll('.export-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const tableSelector = this.getAttribute('data-table');
+        const filename = this.getAttribute('data-filename') || 'export.xlsx';
+        
+        exportTableToExcel(tableSelector, filename);
+      });
+    });
+
+    // Event listeners para exportar gráficos
+    document.querySelectorAll('.export-chart-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const imgSelector = this.getAttribute('data-img');
+        const filename = this.getAttribute('data-filename') || 'grafico.png';
+        
+        const img = document.querySelector(imgSelector);
+        if (img) {
+          downloadImageAsPNG(img, filename);
+        }
+      });
+    });
+
+    // Inicializar contadores
+    document.querySelectorAll('.live-search').forEach(input => {
+      const targetSelector = input.getAttribute('data-target');
+      const counterSelector = input.getAttribute('data-counter');
+      
+      if (targetSelector && counterSelector) {
+        const table = document.querySelector(targetSelector);
+        const counter = document.querySelector(counterSelector);
+        
+        if (table && counter) {
+          const rows = table.querySelectorAll('tbody tr');
+          const visibleRows = Array.from(rows).filter(row => 
+            !row.classList.contains('no-data')
+          );
+          counter.textContent = visibleRows.length;
+        }
+      }
+    });
+
+    // ==== EXPORTAR TODO EL REPORTE ====
+    const btnExportAll = document.getElementById('btn-export-all');
+    if (btnExportAll) {
+      btnExportAll.addEventListener('click', function() {
+        exportCompleteReport();
+      });
+    }
+
+      // === Hacer focus en input de fecha al hacer click en el icono ===
+      document.querySelectorAll('.date-input-group .date-icon').forEach(function(icon) {
+        icon.addEventListener('click', function(e) {
+          const input = this.parentElement.querySelector('input[type="date"]');
+          if (input) {
+            input.focus();
+            // Para algunos navegadores, intentar abrir el picker
+            if (typeof input.showPicker === 'function') {
+              input.showPicker();
+            }
+          }
+        });
+      });
+
+    function exportCompleteReport() {
+      const wb = XLSX.utils.book_new();
+
+      // 1. HOJA: Resumen General (KPIs)
+      const resumenData = [
+        ['RESUMEN GENERAL DE LEADS'],
+        [''],
+        ['Métrica', 'Cantidad'],
+        ['Total de leads', '{{ total_leads }}'],
+        ['Lead sin iniciar', '{{ total_no_iniciados }}'],
+        ['Lead en seguimiento', '{{ total_seguimiento }}'],
+        ['Lead programado', '{{ total_programados }}'],
+        ['Lead cotizado', '{{ total_cotizados }}'],
+        ['Lead cerrado (vendido)', '{{ total_cerrados }}'],
+        ['Lead cerrado (no vendido)', '{{ total_cerrados_no_vendidos }}']
+      ];
+      const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
+      wsResumen['!cols'] = [{ wch: 30 }, { wch: 15 }];
+      XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen General");
+
+      // 2. HOJA: Asesores
+      const tablaAsesores = document.querySelector('#tabla-elppa');
+      if (tablaAsesores) {
+        addTableToWorkbook(wb, tablaAsesores, "Asesores");
+      }
+
+      // 3. HOJA: Cotizados
+      const tablaCotizados = document.querySelector('#tabla-cotizado');
+      if (tablaCotizados) {
+        addTableToWorkbook(wb, tablaCotizados, "Cotizados");
+      }
+
+      // 4. HOJA: Canales
+      const tablaCanales = document.querySelector('#tabla-canales');
+      if (tablaCanales) {
+        addTableToWorkbook(wb, tablaCanales, "Canales");
+      }
+
+      // 5. HOJA: Información de Gráficos
+      const graficosData = [
+        ['GRÁFICOS DEL REPORTE'],
+        [''],
+        ['Los gráficos se han exportado como archivos PNG separados:'],
+        [''],
+        ['1. grafico_cotizados.png - Montos Cotizados por estado (S/ vs $)'],
+        ['2. grafico_recepcion.png - Canales de Recepción (Top 12)'],
+        ['3. grafico_contacto.png - Canales de Contacto (Top 12)'],
+        [''],
+        ['Estos archivos se descargarán automáticamente junto con este Excel.']
+      ];
+      const wsGraficos = XLSX.utils.aoa_to_sheet(graficosData);
+      wsGraficos['!cols'] = [{ wch: 70 }];
+      XLSX.utils.book_append_sheet(wb, wsGraficos, "Gráficos");
+
+      // Generar archivo Excel
+      const fecha = new Date().toISOString().slice(0, 10);
+      const hora = new Date().toTimeString().slice(0, 8).replace(/:/g, '-');
+      XLSX.writeFile(wb, `Reporte_Completo_${fecha}_${hora}.xlsx`);
+
+      // Mostrar mensaje de éxito
+      const totalTablas = 4;
+      const totalGraficos = document.querySelectorAll('#chart-cotizado, #chart-recepcion, #chart-contacto').length;
+      
+      alert(`✅ Exportación iniciada\n\n📊 Excel: ${totalTablas} hojas\n📈 Gráficos PNG: ${totalGraficos} archivos\n\nRevisa tus descargas.`);
+
+      // Descargar gráficos después de un breve delay
+      setTimeout(() => {
+        downloadAllCharts();
+      }, 800);
+    }
+
+    function addTableToWorkbook(wb, table, sheetName) {
+      const aoa = [];
+      
+      // Headers
+      const headRow = table.querySelector('thead tr');
+      if (headRow) {
+        aoa.push(Array.from(headRow.querySelectorAll('th')).map(th => th.textContent.trim()));
+      }
+
+      // Rows (todas las filas, no solo visibles)
+      const rows = table.querySelectorAll('tbody tr');
+      rows.forEach(row => {
+        if (!row.classList.contains('no-data')) {
+          const rowData = Array.from(row.querySelectorAll('td')).map(td => {
+            let txt = td.textContent.trim();
+            // Intentar convertir a número
+            if (/^-?\d+([.,]\d+)?$/.test(txt)) {
+              const n = Number(txt.replace(/\./g, '').replace(',', '.'));
+              if (!isNaN(n)) return n;
+            }
+            return txt;
+          });
+          aoa.push(rowData);
+        }
+      });
+
+      if (aoa.length > 0) {
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        
+        // Auto-width
+        const maxCols = Math.max(...aoa.map(r => r.length));
+        const cols = [];
+        for (let c = 0; c < maxCols; c++) {
+          let w = 8;
+          for (let r = 0; r < aoa.length; r++) {
+            const v = aoa[r][c] == null ? "" : String(aoa[r][c]);
+            if (v.length > w) w = v.length;
+          }
+          cols.push({ wch: Math.min(40, Math.max(8, w + 2)) });
+        }
+        ws['!cols'] = cols;
+
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      }
+    }
+
+    function downloadAllCharts() {
+      const charts = [
+        { selector: '#chart-cotizado', filename: 'grafico_cotizados.png' },
+        { selector: '#chart-recepcion', filename: 'grafico_recepcion.png' },
+        { selector: '#chart-contacto', filename: 'grafico_contacto.png' }
+      ];
+
+      charts.forEach((chart, index) => {
+        const img = document.querySelector(chart.selector);
+        if (img) {
+          setTimeout(() => {
+            downloadImageAsPNG(img, chart.filename);
+          }, index * 400); // Delay escalonado para evitar problemas de descarga
+        }
+      });
+    }
+
+  });
+</script>
+{% endblock %}

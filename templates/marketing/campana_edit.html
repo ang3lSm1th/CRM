@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/marketing-campanas.css') }}">
+<style>
+  .mk-edit-container { max-width: 1000px; margin: 0 auto; }
+  .mk-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+  .mk-col-full { grid-column: 1 / -1; }
+  .mk-col-2 { grid-column: span 2; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="mk-edit-container">
+    <div class="mb-4">
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <a href="{{ next_url or url_for('marketing.marketing_campaigns') }}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left"></i> {{ return_label or 'Volver' }}
+        </a>
+        <h2 class="mb-0"><i class="bi bi-pencil-square"></i> Editar Campaña #{{ campaign.id }}</h2>
+      </div>
+      <div class="text-muted">{{ campaign.nombre_campana }}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <form method="post">
+          <input type="hidden" name="next" value="{{ next_url or '' }}">
+          <div class="mk-form-grid">
+            <!-- Datos básicos -->
+            <div>
+              <label class="form-label">Nombre de la Campaña *</label>
+              <input type="text" name="nombre_campana" class="form-control" required maxlength="150" value="{{ campaign.nombre_campana or '' }}">
+            </div>
+            <div>
+              <label class="form-label">Canal *</label>
+              <select name="canal" class="form-select" required>
+                <option value="">Seleccionar canal</option>
+                {% for k, v in canales.items() %}
+                <option value="{{ k }}" {% if campaign.canal == k %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <!-- Fechas -->
+            <div>
+              <label class="form-label">Fecha Lanzamiento *</label>
+              <input type="date" name="fecha_lanzamiento" class="form-control" required value="{{ campaign.fecha_lanzamiento or '' }}">
+            </div>
+            <div>
+              <label class="form-label">Período Inicio *</label>
+              <input type="date" name="periodo_inicio" class="form-control" required value="{{ campaign.periodo_inicio or '' }}">
+            </div>
+            <div>
+              <label class="form-label">Período Fin *</label>
+              <input type="date" name="periodo_fin" class="form-control" required value="{{ campaign.periodo_fin or '' }}">
+            </div>
+
+            <!-- Líneas de negocio -->
+            <div>
+              <label class="form-label">Línea de Negocio *</label>
+              <select id="linea-negocio" name="linea_negocio_id" class="form-select" required>
+                <option value="">Seleccionar</option>
+                {% for ln in lineas_negocio %}
+                <option value="{{ ln.id }}" {% if linea_negocio_id and linea_negocio_id == ln.id %}selected{% elif not linea_negocio_id and campaign.linea_negocio == ln.nombre %}selected{% endif %}>{{ ln.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Línea de Familia *</label>
+              <select id="linea-familia" name="linea_familia_id" class="form-select" required>
+                <option value="">Seleccionar línea de familia</option>
+                {% for f in familia_items %}
+                  <option value="{{ f.id }}" {% if familia_id and familia_id == f.id %}selected{% elif not familia_id and campaign.linea_familia == f.nombre %}selected{% endif %}>{{ f.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Línea de Producto *</label>
+              <select id="linea-producto" name="linea_producto_id" class="form-select" required>
+                <option value="">Seleccionar línea de producto</option>
+                {% for p in producto_items %}
+                  <option value="{{ p.id }}" {% if producto_id and producto_id == p.id %}selected{% elif not producto_id and campaign.linea_producto == p.nombre %}selected{% endif %}>{{ p.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Producto -->
+            <div>
+              <label class="form-label">Producto *</label>
+              <input type="text" name="producto" class="form-control" required maxlength="120" value="{{ campaign.producto or '' }}">
+            </div>
+
+            <!-- Métricas -->
+            <div>
+              <label class="form-label">Conversión CP (%)</label>
+              <input type="number" step="0.01" min="0" name="conversion_cp" class="form-control" value="{{ campaign.conversion_cp or '' }}">
+            </div>
+            <div>
+              <label class="form-label">Costo por Resultado</label>
+              <input type="number" step="0.01" min="0" name="costo_por_resultado" class="form-control" value="{{ campaign.costo_por_resultado or '' }}">
+            </div>
+            <div>
+              <label class="form-label">Inversión</label>
+              <input type="number" step="0.01" min="0" name="inversion" class="form-control" value="{{ campaign.inversion or '' }}">
+            </div>
+            <div>
+              <label class="form-label">Impresiones</label>
+              <input type="number" min="0" name="impresiones" class="form-control" value="{{ campaign.impresiones or '' }}">
+            </div>
+            <div>
+              <label class="form-label">Alcance</label>
+              <input type="number" min="0" name="alcance" class="form-control" value="{{ campaign.alcance or '' }}">
+            </div>
+
+            <!-- Botones -->
+            <div class="mk-col-full d-flex justify-content-end gap-2 mt-3">
+              <a href="{{ next_url or url_for('marketing.marketing_campaigns') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-x-circle"></i> Cancelar
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save"></i> Guardar Cambios
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<div id="marketing-campanas-config"
+  data-familia-api="{{ url_for('marketing.marketing_lineas_familia_api') }}"
+  data-producto-api="{{ url_for('marketing.marketing_lineas_producto_api') }}"
+  data-familia-valor="{{ familia_id or '' }}"
+  data-producto-valor="{{ producto_id or '' }}"
+  hidden></div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const config = document.getElementById('marketing-campanas-config');
+  const familiaApi = config ? config.dataset.familiaApi : '';
+  const productoApi = config ? config.dataset.productoApi : '';
+  const familiaValor = config ? (config.dataset.familiaValor || '') : '';
+  const productoValor = config ? (config.dataset.productoValor || '') : '';
+
+  // Referencias a selects
+  const negocioSelect = document.getElementById('linea-negocio');
+  const familiaSelect = document.getElementById('linea-familia');
+  const productoSelect = document.getElementById('linea-producto');
+
+  function setOptions(selectEl, items, placeholder, selectedValue) {
+    selectEl.innerHTML = '';
+    const first = document.createElement('option');
+    first.value = '';
+    first.textContent = placeholder;
+    selectEl.appendChild(first);
+    (items || []).forEach((item) => {
+      const opt = document.createElement('option');
+      opt.value = item.id;
+      // Si viene bien_servicio, lo mostramos junto al nombre
+      opt.textContent = item.nombre + (item.bien_servicio ? ' (' + item.bien_servicio + ')' : '');
+      if (selectedValue && item.id == selectedValue) opt.selected = true;
+      selectEl.appendChild(opt);
+    });
+  }
+
+  function resetFamilia() {
+    familiaSelect.disabled = true;
+    setOptions(familiaSelect, [], '-- Seleccione primero linea de negocio --');
+  }
+
+  function resetProducto() {
+    productoSelect.disabled = true;
+    setOptions(productoSelect, [], '-- Seleccione primero linea de familia --');
+  }
+
+  // Carga encadenada robusta para edición
+
+  function cargarFamiliaYProductoSiEdicion() {
+    const negocioId = negocioSelect ? negocioSelect.value : '';
+    if (!negocioId) return;
+    resetFamilia();
+    resetProducto();
+    fetch(`${familiaApi}?linea_negocio_id=${negocioId}`)
+      .then(r => r.json())
+      .then(data => {
+        setOptions(familiaSelect, data.items || [], '-- Seleccione linea de familia --', familiaValor);
+        familiaSelect.disabled = false;
+        if (familiaValor) {
+          familiaSelect.value = familiaValor;
+          // Cargar productos filtrando por linea de negocio (API actual)
+          fetch(`${productoApi}?linea_negocio_id=${negocioId}`)
+            .then(r => r.json())
+            .then(data2 => {
+              setOptions(productoSelect, data2.items || [], '-- Seleccione linea de producto --', productoValor);
+              productoSelect.disabled = false;
+              if (productoValor) {
+                productoSelect.value = productoValor;
+              }
+            })
+            .catch(() => {
+              setOptions(productoSelect, [], '-- Error cargando productos --');
+            });
+        }
+      })
+      .catch(() => {
+        setOptions(familiaSelect, [], '-- Error cargando familias --');
+      });
+  }
+
+
+  // Lógica robusta: siempre cargar familia y producto si hay valores (edición)
+  if (negocioSelect.value && (familiaValor || productoValor)) {
+    cargarFamiliaYProductoSiEdicion();
+  }
+
+  negocioSelect.addEventListener('change', function () {
+    // Si es edición, usar la función robusta
+    if (familiaValor || productoValor) {
+      cargarFamiliaYProductoSiEdicion();
+    } else {
+      // flujo normal para alta
+      const negocioId = negocioSelect.value;
+      resetFamilia();
+      resetProducto();
+      if (!negocioId) return;
+      fetch(`${familiaApi}?linea_negocio_id=${negocioId}`)
+        .then(r => r.json())
+        .then(data => {
+          setOptions(familiaSelect, data.items || [], '-- Seleccione linea de familia --');
+          familiaSelect.disabled = false;
+        })
+        .catch(() => {
+          setOptions(familiaSelect, [], '-- Error cargando familias --');
+        });
+    }
+  });
+
+
+    if (familiaSelect) {
+      familiaSelect.addEventListener('change', function () {
+        const familiaId = familiaSelect.value;
+        resetProducto();
+        if (!familiaId) return;
+        // API devuelve productos por linea de negocio en este proyecto, usar negocioSelect.value
+        const negocioId = negocioSelect ? negocioSelect.value : '';
+        fetch(`${productoApi}?linea_negocio_id=${negocioId}`)
+          .then(r => r.json())
+          .then(data => {
+            setOptions(productoSelect, data.items || [], '-- Seleccione linea de producto --', productoValor);
+            productoSelect.disabled = false;
+            if (productoValor) {
+              productoSelect.value = productoValor;
+            }
+          })
+          .catch(() => {
+            setOptions(productoSelect, [], '-- Error cargando productos --');
+          });
+      });
+    }
+
+  // Si ya hay valores (edición), cargar ambos en cascada
+  if (negocioSelect.value && (familiaValor || productoValor)) {
+    cargarFamiliaYProductoSiEdicion();
+  }
+});
+</script>
+{% endblock %}

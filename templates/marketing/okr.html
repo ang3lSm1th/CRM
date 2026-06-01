@@ -1,0 +1,1226 @@
+{% extends "base.html" %}
+
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes.css') }}">
+<style>
+  .okr-module-shell {
+    background: linear-gradient(135deg, #f7f9ff 0%, #f2f7f5 100%);
+    border: 1px solid rgba(13, 110, 253, 0.08);
+  }
+
+  .okr-module-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .okr-module-card {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 1rem;
+    background: #fff;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+  }
+
+  .okr-module-card .okr-percent {
+    font-size: 2.3rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .okr-progress,
+  .kpi-progress,
+  .biz-progress {
+    height: 10px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    overflow: hidden;
+  }
+
+  .okr-progress>span,
+  .kpi-progress>span,
+  .biz-progress>span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.4s ease;
+  }
+
+  .okr-progress>span {
+    background: linear-gradient(90deg, #06b6d4, #22c55e);
+  }
+
+  .okr-module-card .okr-formula {
+    padding: 0.75rem 0.9rem;
+    border-radius: 0.85rem;
+    background: #f8fafc;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    font-size: 0.92rem;
+  }
+
+  .okr-module-card .okr-analysis {
+    padding: 0.9rem;
+    border-radius: 0.9rem;
+    background: #fff9eb;
+    border: 1px solid rgba(245, 158, 11, 0.18);
+  }
+
+  .okr-module-card .okr-analysis p:last-child,
+  .okr-module-card .okr-analysis div:last-child {
+    margin-bottom: 0;
+  }
+
+  .okr-module-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+
+  .okr-module-meta .item {
+    padding: 0.7rem 0.8rem;
+    border-radius: 0.8rem;
+    background: #f8fafc;
+  }
+
+  .kpi-shell {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background: linear-gradient(135deg, #f8fffb 0%, #f7fbff 100%);
+  }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .kpi-card {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 1rem;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+  }
+
+  .kpi-value {
+    font-size: 1.9rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .kpi-progress {
+    margin-bottom: 0.35rem;
+  }
+
+  .kpi-progress>span {
+    background: linear-gradient(90deg, #0ea5e9, #22c55e);
+  }
+
+  .target-input {
+    max-width: 150px;
+    border-radius: 0.65rem;
+    font-size: 0.88rem;
+    padding: 0.3rem 0.5rem;
+  }
+
+  .okr-footer {
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+    padding-top: 0.65rem;
+  }
+
+  .biz-progress>span {
+    background: linear-gradient(90deg, #2563eb, #0ea5e9, #22c55e);
+  }
+
+  .okr-filters {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 0.9rem;
+    background: #f8fafc;
+    padding: 0.9rem;
+  }
+
+  .swal2-popup.okr-config-modal {
+    border-radius: 1.4rem;
+    padding: 0;
+    overflow: hidden;
+    background: linear-gradient(180deg, #f8fbff 0%, #ffffff 18%);
+    box-shadow: 0 24px 80px rgba(15, 23, 42, 0.22);
+  }
+
+  .swal2-title.okr-config-title {
+    padding: 1.5rem 1.75rem 0;
+    margin: 0;
+    font-size: 1.95rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: #1e293b;
+  }
+
+  .swal2-html-container.okr-config-content {
+    margin: 0;
+    padding: 1rem 1.75rem 1.75rem;
+    text-align: left;
+  }
+
+  .swal2-actions.okr-config-actions {
+    width: 100%;
+    margin: 0;
+    padding: 1rem 1.75rem 1.4rem;
+    justify-content: flex-end;
+    border-top: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(248, 250, 252, 0.86);
+  }
+
+  .swal2-confirm.okr-config-confirm,
+  .swal2-cancel.okr-config-cancel {
+    border-radius: 0.85rem !important;
+    padding: 0.8rem 1.2rem !important;
+    font-weight: 700 !important;
+    box-shadow: none !important;
+  }
+
+  .swal2-confirm.okr-config-confirm {
+    background: linear-gradient(135deg, #2563eb, #0f766e) !important;
+  }
+
+  .swal2-cancel.okr-config-cancel {
+    background: #64748b !important;
+  }
+
+  .okr-modal-hero {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    margin-bottom: 1rem;
+    border: 1px solid rgba(37, 99, 235, 0.12);
+    border-radius: 1rem;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(15, 118, 110, 0.06));
+  }
+
+  .okr-modal-hero h6 {
+    margin: 0 0 0.2rem;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #0f172a;
+  }
+
+  .okr-modal-hero p {
+    margin: 0;
+    color: #475569;
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+
+  .okr-modal-badge {
+    padding: 0.45rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.85);
+    color: #0f766e;
+    font-size: 0.76rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+
+  .okr-modal-grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .okr-modal-section {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 1rem;
+    background: #fff;
+    padding: 1rem;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+  }
+
+  .okr-modal-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .okr-modal-section-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #0f172a;
+  }
+
+  .okr-modal-section-note {
+    margin: 0.2rem 0 0;
+    font-size: 0.86rem;
+    color: #64748b;
+  }
+
+  .okr-modal-pill {
+    padding: 0.3rem 0.55rem;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .okr-modal-field {
+    padding: 0.8rem;
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    border-radius: 0.95rem;
+    background: #f8fafc;
+    height: 100%;
+  }
+
+  .okr-modal-field label {
+    display: block;
+    margin-bottom: 0.45rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #334155;
+  }
+
+  .okr-modal-field input,
+  .okr-modal-field select {
+    border-radius: 0.8rem;
+    border-color: rgba(148, 163, 184, 0.35);
+    min-height: 44px;
+    background: #fff;
+  }
+
+  .okr-modal-field small {
+    display: block;
+    margin-top: 0.45rem;
+    color: #64748b;
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
+  .okr-modal-field.is-highlight {
+    background: linear-gradient(180deg, #f8fffc, #ffffff);
+    border-color: rgba(15, 118, 110, 0.18);
+  }
+
+  .okr-modal-field.is-readonly {
+    background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+  }
+
+  .okr-modal-footnote {
+    margin-top: 1rem;
+    padding: 0.8rem 0.95rem;
+    border-radius: 0.9rem;
+    background: #fff7ed;
+    border: 1px solid rgba(249, 115, 22, 0.15);
+    color: #9a3412;
+    font-size: 0.86rem;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 1399.98px) {
+    .okr-module-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 991.98px) {
+    .okr-module-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .okr-module-meta {
+      grid-template-columns: 1fr;
+    }
+
+    .kpi-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .okr-modal-hero,
+    .okr-modal-section-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="card mb-4 okr-module-shell">
+    <div class="card-header bg-light d-flex align-items-center justify-content-between">
+      <div>
+        <h4 class="mb-1"><i class="bi bi-grid-1x2"></i> OKR - Marketing</h4>
+        <div class="text-muted">Marca: <strong>{{ bd.brand_label }}</strong> | Panel ejecutivo con los 4 OKR y análisis
+          automatizado para marketing.</div>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn btn-outline-primary btn-sm" id="btn-fill-okr-all">
+          <i class="bi bi-clipboard2-plus"></i> Llenar información
+        </button>
+        <span
+          class="badge {% if bd.okr_analysis_engine == 'crewai' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+          Motor: {{ 'CrewAI' if bd.okr_analysis_engine == 'crewai' else 'Local' }}
+        </span>
+      </div>
+    </div>
+    <div class="card-body">
+      <form method="get" class="okr-filters mb-3">
+        <div class="row g-2 align-items-end">
+          <div class="col-12 col-lg-2">
+            <label class="form-label mb-1">Año</label>
+            <input type="number" class="form-control" name="year" min="2020" max="2100" value="{{ bd.okr_goal_year }}">
+          </div>
+          <div class="col-12 col-lg-3">
+            <label class="form-label mb-1">Periodo</label>
+            <select class="form-select" name="period" id="okr-period-select">
+              <option value="anual" {% if bd.okr_period_type=='anual' %}selected{% endif %}>Anual</option>
+              <option value="trimestre" {% if bd.okr_period_type=='trimestre' %}selected{% endif %}>Trimestre</option>
+              <option value="personalizado" {% if bd.okr_period_type=='personalizado' %}selected{% endif %}>
+                Personalizado</option>
+            </select>
+          </div>
+          <div class="col-12 col-lg-2" id="okr-quarter-wrap" {% if bd.okr_period_type !='trimestre'
+            %}style="display:none" {% endif %}>
+            <label class="form-label mb-1">Trimestre</label>
+            <select class="form-select" name="quarter">
+              <option value="1" {% if bd.okr_period_quarter==1 %}selected{% endif %}>Q1</option>
+              <option value="2" {% if bd.okr_period_quarter==2 %}selected{% endif %}>Q2</option>
+              <option value="3" {% if bd.okr_period_quarter==3 %}selected{% endif %}>Q3</option>
+              <option value="4" {% if bd.okr_period_quarter==4 %}selected{% endif %}>Q4</option>
+            </select>
+          </div>
+          <div class="col-12 col-lg-2 okr-custom-wrap" {% if bd.okr_period_type !='personalizado' %}style="display:none"
+            {% endif %}>
+            <label class="form-label mb-1">Desde</label>
+            <input type="date" class="form-control" name="start_date" value="{{ bd.okr_period_custom_start or '' }}">
+          </div>
+          <div class="col-12 col-lg-2 okr-custom-wrap" {% if bd.okr_period_type !='personalizado' %}style="display:none"
+            {% endif %}>
+            <label class="form-label mb-1">Hasta</label>
+            <input type="date" class="form-control" name="end_date" value="{{ bd.okr_period_custom_end or '' }}">
+          </div>
+          <div class="col-12 col-lg-2 d-flex gap-2">
+            <button class="btn btn-primary flex-grow-1" type="submit">Filtrar</button>
+            <a href="{{ url_for('marketing.marketing_okr') }}" class="btn btn-outline-secondary">Limpiar</a>
+          </div>
+        </div>
+        <div class="small text-muted mt-2">
+          Periodo activo: <strong>{{ bd.okr_period_label or '-' }}</strong>.
+        </div>
+      </form>
+
+      <div class="okr-module-grid">
+        {% for module in bd.okr_modules %}
+        <article class="okr-module-card p-3">
+          <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+            <div>
+              <div class="text-muted small text-uppercase">OKR</div>
+              <h5 class="mb-1">{{ module.title }}</h5>
+              <div class="text-muted small">Medida: {{ module.measure }}</div>
+            </div>
+            <div class="text-end">
+              <div class="text-muted small">Resultado</div>
+              <div
+                class="okr-percent {% if module.value is not none and module.value < 0 %}text-danger{% else %}text-primary{% endif %}">
+                {% if module.value is not none %}
+                {{ module.value }}%
+                {% else %}
+                -
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="okr-formula mb-3">
+            <div class="text-muted small mb-1">Fórmula</div>
+            <strong>{{ module.formula }}</strong>
+          </div>
+
+          <div class="okr-module-meta mb-3">
+            {% for item in module.context %}
+            <div class="item small">{{ item }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center small text-muted mb-2">
+            <span>Meta</span>
+            <span>
+              {% if module.target is not none %}
+              {{ module.target }}
+              {% else %}
+              -
+              {% endif %}
+            </span>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center small text-muted mb-1">
+            <span>Avance</span>
+            <span class="okr-progress-label">{% if module.progress_pct is not none %}{{ module.progress_pct }}%{% else
+              %}-{% endif %}</span>
+          </div>
+          <div class="okr-progress mb-2">
+            <span class="okr-progress-fill"
+              data-progress="{{ module.progress_pct if module.progress_pct is not none else 0 }}"></span>
+          </div>
+
+          <div class="d-flex align-items-center justify-content-between okr-footer">
+            <span
+              class="badge {% if module.analysis.engine == 'crewai' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+              {{ 'CrewAI' if module.analysis.engine == 'crewai' else 'Local' }}
+            </span>
+            <button type="button" class="btn btn-primary btn-sm okr-analysis-btn" data-title="{{ module.title|e }}"
+              data-agent="{{ (module.analysis.agent or '-')|e }}"
+              data-summary="{{ (module.analysis.summary or '-')|e }}"
+              data-recommendation="{{ (module.analysis.recommendation or '-')|e }}"
+              data-evidence="{{ (module.analysis.evidence or '-')|e }}">
+              Ver análisis
+            </button>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4 kpi-shell">
+    <div class="card-header bg-light d-flex align-items-center justify-content-between">
+      <div>
+        <h4 class="mb-1"><i class="bi bi-speedometer2"></i> KPIs Ejecutivos (Alineados a OKR y Roadmap)</h4>
+        <div class="text-muted">Marca: <strong>{{ bd.brand_label }}</strong> | Estas métricas usan la misma lógica base
+          del Roadmap para mantener consistencia con OKR.</div>
+      </div>
+      <span class="badge bg-info text-dark">6 KPI Clave</span>
+    </div>
+    <div class="card-body">
+      <div class="card mb-3 border-0" style="background:#f8fafc;">
+        <div class="card-body py-3">
+          <div class="d-flex align-items-center justify-content-between small text-muted mb-1">
+            <strong class="text-dark"><i class="bi bi-bar-chart-steps me-1"></i> Total: ¿Cómo va el negocio?</strong>
+            <span id="biz-progress-label">-</span>
+          </div>
+          <div class="biz-progress">
+            <span id="biz-progress-fill"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-grid">
+        {% for kpi in bd.kpi_cards %}
+        <article class="kpi-card p-3">
+          <div class="d-flex align-items-start justify-content-between mb-2">
+            <div class="text-muted small text-uppercase">KPI</div>
+            {% if kpi.lower_is_better %}
+            <span class="badge bg-warning text-dark">Menor es mejor</span>
+            {% else %}
+            <span class="badge bg-success">Mayor es mejor</span>
+            {% endif %}
+          </div>
+
+          <h6 class="mb-2">{{ kpi.title }}</h6>
+          <div class="kpi-value mb-2">{{ kpi.value_label }}</div>
+
+          <input type="hidden" class="kpi-target-input" data-kpi-id="{{ kpi.id }}"
+            data-value="{{ kpi.value if kpi.value is not none else '' }}"
+            data-lower-is-better="{{ 1 if kpi.lower_is_better else 0 }}"
+            data-default-target="{{ kpi.target if kpi.target is not none else '' }}">
+
+          <div class="d-flex justify-content-between small text-muted mb-2">
+            <span>Meta configurada: <span class="kpi-target-label" data-kpi-id="{{ kpi.id }}">{{ kpi.target_label
+                }}</span></span>
+            <span class="kpi-progress-label" data-kpi-id="{{ kpi.id }}">{% if kpi.progress_pct is not none %}{{
+              kpi.progress_pct }}%{% else %}-{% endif %}</span>
+          </div>
+
+          <div class="kpi-progress mb-2">
+            <span class="kpi-progress-fill" data-kpi-id="{{ kpi.id }}"
+              data-progress="{{ kpi.progress_pct if kpi.progress_pct is not none else 0 }}"></span>
+          </div>
+
+          <div class="small text-muted">Avance contra meta KPI</div>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-light d-flex align-items-center justify-content-between">
+      <div>
+        <h4 class="mb-1"><i class="bi bi-trophy"></i> Detalle de Seguidores</h4>
+        <div class="text-muted">Marca: <strong>{{ bd.brand_label }}</strong> | Seguimiento automático del incremento de
+          seguidores de Facebook e Instagram vs año anterior.</div>
+      </div>
+      <a class="btn btn-outline-secondary" href="{{ url_for('marketing.marketing_api_config') }}">
+        <i class="bi bi-gear"></i> Configurar redes sociales
+      </a>
+    </div>
+    <div class="card-body">
+      <div class="row gy-3">
+        {% if bd.errors %}
+        <div class="col-12">
+          <div class="alert alert-warning mb-0">
+            <strong>Atención:</strong>
+            <ul class="mb-0">
+              {% for error in bd.errors %}
+              <li>{{ error }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="col-12 col-lg-4">
+          <div class="card border-primary h-100">
+            <div class="card-body">
+              <h6 class="card-title">Facebook</h6>
+              <p class="text-muted small mb-2">Página: <strong>{{ bd.fb_page_id or 'No configurado' }}</strong></p>
+              <div class="display-5 mb-1">{{ bd.facebook_followers if bd.facebook_followers is not none else '-' }}
+              </div>
+              <div class="text-muted small">Seguidores actuales</div>
+              <hr>
+              <div class="d-flex justify-content-between">
+                <div>
+                  <div class="text-muted small">Año anterior</div>
+                  <div>{{ bd.facebook_previous_followers if bd.facebook_previous_followers is not none else '-' }}</div>
+                </div>
+                <div class="text-end">
+                  <div class="text-muted small">Crecimiento</div>
+                  <div>{% if bd.facebook_growth_pct is not none %}{{ bd.facebook_growth_pct }}%{% else %}-{% endif %}
+                  </div>
+                </div>
+              </div>
+              {% if bd.fb_target %}
+              <hr>
+              <div class="d-flex justify-content-between">
+                <div>
+                  <div class="text-muted small">Objetivo próximo año</div>
+                  <div>{{ bd.fb_target }}</div>
+                </div>
+                <div class="text-end">
+                  <div class="text-muted small">Progreso</div>
+                  <div>{% if bd.fb_progress_pct is not none %}{{ bd.fb_progress_pct }}%{% else %}-{% endif %}</div>
+                </div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-lg-4">
+          <div class="card border-success h-100">
+            <div class="card-body">
+              <h6 class="card-title">Instagram</h6>
+              <p class="text-muted small mb-2">Cuenta: <strong>{{ bd.ig_account_id or 'No configurado' }}</strong></p>
+              <div class="display-5 mb-1">{{ bd.instagram_followers if bd.instagram_followers is not none else '-' }}
+              </div>
+              <div class="text-muted small">Seguidores actuales</div>
+              <hr>
+              <div class="d-flex justify-content-between">
+                <div>
+                  <div class="text-muted small">Año anterior</div>
+                  <div>{{ bd.instagram_previous_followers if bd.instagram_previous_followers is not none else '-' }}
+                  </div>
+                </div>
+                <div class="text-end">
+                  <div class="text-muted small">Crecimiento</div>
+                  <div>{% if bd.instagram_growth_pct is not none %}{{ bd.instagram_growth_pct }}%{% else %}-{% endif %}
+                  </div>
+                </div>
+              </div>
+              {% if bd.ig_target %}
+              <hr>
+              <div class="d-flex justify-content-between">
+                <div>
+                  <div class="text-muted small">Objetivo próximo año</div>
+                  <div>{{ bd.ig_target }}</div>
+                </div>
+                <div class="text-end">
+                  <div class="text-muted small">Progreso</div>
+                  <div>{% if bd.ig_progress_pct is not none %}{{ bd.ig_progress_pct }}%{% else %}-{% endif %}</div>
+                </div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-lg-4">
+          <div class="card border-info h-100">
+            <div class="card-body">
+              <h6 class="card-title">Marca Digital</h6>
+              <div class="display-5 mb-1">{{ bd.total_followers if bd.total_followers is not none else '-' }}</div>
+              <div class="text-muted small">Seguidores totales</div>
+              <hr>
+              <div class="d-flex justify-content-between">
+                <div>
+                  <div class="text-muted small">Total año anterior</div>
+                  <div>{{ bd.total_previous_followers if bd.total_previous_followers is not none else '-' }}</div>
+                </div>
+                <div class="text-end">
+                  <div class="text-muted small">Crecimiento total</div>
+                  <div>{% if bd.total_growth_pct is not none %}{{ bd.total_growth_pct }}%{% else %}-{% endif %}</div>
+                </div>
+              </div>
+              {% if bd.total_target %}
+              <hr>
+              <div class="d-flex justify-content-between">
+                <div>
+                  <div class="text-muted small">Objetivo total próximo año</div>
+                  <div>{{ bd.total_target }}</div>
+                </div>
+                <div class="text-end">
+                  <div class="text-muted small">Progreso total</div>
+                  <div>{% if bd.total_progress_pct is not none %}{{ bd.total_progress_pct }}%{% else %}-{% endif %}
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <p class="small text-muted mb-0">Si no ves datos de seguidores, revisa la configuración de <strong>Meta Access
+            Token</strong>, <strong>Facebook Page ID</strong> y <strong>Instagram Account ID</strong> en el panel de
+          configuración.</p>
+        <p class="small text-muted">Este panel usa la Graph API de Meta para actualizar los seguidores actuales y
+          calcular el incremento frente al año anterior.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0"><i class="bi bi-clock-history"></i> Historial de Seguimiento</h5>
+      <div class="small text-muted">Se guarda automáticamente la medición diaria cuando visitas este panel.</div>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Facebook</th>
+              <th>Instagram</th>
+              <th>Total</th>
+              <th>Objetivo FB</th>
+              <th>Objetivo IG</th>
+              <th>Objetivo total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if bd.history_rows %}
+            {% for row in bd.history_rows %}
+            <tr>
+              <td>{{ row.snapshot_date }}</td>
+              <td>{{ row.fb_followers if row.fb_followers is not none else '-' }}</td>
+              <td>{{ row.ig_followers if row.ig_followers is not none else '-' }}</td>
+              <td>{{ row.total_followers if row.total_followers is not none else '-' }}</td>
+              <td>{{ row.fb_target_followers if row.fb_target_followers is not none else '-' }}</td>
+              <td>{{ row.ig_target_followers if row.ig_target_followers is not none else '-' }}</td>
+              <td>{{ row.total_target_followers if row.total_target_followers is not none else '-' }}</td>
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr>
+              <td colspan="7" class="text-center text-muted">No hay registros históricos guardados todavía.</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="okr-goals-data" data-endpoint="{{ url_for('marketing.marketing_okr_goals') }}"
+  data-goal-year="{{ bd.okr_goal_year or 0 }}"
+  data-goal-fb="{{ bd.okr_goal_fb_target if bd.okr_goal_fb_target is not none else '' }}"
+  data-goal-ig="{{ bd.okr_goal_ig_target if bd.okr_goal_ig_target is not none else '' }}"
+  data-goal-leads="{{ bd.okr_goal_leads_target if bd.okr_goal_leads_target is not none else '' }}"
+  data-prev-fb-manual="{{ bd.okr_prev_fb_manual if bd.okr_prev_fb_manual is not none else '' }}"
+  data-prev-ig-manual="{{ bd.okr_prev_ig_manual if bd.okr_prev_ig_manual is not none else '' }}"
+  data-prev-leads-manual="{{ bd.okr_prev_leads_manual if bd.okr_prev_leads_manual is not none else '' }}"
+  data-period-type="{{ bd.okr_period_type or 'anual' }}"
+  data-period-quarter="{{ bd.okr_period_quarter if bd.okr_period_quarter is not none else '' }}"
+  data-period-custom-start="{{ bd.okr_period_custom_start or '' }}"
+  data-period-custom-end="{{ bd.okr_period_custom_end or '' }}"
+  data-prev-leads="{{ bd.leads_prev_year if bd.leads_prev_year is not none else 0 }}" hidden></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var brand = '{{ bd.brand|e }}' || 'orbes';
+    var businessProgressValues = [];
+    var goalsDataEl = document.getElementById('okr-goals-data');
+    var okrGoalsEndpoint = goalsDataEl ? goalsDataEl.getAttribute('data-endpoint') : '';
+    var okrGoalYear = goalsDataEl ? parseInt(goalsDataEl.getAttribute('data-goal-year') || '0', 10) : 0;
+    var okrGoalFbTarget = goalsDataEl ? goalsDataEl.getAttribute('data-goal-fb') : '';
+    var okrGoalIgTarget = goalsDataEl ? goalsDataEl.getAttribute('data-goal-ig') : '';
+    var okrGoalLeadsTarget = goalsDataEl ? goalsDataEl.getAttribute('data-goal-leads') : '';
+    var okrPrevFbManual = goalsDataEl ? goalsDataEl.getAttribute('data-prev-fb-manual') : '';
+    var okrPrevIgManual = goalsDataEl ? goalsDataEl.getAttribute('data-prev-ig-manual') : '';
+    var okrPrevLeadsManual = goalsDataEl ? goalsDataEl.getAttribute('data-prev-leads-manual') : '';
+    var okrPeriodType = goalsDataEl ? (goalsDataEl.getAttribute('data-period-type') || 'anual') : 'anual';
+    var okrPeriodQuarter = goalsDataEl ? (goalsDataEl.getAttribute('data-period-quarter') || '') : '';
+    var okrPeriodCustomStart = goalsDataEl ? (goalsDataEl.getAttribute('data-period-custom-start') || '') : '';
+    var okrPeriodCustomEnd = goalsDataEl ? (goalsDataEl.getAttribute('data-period-custom-end') || '') : '';
+    var okrPrevYearLeads = goalsDataEl ? parseInt(goalsDataEl.getAttribute('data-prev-leads') || '0', 10) : 0;
+
+    var periodSelect = document.getElementById('okr-period-select');
+    var quarterWrap = document.getElementById('okr-quarter-wrap');
+    var customWrap = document.querySelectorAll('.okr-custom-wrap');
+
+    function togglePeriodInputs(period) {
+      if (quarterWrap) quarterWrap.style.display = (period === 'trimestre') ? '' : 'none';
+      customWrap.forEach(function (el) {
+        el.style.display = (period === 'personalizado') ? '' : 'none';
+      });
+    }
+
+    if (periodSelect) {
+      togglePeriodInputs(periodSelect.value);
+      periodSelect.addEventListener('change', function () {
+        togglePeriodInputs(periodSelect.value);
+      });
+    }
+
+    function toNumber(v) {
+      var n = parseFloat(v);
+      return isNaN(n) ? null : n;
+    }
+
+    function calcProgress(value, target, lowerIsBetter) {
+      var v = toNumber(value);
+      var t = toNumber(target);
+      if (v === null || t === null || t <= 0) return null;
+      if (lowerIsBetter) {
+        if (v <= 0) return 100;
+        return Math.max(0, Math.min((t / v) * 100, 100));
+      }
+      return Math.max(0, Math.min((v / t) * 100, 100));
+    }
+
+    function setBarAndLabel(fillEl, labelEl, progress) {
+      if (!fillEl || !labelEl) return;
+      if (progress === null) {
+        fillEl.style.width = '0%';
+        labelEl.textContent = '-';
+        return;
+      }
+      var safe = Math.max(0, Math.min(progress, 100));
+      fillEl.style.width = safe + '%';
+      labelEl.textContent = safe.toFixed(2) + '%';
+      businessProgressValues.push(safe);
+    }
+
+    document.querySelectorAll('.okr-progress-fill').forEach(function (bar) {
+      var raw = parseFloat(bar.getAttribute('data-progress') || '0');
+      var safe = Math.max(0, Math.min(isNaN(raw) ? 0 : raw, 100));
+      bar.style.width = safe + '%';
+      businessProgressValues.push(safe);
+    });
+
+    document.querySelectorAll('.kpi-target-input').forEach(function (input) {
+      var id = input.getAttribute('data-kpi-id');
+      var value = input.getAttribute('data-value');
+      var lower = input.getAttribute('data-lower-is-better') === '1';
+      var defaultTarget = input.getAttribute('data-default-target');
+      var storageKey = 'marketing_okr_manual_targets_' + brand + '_kpi_' + id;
+      var initialTarget = localStorage.getItem(storageKey) || defaultTarget;
+      input.value = initialTarget || '';
+
+      function refreshKpi() {
+        var currentTarget = input.value;
+        localStorage.setItem(storageKey, currentTarget || '');
+        var progress = calcProgress(value, currentTarget, lower);
+        var fill = document.querySelector('.kpi-progress-fill[data-kpi-id="' + id + '"]');
+        var label = document.querySelector('.kpi-progress-label[data-kpi-id="' + id + '"]');
+        setBarAndLabel(fill, label, progress);
+
+        var targetLabel = document.querySelector('.kpi-target-label[data-kpi-id="' + id + '"]');
+        if (targetLabel) {
+          targetLabel.textContent = currentTarget ? currentTarget : '-';
+        }
+      }
+
+      refreshKpi();
+      input.addEventListener('input', function () {
+        businessProgressValues = [];
+        document.querySelectorAll('.okr-progress-fill').forEach(function (bar) {
+          var raw = parseFloat(bar.getAttribute('data-progress') || '0');
+          var safe = Math.max(0, Math.min(isNaN(raw) ? 0 : raw, 100));
+          businessProgressValues.push(safe);
+        });
+        document.querySelectorAll('.kpi-target-input').forEach(function (el) { el.dispatchEvent(new Event('kpi-recalc')); });
+        updateBusinessBar();
+      });
+
+      input.addEventListener('kpi-recalc', refreshKpi);
+    });
+
+    function updateBusinessBar() {
+      var fill = document.getElementById('biz-progress-fill');
+      var label = document.getElementById('biz-progress-label');
+      if (!fill || !label) return;
+      if (!businessProgressValues.length) {
+        fill.style.width = '0%';
+        label.textContent = '-';
+        return;
+      }
+      var total = businessProgressValues.reduce(function (acc, n) { return acc + n; }, 0);
+      var avg = total / businessProgressValues.length;
+      fill.style.width = avg.toFixed(2) + '%';
+      label.textContent = avg.toFixed(2) + '%';
+    }
+
+    function getKpiStorageKey(id) {
+      return 'marketing_okr_manual_targets_' + brand + '_kpi_' + id;
+    }
+
+    function collectKpiTargetConfigs() {
+      return Array.from(document.querySelectorAll('.kpi-target-input')).map(function (input) {
+        var id = input.getAttribute('data-kpi-id');
+        return {
+          id: id,
+          label: (input.closest('.kpi-card') || document).querySelector('h6') ? (input.closest('.kpi-card') || document).querySelector('h6').textContent.trim() : id,
+          value: input.value || '',
+          step: input.getAttribute('step') || '0.01'
+        };
+      });
+    }
+
+    function buildKpiModalHtml() {
+      var items = collectKpiTargetConfigs();
+      if (!items.length) return '';
+      var rows = items.map(function (item) {
+        return '' +
+          '<div class="col-12 col-md-4">' +
+          '<div class="okr-modal-field">' +
+          '<label>Meta KPI: ' + item.label + '</label>' +
+          '<input type="number" min="0" step="' + item.step + '" class="form-control swal-kpi-target" data-kpi-id="' + item.id + '" value="' + (item.value || '') + '">' +
+          '</div>' +
+          '</div>';
+      }).join('');
+      return '' +
+        '<section class="okr-modal-section">' +
+        '<div class="okr-modal-section-header">' +
+        '<div>' +
+        '<h6 class="okr-modal-section-title">KPIs ejecutivos</h6>' +
+        '<p class="okr-modal-section-note">Configura las metas operativas que alimentan el panel ejecutivo.</p>' +
+        '</div>' +
+        '<span class="okr-modal-pill">6 KPIs</span>' +
+        '</div>' +
+        '<div class="row g-3">' + rows + '</div>' +
+        '</section>';
+    }
+
+    function applyKpiManualTargets(targetMap) {
+      if (!targetMap) return;
+      document.querySelectorAll('.kpi-target-input').forEach(function (input) {
+        var id = input.getAttribute('data-kpi-id');
+        if (!Object.prototype.hasOwnProperty.call(targetMap, id)) return;
+        var nextValue = targetMap[id] || '';
+        input.value = nextValue;
+        localStorage.setItem(getKpiStorageKey(id), nextValue);
+        input.dispatchEvent(new Event('kpi-recalc'));
+      });
+      updateBusinessBar();
+    }
+
+    businessProgressValues = [];
+    document.querySelectorAll('.okr-progress-fill').forEach(function (bar) {
+      var raw = parseFloat(bar.getAttribute('data-progress') || '0');
+      var safe = Math.max(0, Math.min(isNaN(raw) ? 0 : raw, 100));
+      businessProgressValues.push(safe);
+    });
+    document.querySelectorAll('.kpi-target-input').forEach(function (el) { el.dispatchEvent(new Event('kpi-recalc')); });
+    updateBusinessBar();
+
+    var fillAllBtn = document.getElementById('btn-fill-okr-all');
+    if (fillAllBtn) {
+      fillAllBtn.addEventListener('click', function () {
+        if (typeof Swal === 'undefined') return;
+        Swal.fire({
+          title: 'Llenar información OKR',
+          width: 920,
+          showCancelButton: true,
+          cancelButtonText: 'Cancelar',
+          confirmButtonText: 'Guardar configuración',
+          customClass: {
+            popup: 'okr-config-modal',
+            title: 'okr-config-title',
+            htmlContainer: 'okr-config-content',
+            actions: 'okr-config-actions',
+            confirmButton: 'okr-config-confirm',
+            cancelButton: 'okr-config-cancel'
+          },
+          html:
+            '<div class="okr-modal-grid">' +
+            '<div class="okr-modal-hero">' +
+            '<div>' +
+            '<h6>Configura todo el modelo OKR desde un solo lugar</h6>' +
+            '<p>Define periodo, baseline histórico, metas de seguidores, leads y KPIs ejecutivos sin salir del flujo principal.</p>' +
+            '</div>' +
+            '<span class="okr-modal-badge">Panel estratégico</span>' +
+            '</div>' +
+
+            '<section class="okr-modal-section">' +
+            '<div class="okr-modal-section-header">' +
+            '<div>' +
+            '<h6 class="okr-modal-section-title">Periodo de evaluación</h6>' +
+            '<p class="okr-modal-section-note">Selecciona el marco temporal sobre el que se calcularán los OKR.</p>' +
+            '</div>' +
+            '<span class="okr-modal-pill">Paso 1</span>' +
+            '</div>' +
+            '<div class="row g-3">' +
+            '<div class="col-12 col-md-2">' +
+            '<div class="okr-modal-field">' +
+            '<label>Año</label>' +
+            '<input type="number" min="2020" max="2100" class="form-control" id="swal-year" value="' + okrGoalYear + '">' +
+            '</div>' +
+            '</div>' +
+            '<div class="col-12 col-md-3">' +
+            '<div class="okr-modal-field">' +
+            '<label>Periodo</label>' +
+            '<select class="form-select" id="swal-period-type">' +
+            '<option value="anual" ' + (okrPeriodType === 'anual' ? 'selected' : '') + '>Anual</option>' +
+            '<option value="trimestre" ' + (okrPeriodType === 'trimestre' ? 'selected' : '') + '>Trimestre</option>' +
+            '<option value="personalizado" ' + (okrPeriodType === 'personalizado' ? 'selected' : '') + '>Personalizado</option>' +
+            '</select>' +
+            '</div>' +
+            '</div>' +
+            '<div class="col-12 col-md-2" id="swal-quarter-wrap">' +
+            '<div class="okr-modal-field">' +
+            '<label>Trimestre</label>' +
+            '<select class="form-select" id="swal-period-quarter">' +
+            '<option value="1" ' + (okrPeriodQuarter === '1' ? 'selected' : '') + '>Q1</option>' +
+            '<option value="2" ' + (okrPeriodQuarter === '2' ? 'selected' : '') + '>Q2</option>' +
+            '<option value="3" ' + (okrPeriodQuarter === '3' ? 'selected' : '') + '>Q3</option>' +
+            '<option value="4" ' + (okrPeriodQuarter === '4' ? 'selected' : '') + '>Q4</option>' +
+            '</select>' +
+            '</div>' +
+            '</div>' +
+            '<div class="col-12 col-md-2 swal-custom-wrap">' +
+            '<div class="okr-modal-field">' +
+            '<label>Desde</label>' +
+            '<input type="date" class="form-control" id="swal-custom-start" value="' + (okrPeriodCustomStart || '') + '">' +
+            '</div>' +
+            '</div>' +
+            '<div class="col-12 col-md-3 swal-custom-wrap">' +
+            '<div class="okr-modal-field">' +
+            '<label>Hasta</label>' +
+            '<input type="date" class="form-control" id="swal-custom-end" value="' + (okrPeriodCustomEnd || '') + '">' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</section>' +
+
+            '<section class="okr-modal-section">' +
+            '<div class="okr-modal-section-header">' +
+            '<div>' +
+            '<h6 class="okr-modal-section-title">Posicionamiento digital</h6>' +
+            '<p class="okr-modal-section-note">Usa baseline manual sólo si todavía no existe histórico confiable del año anterior.</p>' +
+            '</div>' +
+            '<span class="okr-modal-pill">Paso 2</span>' +
+            '</div>' +
+            '<div class="row g-3">' +
+            '<div class="col-12 col-md-4">' +
+            '<div class="okr-modal-field">' +
+            '<label>Facebook año anterior</label>' +
+            '<input type="number" min="0" class="form-control" id="swal-fb-prev-manual" value="' + (okrPrevFbManual || '') + '">' +
+            '<small>Completa este valor sólo para el primer ciclo sin histórico validado.</small>' +
+            '</div>' +
+            '</div>' +
+            '<div class="col-12 col-md-4">' +
+            '<div class="okr-modal-field">' +
+            '<label>Instagram año anterior</label>' +
+            '<input type="number" min="0" class="form-control" id="swal-ig-prev-manual" value="' + (okrPrevIgManual || '') + '">' +
+            '<small>Después el sistema podrá tomar el cierre del año previo automáticamente.</small>' +
+            '</div>' +
+            '</div>' +
+            '<div class="col-12 col-md-4">' +
+            '<div class="okr-modal-field is-highlight">' +
+            '<label>Meta seguidores Facebook</label>' +
+            '<input type="number" min="0" class="form-control" id="swal-fb-target" value="' + (okrGoalFbTarget || '') + '">' +
+            '</div>' +
+            '</div>' +
+            '<div class="col-12 col-md-4">' +
+            '<div class="okr-modal-field is-highlight">' +
+            '<label>Meta seguidores Instagram</label>' +
+            '<input type="number" min="0" class="form-control" id="swal-ig-target" value="' + (okrGoalIgTarget || '') + '">' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</section>' +
+
+            '<section class="okr-modal-section">' +
+            '<div class="okr-modal-section-header">' +
+            '<div>' +
+            '<h6 class="okr-modal-section-title">Cantidad de leads obtenidos</h6>' +
+            '<p class="okr-modal-section-note">Mantén visibilidad del baseline detectado por sistema y define el valor manual sólo si corresponde.</p>' +
+            '</div>' +
+            '<span class="okr-modal-pill">Paso 3</span>' +
+            '</div>' +
+            '<div class="row g-3">' +
+            '<div class="col-12 col-md-4">' +
+            '<div class="okr-modal-field is-readonly">' +
+            '<label>Leads periodo anterior detectados</label>' +
+            '<input type="number" class="form-control" value="' + okrPrevYearLeads + '" readonly>' +
+            '<small>Dato informativo calculado automáticamente por el sistema.</small>' +
+            '</div>' +
+            '</div>' +
+            '<div class="col-12 col-md-4">' +
+            '<div class="okr-modal-field">' +
+            '<label>Leads periodo anterior manual</label>' +
+            '<input type="number" min="0" class="form-control" id="swal-leads-prev-manual" value="' + (okrPrevLeadsManual || '') + '">' +
+            '<small>Úsalo sólo cuando la base previa tenga registros de prueba o no productivos.</small>' +
+            '</div>' +
+            '</div>' +
+            '<div class="col-12 col-md-4">' +
+            '<div class="okr-modal-field is-highlight">' +
+            '<label>Meta de leads</label>' +
+            '<input type="number" min="1" class="form-control" id="swal-leads-target" value="' + (okrGoalLeadsTarget || '') + '">' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</section>' +
+
+            '<div class="okr-modal-footnote">Si todavía no existe histórico confiable del año anterior, completa los campos manuales. En los próximos ciclos, el sistema podrá usar automáticamente la data recopilada al cierre del periodo previo.</div>' +
+            buildKpiModalHtml() +
+            '</div>',
+          didOpen: function () {
+            var modalPeriod = document.getElementById('swal-period-type');
+            var modalQuarter = document.getElementById('swal-quarter-wrap');
+            var modalCustom = document.querySelectorAll('.swal-custom-wrap');
+            function toggleModalPeriodFields() {
+              var val = modalPeriod.value;
+              if (modalQuarter) modalQuarter.style.display = (val === 'trimestre') ? '' : 'none';
+              modalCustom.forEach(function (el) {
+                el.style.display = (val === 'personalizado') ? '' : 'none';
+              });
+            }
+
+            toggleModalPeriodFields();
+            modalPeriod.addEventListener('change', toggleModalPeriodFields);
+          },
+          preConfirm: function () {
+            var year = parseInt(document.getElementById('swal-year').value || '0', 10);
+            var periodType = document.getElementById('swal-period-type').value;
+            var quarter = parseInt(document.getElementById('swal-period-quarter').value || '0', 10);
+            var customStart = document.getElementById('swal-custom-start').value || null;
+            var customEnd = document.getElementById('swal-custom-end').value || null;
+            var fbPrevManual = document.getElementById('swal-fb-prev-manual').value;
+            var igPrevManual = document.getElementById('swal-ig-prev-manual').value;
+            var leadsPrevManual = document.getElementById('swal-leads-prev-manual').value;
+            var fbTarget = document.getElementById('swal-fb-target').value;
+            var igTarget = document.getElementById('swal-ig-target').value;
+            var leadsTarget = document.getElementById('swal-leads-target').value;
+            var kpiManualTargets = {};
+
+            document.querySelectorAll('.swal-kpi-target').forEach(function (input) {
+              var kpiId = input.getAttribute('data-kpi-id');
+              kpiManualTargets[kpiId] = input.value || '';
+            });
+
+            if (!year || year < 2020) {
+              Swal.showValidationMessage('Ingresa un año válido.');
+              return false;
+            }
+            if (periodType === 'trimestre' && (quarter < 1 || quarter > 4)) {
+              Swal.showValidationMessage('Selecciona un trimestre válido.');
+              return false;
+            }
+            if (periodType === 'personalizado' && (!customStart || !customEnd)) {
+              Swal.showValidationMessage('Debes indicar inicio y fin en rango personalizado.');
+              return false;
+            }
+            if (periodType === 'personalizado' && customStart > customEnd) {
+              Swal.showValidationMessage('La fecha de inicio no puede ser mayor que la fecha fin.');
+              return false;
+            }
+            if (!leadsTarget || parseInt(leadsTarget, 10) <= 0) {
+              Swal.showValidationMessage('La meta de leads debe ser mayor a 0.');
+              return false;
+            }
+
+            return {
+              year: year,
+              period_type: periodType,
+              period_quarter: periodType === 'trimestre' ? quarter : null,
+              period_custom_start: periodType === 'personalizado' ? customStart : null,
+              period_custom_end: periodType === 'personalizado' ? customEnd : null,
+              fb_previous_followers_manual: fbPrevManual ? parseInt(fbPrevManual, 10) : null,
+              ig_previous_followers_manual: igPrevManual ? parseInt(igPrevManual, 10) : null,
+              leads_previous_manual: leadsPrevManual ? parseInt(leadsPrevManual, 10) : null,
+              fb_target_followers: fbTarget ? parseInt(fbTarget, 10) : null,
+              ig_target_followers: igTarget ? parseInt(igTarget, 10) : null,
+              leads_target: parseInt(leadsTarget, 10),
+              kpi_manual_targets: kpiManualTargets
+            };
+          }
+        }).then(function (result) {
+          if (!result.isConfirmed || !result.value) return;
+          applyKpiManualTargets(result.value.kpi_manual_targets);
+          fetch(okrGoalsEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(result.value)
+          })
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+              if (!data.ok) {
+                Swal.fire('Error', data.message || 'No se pudo guardar la configuración.', 'error');
+                return;
+              }
+              Swal.fire('Listo', data.message || 'Metas guardadas.', 'success').then(function () {
+                var params = new URLSearchParams(window.location.search);
+                params.set('year', String(result.value.year));
+                params.set('period', result.value.period_type);
+                if (result.value.period_type === 'trimestre' && result.value.period_quarter) {
+                  params.set('quarter', String(result.value.period_quarter));
+                } else {
+                  params.delete('quarter');
+                }
+                if (result.value.period_type === 'personalizado') {
+                  params.set('start_date', result.value.period_custom_start);
+                  params.set('end_date', result.value.period_custom_end);
+                } else {
+                  params.delete('start_date');
+                  params.delete('end_date');
+                }
+                window.location.search = params.toString();
+              });
+            })
+            .catch(function () {
+              Swal.fire('Error', 'No se pudo guardar la configuración.', 'error');
+            });
+        });
+      });
+    }
+
+    document.querySelectorAll('.okr-analysis-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (typeof Swal === 'undefined') return;
+        Swal.fire({
+          title: btn.getAttribute('data-title') || 'Análisis',
+          html:
+            '<div class="text-start small">' +
+            '<p><strong>Agente:</strong> ' + (btn.getAttribute('data-agent') || '-') + '</p>' +
+            '<p><strong>Lectura:</strong> ' + (btn.getAttribute('data-summary') || '-') + '</p>' +
+            '<p><strong>Recomendación:</strong> ' + (btn.getAttribute('data-recommendation') || '-') + '</p>' +
+            '<p class="mb-0"><strong>Soporte:</strong> ' + (btn.getAttribute('data-evidence') || '-') + '</p>' +
+            '</div>',
+          width: 760,
+          confirmButtonText: 'Cerrar'
+        });
+      });
+    });
+  });
+</script>
+{% endblock %}

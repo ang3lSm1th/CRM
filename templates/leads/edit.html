@@ -1,0 +1,494 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<link
+  href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+  rel="stylesheet"
+/>
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+/>
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/seguimiento.css') }}"
+/>
+<style>
+  /* Botón eliminar: grande, rojo, borde rojo, palpitante y mantener rojo en hover */
+  .btn-animated-delete {
+    animation: pulse-red 1.8s infinite;
+    border: 2px solid #dc3545;
+    color: #fff;
+    background-color: #dc3545;
+  }
+  .btn-animated-delete.btn-lg { padding: 0.6rem 1.1rem; font-size: 1.05rem; }
+  @keyframes pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(220,53,69,0.45); transform: scale(1); }
+    50% { box-shadow: 0 0 0 10px rgba(220,53,69,0); transform: scale(1.03); }
+    100% { box-shadow: 0 0 0 0 rgba(220,53,69,0); transform: scale(1); }
+  }
+  /* Forzar color y borde rojo al pasar el cursor o foco (anula Bootstrap) */
+  .btn-animated-delete:hover,
+  .btn-animated-delete:focus {
+    background-color: #b02a37 !important;
+    border-color: #b02a37 !important;
+    color: #fff !important;
+  }
+</style>
+
+{% endblock %}
+
+{% block content %}
+
+<div class="seguimiento animate-fade-in">
+  <div class="flex items-center justify-between mb-4 animate-slide-in-left">
+    <h2 class="text-gradient mb-0">
+      <i class="bi bi-clipboard-data me-2"></i>Seguimiento del Lead {{ lead.codigo }}
+    </h2>
+    <div class="flex items-center gap-2">
+      <a class="btn-new-lead hover-lift shadow-primary" 
+   href="{{ url_for('leads.create_lead',
+       nombre=lead.nombre,
+       ruc_dni=lead.ruc_dni,
+       telefono=lead.telefono,
+       contacto=lead.contacto,
+       direccion=lead.direccion,
+       departamento=lead.departamento or lead.idDepartamento,
+       provincia=lead.provincia or lead.idProvincia,
+       distrito=lead.distrito or lead.idDistrito,
+       bien_servicio_id=lead.bien_servicio_id,
+       asignado_a=lead.asignado_a if es_asesor else '',
+   ) }}">
+   <i class="bi bi-plus-circle me-1"></i> Nueva Cotización
+</a>
+ <!-- Botón eliminar lead (visible solo para administrador/gerente/RRHH) -->
+ {% if session["id_rol"] in ["administrador", "gerente", "RRHH"] %}
+  <button id="btn-delete-lead" type="button" class="btn btn-danger btn-lg btn-animated-delete hover-scale">
+    <i class="bi bi-trash me-1"></i> Eliminar
+  </button>
+ {% endif %}
+    </div>
+  </div>
+     
+
+      <!-- Formulario POST para eliminar el lead (se envía tras confirmación) -->
+      <form id="form-delete-lead" method="POST" action="{{ url_for('leads.delete_lead', codigo=lead.codigo) }}" style="display:none;"></form>
+
+  <div class="mb-3">
+    <a href="{{ return_url }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> {{ return_label }}</a>
+  </div>
+
+  <div class="tab-nav mb-3 animate-fade-in" style="animation-delay: 0.1s">
+    <a href="{{ url_for('leads.edit_lead', codigo=lead.codigo, next=return_url) }}" class="tab-pill hover-lift {% if request.endpoint == 'leads.edit_lead' %}is-active{% endif %}">
+      <i class="bi bi-pencil me-1"></i> Editar
+    </a>
+    <a href="{{ url_for('leads.seguimiento_lead', codigo=lead.codigo, next=return_url) }}" class="tab-pill hover-lift {% if request.endpoint == 'leads.seguimiento_lead' %}is-active{% endif %}">
+      <i class="bi bi-list-ul me-1"></i> Seguimiento
+    </a>
+    {% if session["id_rol"] in ["administrador", "gerente", "RRHH"] %}
+    <button type="button" id="btn-historial-cambios" class="tab-pill hover-lift" data-codigo="{{ lead.codigo }}">
+      <i class="bi bi-clock-history me-1"></i> Historial de cambios
+    </button>
+    {% endif %}
+  </div>
+
+  <form method="POST" action="{{ url_for('leads.edit_lead', codigo=lead.codigo) }}" id="form-editar">
+    <input type="hidden" name="next" value="{{ return_url }}">
+    <div class="seguimiento-grid animate-scale-in" style="animation-delay: 0.2s">
+      <!-- Izquierda -->
+      <div class="card hover-lift shadow-lg">
+        <div class="card-body p-0">
+          <div class="p-4">
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Código</label>
+              <input class="form-control" value="{{ lead.codigo }}" readonly>
+            </div>
+             {% set ROLES_EDITABLES = ["administrador", "gerente", "RRHH"] %}
+
+            <div class="mb-3 control-line">
+            <label class="form-label mb-0">Fecha</label>
+            
+            {% if session["id_rol"] in ROLES_EDITABLES %}
+              <input 
+                type="date"
+                class="form-control" 
+                name="fecha" 
+                value="{{ lead.fecha.strftime('%Y-%m-%d') if lead.fecha else '' }}" 
+                required
+              >
+            {% else %}
+              <input 
+                type="text" 
+                class="form-control" 
+                value="{{ lead.fecha.strftime('%Y-%m-%d') if lead.fecha else '' }}" 
+                readonly
+                placeholder="aaaa-mm-dd"
+              >
+              <input 
+                  type="hidden" 
+                  name="fecha" 
+                  value="{{ lead.fecha.strftime('%Y-%m-%d') if lead.fecha else '' }}"
+              >
+            {% endif %}
+          </div>
+
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Teléfono</label>
+              <input type="text" id="telefono" name="telefono" class="form-control" value="{{ lead.telefono }}">
+            </div>
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">RUC/DNI</label>
+              <input type="text" id="ruc_dni" name="ruc_dni" class="form-control" value="{{ lead.ruc_dni }}">
+            </div>
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Nombre</label>
+              <input type="text" name="nombre" class="form-control" value="{{ lead.nombre }}" required>
+            </div>
+            <div class="mb-3 control-line" id="sec-canal">
+              <label class="form-label mb-0">Canal de recepción</label>
+              <select name="canal_id" class="form-select">
+                {% for c in canales %}
+                  <option value="{{ c.id }}" {% if c.id == lead.canal_id %}selected{% endif %}>{{ c.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Contacto</label>
+              <input type="text" name="contacto" class="form-control" value="{{ lead.contacto }}">
+            </div>
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Dirección</label>
+              <input type="text" name="direccion" class="form-control" value="{{ lead.direccion }}">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Derecha -->
+      <div class="card hover-lift shadow-lg">
+        <div class="card-body p-0">
+          <div class="p-4">
+
+            <!-- DESPLEGABLES UBIGEO -->
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Departamento</label>
+              <select name="departamento" id="departamento" class="form-control"
+                data-selected-id="{{ lead.departamento or lead.idDepartamento or '' }}">
+                <option value="">-- Seleccione departamento --</option>
+              </select>
+            </div>
+
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Provincia</label>
+              <select name="provincia" id="provincia" class="form-control"
+                data-selected-id="{{ lead.provincia or lead.idProvincia or '' }}" disabled>
+                <option value="">-- Seleccione provincia --</option>
+              </select>
+            </div>
+
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Distrito</label>
+              <select name="distrito" id="distrito" class="form-control"
+                data-selected-id="{{ lead.distrito or lead.idDistrito or '' }}" disabled>
+                <option value="">-- Seleccione distrito --</option>
+              </select>
+            </div>
+
+            <!-- FIN DESPLEGABLES UBIGEO -->
+
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Bien/Servicio</label>
+              <select name="bien_servicio_id" class="form-select">
+                {% for bs in bienes_servicios %}
+                  <option value="{{ bs.id }}" {% if bs.id == lead.bien_servicio_id %}selected{% endif %}>{{ bs.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">E-mail</label>
+              <input type="email" name="email" class="form-control" value="{{ lead.email }}">
+            </div>
+            
+                          <div class="mb-2 control-line">
+              <label class="form-label mb-0">Asignar</label>
+              {% if not es_asesor %}
+                <div>
+                  <div class="chips mb-2">
+                    {% if lead.asignado_a_nombre %}
+                      <span class="chip">
+                        {{ lead.asignado_a_nombre }}
+                        <span class="chip-close">×</span>
+                      </span>
+                    {% endif %}
+                  </div>
+                  <div class="d-flex" style="gap: .5rem;">
+                    <select name="asignado_a" id="asignado_a" class="form-select">
+                      <option value="">-- Seleccionar asesor --</option>
+                      {% for asesor in asesores | sort(attribute='nombre') %}
+                        <option value="{{ asesor['id'] }}" {% if lead['asignado_a'] == asesor['id'] %}selected{% endif %}>
+                          {{ asesor['nombre'] }}
+                        </option>
+                      {% endfor %}
+                    </select>
+                    <button type="submit" name="accion" value="asignar" class="btn btn-primary btn-sm hover-lift">
+                    Asignar&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    </button>
+                  </div>
+                </div>
+              {% else %}
+                <input type="text" class="form-control" value="{{ session['username'] }}" disabled>
+              {% endif %}
+            </div>
+
+
+            <div class="mb-3 control-line control-line--area">
+              <label class="form-label mb-0"><i class="bi bi-chat-dots me-1"></i> Comentario</label>
+              <textarea name="comentario" class="form-control" rows="4">{{ lead.comentario }}</textarea>
+            </div>
+
+            <div class="actions-center mb-3">
+              <button type="submit" class="btn btn-success btn-sm hover-lift shadow-success">
+                <i class="bi bi-check-circle me-1"></i> Guardar
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+window.UBIGEO_API = {
+  departamentos: "{{ url_for('leads.api_list_departamentos') }}",
+  provincias: "{{ url_for('leads.api_provincias_by_dep', departamento_id=0) }}".replace("/0", ""),
+  distritos: "{{ url_for('leads.api_distritos_by_prov', provincia_id=0) }}".replace("/0", "")
+};
+</script>
+
+<!-- SweetAlert2 (confirm dialog) -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var btn = document.getElementById('btn-delete-lead');
+  var form = document.getElementById('form-delete-lead');
+  if (btn && form) {
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      
+      // Verificar si el lead está cerrado (proceso_id = 5)
+      var leadEstado = '{{ lead.proceso_id }}';
+      var esCerrado = (leadEstado === '5');
+      
+      if (esCerrado) {
+        // Confirmación doble para leads cerrados con venta
+        Swal.fire({
+          title: '⚠️ Lead Cerrado con Venta',
+          html: '<p><strong>Este lead tiene una venta asociada.</strong></p>' +
+                '<p>Al eliminarlo, también se eliminará de la tabla de ventas concretadas.</p>' +
+                '<p class="text-danger mt-3"><i class="fa-solid fa-triangle-exclamation"></i> Esta acción no se puede deshacer.</p>',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Continuar',
+          cancelButtonText: 'Cancelar',
+          confirmButtonColor: '#dc3545',
+          cancelButtonColor: '#6c757d'
+        }).then(function(result){
+          if (result.isConfirmed) {
+            // Segunda confirmación
+            Swal.fire({
+              title: '¿Estás completamente seguro?',
+              text: 'Escribe "ELIMINAR" para confirmar',
+              input: 'text',
+              icon: 'error',
+              showCancelButton: true,
+              confirmButtonText: 'Sí, eliminar todo',
+              cancelButtonText: 'Cancelar',
+              confirmButtonColor: '#dc3545',
+              cancelButtonColor: '#6c757d',
+              preConfirm: (value) => {
+                if (value !== 'ELIMINAR') {
+                  Swal.showValidationMessage('Debes escribir "ELIMINAR" exactamente');
+                  return false;
+                }
+                return true;
+              }
+            }).then(function(result2){
+              if (result2.isConfirmed) {
+                form.submit();
+              }
+            });
+          }
+        });
+      } else {
+        // Confirmación simple para leads no cerrados
+        Swal.fire({
+          title: '¿Estás seguro que quieres eliminar este lead?',
+          text: 'Esta acción no se puede deshacer.',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar',
+          confirmButtonColor: '#dc3545',
+          cancelButtonColor: '#6c757d'
+        }).then(function(result){
+          if (result.isConfirmed) {
+            form.submit();
+          }
+        });
+      }
+    });
+  }
+});
+</script>
+
+<script>
+// Verificación de duplicados en tiempo real al escribir RUC/DNI
+document.addEventListener('DOMContentLoaded', function() {
+  const rucDniInput = document.getElementById('ruc_dni');
+  const leadCodigoActual = '{{ lead.codigo }}';
+  let timeoutId = null;
+
+  if (rucDniInput) {
+    rucDniInput.addEventListener('input', function() {
+      const valor = this.value.trim();
+      
+      // Limpiar timeout anterior
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      
+      // Si está vacío, no hacer nada
+      if (valor.length === 0) {
+        return;
+      }
+      
+      // Esperar 800ms después de que deje de escribir
+      timeoutId = setTimeout(function() {
+        fetch('/leads/api/duplicates/' + encodeURIComponent(valor))
+          .then(response => response.json())
+          .then(data => {
+            if (data && data.length > 0) {
+              // Filtrar para excluir el lead actual
+              const otrosLeads = data.filter(l => l.codigo !== leadCodigoActual);
+              
+              if (otrosLeads.length > 0) {
+                // Construir tabla HTML con los leads duplicados
+                let tablaHTML = '<div style="max-height: 300px; overflow-y: auto;">' +
+                  '<table class="table table-sm table-bordered">' +
+                  '<thead><tr>' +
+                  '<th>Código</th>' +
+                  '<th>RUC/DNI</th>' +
+                  '<th>Teléfono</th>' +
+                  '<th>Estado</th>' +
+                  '<th>Asesor</th>' +
+                  '</tr></thead><tbody>';
+                
+                otrosLeads.forEach(function(lead) {
+                  tablaHTML += '<tr>' +
+                    '<td><strong>' + (lead.codigo || 'N/A') + '</strong></td>' +
+                    '<td>' + (lead.ruc_dni || 'N/A') + '</td>' +
+                    '<td>' + (lead.telefono || 'N/A') + '</td>' +
+                    '<td><span class="badge bg-info">' + (lead.estado || 'N/A') + '</span></td>' +
+                    '<td>' + (lead.asignado_a || 'N/A') + '</td>' +
+                    '</tr>';
+                });
+                
+                tablaHTML += '</tbody></table></div>';
+                
+                // Mostrar alerta con SweetAlert2
+                Swal.fire({
+                  title: '⚠️ RUC/DNI Ya Existe',
+                  html: '<p class="mb-3"><strong>Este RUC/DNI ya está registrado en los siguientes leads:</strong></p>' + tablaHTML,
+                  icon: 'warning',
+                  width: '700px',
+                  confirmButtonText: 'Entendido',
+                  confirmButtonColor: '#ffc107'
+                });
+              }
+            }
+          })
+          .catch(error => {
+            console.error('Error al verificar duplicados:', error);
+          });
+      }, 800);
+    });
+  }
+});
+</script>
+
+<script src="{{ url_for('static', filename='js/bloquear_cantidad.js') }}?v=3"></script>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var btn = document.getElementById('btn-historial-cambios');
+  if (!btn) return;
+
+  btn.addEventListener('click', function () {
+    if (typeof Swal === 'undefined') return;
+
+    Swal.fire({
+      title: '<i class="bi bi-clock-history me-2"></i>Historial de cambios — Lead ' + escapeHtml(btn.dataset.codigo || ''),
+      html: '<div id="historial-cambios-body" class="text-center text-muted py-3">Cargando...</div>',
+      width: 980,
+      confirmButtonText: 'Cerrar',
+      showCloseButton: true,
+      didOpen: function () {
+        var body = document.getElementById('historial-cambios-body');
+        if (!body) return;
+
+        var codigo = btn.dataset.codigo;
+        fetch('/leads/api/lead-cambios/' + encodeURIComponent(codigo))
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data || data.length === 0) {
+              body.innerHTML = '<p class="text-muted text-center py-3"><i class="bi bi-inbox me-2"></i>No hay cambios registrados aún.</p>';
+              return;
+            }
+
+            var etiqueta = {
+              'Canal de recepción': '<i class="bi bi-broadcast me-1 text-info"></i>',
+              'Bien / Servicio':    '<i class="bi bi-box-seam me-1 text-success"></i>',
+              'Asignación':         '<i class="bi bi-person-fill-gear me-1 text-warning"></i>',
+            };
+
+            var html = '<div class="table-responsive" style="max-height: 52vh; overflow:auto;"><table class="table table-sm table-hover align-middle">' +
+              '<thead class="table-light"><tr>' +
+              '<th>Campo</th><th>Anterior</th><th>Nuevo</th><th>Usuario</th><th>Fecha</th>' +
+              '</tr></thead><tbody>';
+
+            data.forEach(function (r) {
+              var icono = etiqueta[r.campo] || '<i class="bi bi-pencil me-1"></i>';
+              html += '<tr>' +
+                '<td>' + icono + escapeHtml(r.campo) + '</td>' +
+                '<td><span class="text-danger">' + escapeHtml(r.anterior) + '</span></td>' +
+                '<td><span class="text-success fw-semibold">' + escapeHtml(r.nuevo) + '</span></td>' +
+                '<td>' + escapeHtml(r.usuario) + '</td>' +
+                '<td class="text-muted small">' + escapeHtml(r.fecha) + '</td>' +
+                '</tr>';
+            });
+            html += '</tbody></table></div>';
+            body.innerHTML = html;
+          })
+          .catch(function () {
+            body.innerHTML = '<p class="text-danger text-center py-3"><i class="bi bi-exclamation-triangle me-2"></i>Error al cargar el historial.</p>';
+          });
+      }
+    });
+  });
+
+  function escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+}());
+</script>
+{% endblock %}

@@ -1,0 +1,506 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes.css') }}">
+<style>
+  .mk-edit-container { max-width: 1200px; margin: 0 auto; }
+  .mk-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.5rem; }
+  /* Make gasto inputs a bit wider and more readable */
+  .mk-investment-section .gasto-row .form-select,
+  .mk-investment-section .gasto-row .form-control {
+    min-width: 110px;
+  }
+  /* Ensure the mercaderia selector has room */
+  .gasto-mercaderia {
+    min-width: 220px;
+  }
+  /* Reduce only the combo box width for gastos varios and mercadería in this form */
+  #gastos-list .gasto-tipo {
+    width: 200px;
+    min-width: 200px;
+  }
+  #mercaderia-list .gasto-mercaderia {
+    width: 250px;
+    min-width: 250px;
+  }
+  /* Improved grid layout for gasto and mercaderia rows */
+  .mk-investment-section .gasto-row {
+    display: grid !important;
+    grid-template-columns: 
+      /* For gastos: tipo+factura | detalle | total | delete */
+      repeat(2, minmax(160px, 1fr)) minmax(90px, 120px) 48px;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  #gastos-list .gasto-row {
+    grid-template-columns: 1fr 1fr 1.5fr 0.6fr 40px;
+    gap: 0.3rem;
+    align-items: start;
+  }
+
+  #gastos-list .gasto-row input.js-gasto-monto {
+    max-width: 110px;
+    min-width: 70px;
+    width: 100%;
+    margin-right: 0;
+    text-align: left;
+  }
+  #mercaderia-list .gasto-row {
+    /* tipo | mercaderia | cantidad | precio | total | delete */
+    grid-template-columns: 1.1fr 1.7fr 1fr 1fr 0.9fr 48px;
+  }
+  .mk-investment-section .gasto-row > div {
+    display: block;
+    align-items: stretch;
+    width: 100%;
+  }
+  .mk-investment-section .gasto-row .col-md-1.text-end {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    max-width: 48px;
+    min-width: 48px;
+    width: 48px;
+  }
+  .mk-investment-section .gasto-row .remove-gasto {
+    width: 36px;
+    min-width: 36px;
+    max-width: 36px;
+    position: static;
+    margin-left: auto;
+    margin-right: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  /* Reduce only the combo box width for gastos varios and mercadería in this form */
+  #gastos-list .gasto-tipo {
+    width: 100%;
+    min-width: 120px;
+    max-width: 200px;
+  }
+  #mercaderia-list .gasto-mercaderia {
+    width: 100%;
+    min-width: 160px;
+    max-width: 250px;
+  }
+  /* Inputs and selects fill their grid cell */
+  .mk-investment-section .gasto-row input,
+  .mk-investment-section .gasto-row select {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .mk-col-full { grid-column: 1 / -1; }
+  .mk-investment-section { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; }
+  .mk-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; }
+  .mk-investment-summary { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.75rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="mk-edit-container">
+    <div class="mb-4">
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <a href="{{ next_url or url_for('marketing.marketing_ferias') }}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left"></i> {{ return_label or 'Volver' }}
+        </a>
+        <h2 class="mb-0"><i class="bi bi-pencil-square"></i> Editar Feria #{{ feria.id }}</h2>
+      </div>
+      <div class="text-muted">{{ feria.nombre }}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <form method="post">
+          <input type="hidden" name="next" value="{{ next_url or '' }}">
+          <div class="mk-form-grid">
+            <div>
+              <label class="form-label">Nombre de la Feria *</label>
+              <input type="text" name="nombre_feria" class="form-control" required maxlength="150" value="{{ feria.nombre or '' }}">
+            </div>
+            <div>
+              <label class="form-label">Tipo de Feria *</label>
+              <select name="tipo" class="form-select" required>
+                <option value="" {% if not feria.tipo %}selected{% endif %}>Seleccionar tipo</option>
+                <option value="Feria" {% if feria.tipo == 'Feria' %}selected{% endif %}>Feria</option>
+                <option value="Demostracion" {% if feria.tipo == 'Demostracion' %}selected{% endif %}>Demostracion</option>
+                <option value="Revista" {% if feria.tipo == 'Revista' %}selected{% endif %}>Revista</option>
+                <option value="Medios Especiales" {% if feria.tipo == 'Medios Especiales' %}selected{% endif %}>Medios Especiales</option>
+                <option value="Eventos Corporativos" {% if feria.tipo == 'Eventos Corporativos' %}selected{% endif %}>Eventos Corporativos</option>
+                <option value="Viajes" {% if feria.tipo == 'Viajes' %}selected{% endif %}>Viajes</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Departamento *</label>
+              <select id="feria-departamento" name="departamento_id" class="form-select" required>
+                <option value="">-- Seleccione departamento --</option>
+                {% if feria.departamento %}
+                <option value="{{ feria.departamento }}" selected>{{ feria.departamento }}</option>
+                {% endif %}
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Provincia *</label>
+              <select id="feria-provincia" name="provincia_id" class="form-select" required>
+                <option value="">-- Seleccione provincia --</option>
+                {% if feria.provincia %}
+                <option value="{{ feria.provincia }}" selected>{{ feria.provincia }}</option>
+                {% endif %}
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Distrito *</label>
+              <select id="feria-distrito" name="distrito_id" class="form-select" required>
+                <option value="">-- Seleccione distrito --</option>
+                {% if feria.distrito %}
+                <option value="{{ feria.distrito }}" selected>{{ feria.distrito }}</option>
+                {% endif %}
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Fecha Inicio *</label>
+              <input type="date" name="fecha_inicio" class="form-control" required value="{{ feria.fecha_inicio or '' }}">
+            </div>
+            <div>
+              <label class="form-label">Fecha Fin *</label>
+              <input type="date" name="fecha_fin" class="form-control" required value="{{ feria.fecha_fin or '' }}">
+            </div>
+
+            <div class="mk-col-full">
+              <label class="form-label">Detalles</label>
+              <textarea name="detalles" class="form-control" rows="3" maxlength="400" placeholder="Describe alcance, productos, público objetivo, etc.">{{ feria.detalles or '' }}</textarea>
+              <small class="text-muted">Máximo 400 caracteres</small>
+            </div>
+
+            <div class="mk-col-full">
+              <label class="form-label">Desglose de Inversión</label>
+              <div class="mk-investment-section">
+  
+                <div id="gastos-list">
+                  <!-- gasto-row template will be appended here -->
+                </div>
+
+                <hr>
+
+                <!-- Mercadería separada -->
+                <div class="row g-2 align-items-center mb-2 gasto-headers" style="font-weight:600;">
+                  <div class="col-md-2"><small class="text-muted">Tipo</small></div>
+                  <div class="col-md-4"><small class="text-muted">Mercadería</small></div>
+                  <div class="col-md-2"><small class="text-muted">Cantidad</small></div>
+                  <div class="col-md-2"><small class="text-muted">Precio</small></div>
+                  <div class="col-md-1"><small class="text-muted">Total</small></div>
+                  <div class="col-md-1"></div>
+                </div>
+                <div id="mercaderia-list">
+                  <!-- mercaderia rows -->
+                </div>
+
+                <div class="mt-2 d-flex gap-2">
+                  <button type="button" id="btn-add-gasto" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-plus"></i> Agregar gasto
+                  </button>
+                  <button type="button" id="btn-add-mercaderia" class="btn btn-sm btn-outline-success">
+                    <i class="bi bi-box-seam"></i> Llenar Mercaderia
+                  </button>
+                </div>
+
+                <div class="mt-3 text-end">
+                  <label class="form-label">Total Inversión</label>
+                  <div><strong>S/ <span id="mk-total-inversion">{{ '%.2f'|format(feria.total_inversion or 0) }}</span></strong></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mk-col-full d-flex justify-content-end gap-2 mt-3">
+              <a href="{{ next_url or url_for('marketing.marketing_ferias') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-x-circle"></i> Cancelar
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save"></i> Guardar Cambios
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const UBIGEO_API = {
+  departamentos: "{{ url_for('leads.api_list_departamentos') }}",
+  provincias: "{{ url_for('leads.api_provincias_by_dep', departamento_id=0) | replace('/0','/__DEP_ID__') }}",
+  distritos: "{{ url_for('leads.api_distritos_by_prov', provincia_id=0) | replace('/0','/__PROV_ID__') }}"
+};
+
+  document.addEventListener('DOMContentLoaded', function () {
+  const depSelect = document.getElementById('feria-departamento');
+  const provSelect = document.getElementById('feria-provincia');
+  const distSelect = document.getElementById('feria-distrito');
+
+  function recalcTotal() {
+    const inputs = document.querySelectorAll('.js-gasto-monto');
+    let total = 0;
+    inputs.forEach(input => {
+      total += parseFloat(input.value) || 0;
+    });
+    const totalEl = document.getElementById('mk-total-inversion');
+    if (totalEl) totalEl.textContent = total.toFixed(2);
+  }
+
+  // gasto row template
+  function createGastoRow(tipoValue = '', facturaValue = '', montoValue = '', detalleValue = '', isMercaderia = false) {
+    const wrapper = document.createElement('div');
+    if (isMercaderia) {
+      wrapper.className = 'gasto-row mk-mercaderia-grid mb-2';
+      wrapper.innerHTML = `
+        <div>
+          <select name="gasto_tipo[]" class="form-select gasto-tipo" required>
+            <option value="Mercaderia">Mercaderia</option>
+          </select>
+        </div>
+        <div>
+          <select name="gasto_mercaderia_id[]" class="form-select gasto-mercaderia" required>
+            <option value="">Seleccionar producto</option>
+            {% for item in inventory_rows %}
+            <option value="{{ item.id }}" data-precio="{{ item.precio }}" data-cantidad="{{ item.cantidad }}">{{ item.producto }} (Stock: {{ item.cantidad }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <input type="number" name="gasto_cantidad[]" step="1" min="1" class="form-control js-gasto-cantidad" placeholder="Cantidad" required>
+        </div>
+        <div>
+          <input type="number" name="gasto_precio[]" step="0.01" min="0" class="form-control js-gasto-precio" placeholder="Precio" readonly>
+        </div>
+        <div>
+          <input type="number" name="gasto_monto[]" step="0.01" min="0" class="form-control js-gasto-monto" placeholder="Total" readonly>
+        </div>
+        <div class="text-end">
+          <button type="button" class="btn btn-outline-danger btn-sm remove-gasto"><i class="bi bi-trash"></i></button>
+        </div>
+      `;
+    } else {
+      wrapper.className = 'gasto-row mk-gasto-grid mb-2';
+      wrapper.innerHTML = `
+        <div>
+          <label class="form-label mb-1" style="font-size:12px;">Gastos varios</label>
+          <select name="gasto_tipo[]" class="form-select gasto-tipo">
+            <option value="">Seleccionar tipo de gasto</option>
+            ${Array.from(document.querySelectorAll('#hidden-tipos-gastos option')).map(opt => `<option value="${opt.value}">${opt.textContent}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label class="form-label mb-1" style="font-size:12px;">Factura</label>
+          <input type="text" name="gasto_factura[]" class="form-control gasto-factura" placeholder="Factura (opcional)">
+        </div>
+        <div>
+          <label class="form-label mb-1" style="font-size:12px;">Detalle</label>
+          <input type="text" name="gasto_detalle[]" class="form-control gasto-detalle" placeholder="Detalle (opcional)">
+        </div>
+        <div>
+          <label class="form-label mb-1" style="font-size:12px;">Total</label>
+          <input type="number" name="gasto_monto[]" step="0.01" min="0" class="form-control js-gasto-monto" placeholder="0.00">
+        </div>
+        <div class="text-end d-flex align-items-center justify-content-center" style="margin-top:1.7em;">
+          <button type="button" class="btn btn-outline-danger btn-sm remove-gasto"><i class="bi bi-trash"></i></button>
+        </div>
+      `;
+    }
+
+    // set values
+    if (!isMercaderia) {
+      if (tipoValue) wrapper.querySelector('.gasto-tipo').value = tipoValue;
+      if (facturaValue) wrapper.querySelector('.gasto-factura').value = facturaValue;
+      if (montoValue) wrapper.querySelector('.js-gasto-monto').value = montoValue;
+      if (detalleValue) wrapper.querySelector('.gasto-detalle').value = detalleValue;
+    } else {
+      // For mercaderia, tipo is fixed; detalleValue may contain "id:qty" when loading initial rows
+      if (detalleValue && detalleValue.includes(':')) {
+        const parts = detalleValue.split(':');
+        const mercId = parts[0];
+        const qty = parts[1];
+        // set after element is in DOM (caller may set later), but set defaults here
+      }
+    }
+
+    // attach listeners
+    if (isMercaderia) {
+      const mercaderiaSelect = wrapper.querySelector('.gasto-mercaderia');
+      const cantidadInput = wrapper.querySelector('.js-gasto-cantidad');
+      const precioInput = wrapper.querySelector('.js-gasto-precio');
+      const montoInput = wrapper.querySelector('.js-gasto-monto');
+
+      function updateMercValues() {
+        const selected = mercaderiaSelect.selectedOptions[0];
+        const precio = selected && selected.dataset ? parseFloat(selected.dataset.precio) || 0 : 0;
+        precioInput.value = precio ? precio.toFixed(2) : '';
+        const cantidad = parseInt(cantidadInput.value) || 0;
+        montoInput.value = precio && cantidad ? (precio * cantidad).toFixed(2) : '';
+        recalcTotal();
+      }
+
+      mercaderiaSelect.addEventListener('change', updateMercValues);
+      cantidadInput.addEventListener('input', updateMercValues);
+
+      // Set max based on stock when selection changes
+      mercaderiaSelect.addEventListener('change', function() {
+        const selected = mercaderiaSelect.selectedOptions[0];
+        if (selected) {
+          const maxCant = parseInt(selected.dataset.cantidad) || 0;
+          cantidadInput.max = maxCant;
+        }
+      });
+    } else {
+      const montoEl = wrapper.querySelector('.js-gasto-monto');
+      if (montoEl) montoEl.addEventListener('input', recalcTotal);
+    }
+
+    const rm = wrapper.querySelector('.remove-gasto');
+    if (rm) rm.addEventListener('click', function () {
+      wrapper.remove();
+      recalcTotal();
+    });
+
+    return wrapper;
+  }
+
+  // Ensure a hidden select with tipos_gastos options exists for template cloning
+  if (!document.getElementById('hidden-tipos-gastos')) {
+    const s = document.createElement('select');
+    s.id = 'hidden-tipos-gastos';
+    s.style.display = 'none';
+    s.innerHTML = `{% for tg in tipos_gastos %}<option value="{{ tg.id }}">{{ tg.tipo_factura|e }}</option>{% endfor %}`;
+    document.body.appendChild(s);
+  }
+
+  // initialize gastos and mercaderia lists with server-provided rows if any
+  const gastosList = document.getElementById('gastos-list');
+  const mercaderiaList = document.getElementById('mercaderia-list');
+  if (gastosList && mercaderiaList) {
+    const initialGastos = [
+      {% for g in initial_gastos %}
+        { tipo: "{{ g.tipo|e }}", factura: "{{ g.factura|e }}", detalle: "{{ g.detalle|e if g.detalle is defined else '' }}", monto: "{{ '%.2f'|format(g.monto) }}" }{% if not loop.last %},{% endif %}
+      {% endfor %}
+    ];
+    if (initialGastos && initialGastos.length) {
+      initialGastos.forEach(g => {
+        // If tipo is Mercaderia treat it as inventory row (detalle expected as "id:cantidad")
+        if (String(g.tipo).toLowerCase() === 'mercaderia' || String(g.tipo) === 'Mercaderia') {
+          const row = createGastoRow('', '', '', g.detalle || '', true);
+          // try to populate select and cantidad from detalle "id:qty"
+          if (g.detalle && g.detalle.indexOf(':') !== -1) {
+            const parts = g.detalle.split(':');
+            const mercId = parts[0];
+            const qty = parts[1];
+            const sel = row.querySelector('.gasto-mercaderia');
+            const qtyEl = row.querySelector('.js-gasto-cantidad');
+            if (sel) sel.value = mercId;
+            if (qtyEl) qtyEl.value = qty;
+            // trigger update to set precio/total
+            if (sel) sel.dispatchEvent(new Event('change'));
+          }
+          mercaderiaList.appendChild(row);
+        } else {
+          gastosList.appendChild(createGastoRow(g.tipo, g.factura, g.monto, g.detalle));
+        }
+      });
+    } else {
+      gastosList.appendChild(createGastoRow());
+    }
+  }
+
+  // Add new gasto
+  const btnAdd = document.getElementById('btn-add-gasto');
+  if (btnAdd) {
+    btnAdd.addEventListener('click', function () {
+      if (gastosList) {
+        gastosList.appendChild(createGastoRow());
+      }
+    });
+  }
+
+  // Add new mercaderia (goes to mercaderia-list)
+  const btnAddMerc = document.getElementById('btn-add-mercaderia');
+  if (btnAddMerc) {
+    btnAddMerc.addEventListener('click', function () {
+      if (mercaderiaList) {
+        mercaderiaList.appendChild(createGastoRow('', '', '', '', true));
+      }
+    });
+  }
+
+  // initial recalc
+  recalcTotal();
+
+  // Small accessibility: add subtitles/classes styles for headings
+  // (minimal inline tweak here already handled in main CSS earlier)
+
+  function setOptions(selectEl, items, placeholder) {
+    const currentValue = selectEl.value;
+    selectEl.innerHTML = '';
+    const first = document.createElement('option');
+    first.value = '';
+    first.textContent = placeholder;
+    selectEl.appendChild(first);
+    items.forEach((item) => {
+      const opt = document.createElement('option');
+      opt.value = item.id;
+      opt.textContent = item.nombre;
+      if (String(item.id) === String(currentValue) || String(item.nombre) === String(currentValue)) opt.selected = true;
+      selectEl.appendChild(opt);
+    });
+  }
+
+  function resetProvincia() {
+    provSelect.disabled = true;
+    setOptions(provSelect, [], '-- Seleccione provincia --');
+  }
+
+  function resetDistrito() {
+    distSelect.disabled = true;
+    setOptions(distSelect, [], '-- Seleccione distrito --');
+  }
+
+  fetch(UBIGEO_API.departamentos)
+    .then((r) => r.json())
+    .then((items) => setOptions(depSelect, items || [], '-- Seleccione departamento --'))
+    .catch(() => setOptions(depSelect, [], '-- Error cargando departamentos --'));
+
+  depSelect.addEventListener('change', function () {
+    const depId = depSelect.value;
+    resetProvincia();
+    resetDistrito();
+    if (!depId) return;
+
+    fetch(UBIGEO_API.provincias.replace('__DEP_ID__', depId))
+      .then((r) => r.json())
+      .then((items) => {
+        setOptions(provSelect, items || [], '-- Seleccione provincia --');
+        provSelect.disabled = false;
+      })
+      .catch(() => setOptions(provSelect, [], '-- Error cargando provincias --'));
+  });
+
+  provSelect.addEventListener('change', function () {
+    const provId = provSelect.value;
+    resetDistrito();
+    if (!provId) return;
+
+    fetch(UBIGEO_API.distritos.replace('__PROV_ID__', provId))
+      .then((r) => r.json())
+      .then((items) => {
+        setOptions(distSelect, items || [], '-- Seleccione distrito --');
+        distSelect.disabled = false;
+      })
+      .catch(() => setOptions(distSelect, [], '-- Error cargando distritos --'));
+  });
+});
+</script>
+{% endblock %}

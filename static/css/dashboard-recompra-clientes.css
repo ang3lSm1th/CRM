@@ -1,0 +1,96 @@
+.recompra-wrap {
+    --re-blue: #0b5ed7;
+    --re-cyan: #0dcaf0;
+    --re-green: #198754;
+    --re-amber: #ffc107;
+    --re-red: #dc3545;
+}
+
+.recompra-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 18px;
+    border-radius: 14px;
+    background: linear-gradient(140deg, rgba(11, 94, 215, .1), rgba(13, 202, 240, .08));
+    border: 1px solid rgba(11, 94, 215, .15);
+}
+
+.kpi-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
+.kpi-label {
+    font-size: .85rem;
+    color: #64748b;
+}
+
+.kpi-value {
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.recompra-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.pred-badge {
+    display: inline-block;
+    min-width: 62px;
+    text-align: center;
+    border-radius: 999px;
+    padding: 5px 10px;
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: .2px;
+}
+
+.pred-high {
+    background: var(--re-green);
+}
+
+.pred-good {
+    background: var(--re-blue);
+}
+
+.pred-mid {
+    background: #0ea5b7;
+}
+
+.pred-low {
+    background: #d39e00;
+    color: #1f2937;
+}
+
+.pred-risk {
+    background: var(--re-red);
+}
+
+.mini-list {
+    padding-left: 16px;
+    margin: 0;
+}
+
+.mini-list li {
+    font-size: .82rem;
+    margin-bottom: 3px;
+    line-height: 1.2;
+}
+
+@media (max-width: 768px) {
+    .recompra-hero {
+        flex-direction: column;
+    }
+
+    .kpi-value {
+        font-size: 1.35rem;
+    }
+}

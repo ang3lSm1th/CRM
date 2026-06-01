@@ -1,0 +1,8 @@
+@media print {
+  .btn, .navbar, .sidebar {
+    display: none !important;
+  }
+  .card {
+    page-break-inside: avoid;
+  }
+}

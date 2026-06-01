@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/marketing-campanas.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="mk-campaigns-container">
+  <div class="mk-title mb-3">
+    <div>
+      <h2 class="mb-1"><i class="bi bi-bullseye"></i> Campanas y Atribucion de Leads</h2>
+      <div class="text-muted">Registra campanas y vincula leads por periodo, canal y linea de producto.</div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-outline-primary" href="{{ url_for('marketing.marketing_ferias') }}">
+        <i class="bi bi-calendar-event"></i> Ir a Ferias
+      </a>
+      <a class="btn btn-outline-secondary" href="{{ url_for('reportes.analisis_clientes') }}">
+        <i class="bi bi-arrow-left"></i> Volver a Análisis de Clientes
+      </a>
+    </div>
+  </div>
+
+  <div class="card mk-form-card mb-4">
+    <div class="card-header bg-light">
+      <strong><i class="bi bi-plus-circle"></i> Nueva Campana</strong>
+    </div>
+    <div class="card-body">
+      <form method="post">
+        <div class="mk-grid">
+          <div class="mk-col-4">
+            <label class="form-label">Campana publicitaria *</label>
+            <input type="text" name="nombre_campana" class="form-control" required maxlength="150" placeholder="Ej. Expo Agro Abril 2026">
+          </div>
+          <div class="mk-col-4">
+            <label class="form-label">Canal *</label>
+            <select name="canal" class="form-select" required>
+              <option value="">Seleccionar canal</option>
+              {% for k, v in canales.items() %}
+              <option value="{{ k }}">{{ v }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mk-col-3">
+            <label class="form-label">Fecha lanzamiento *</label>
+            <input type="date" name="fecha_lanzamiento" class="form-control" required>
+          </div>
+          <div class="mk-col-3">
+            <label class="form-label">Periodo inicio *</label>
+            <input type="date" name="periodo_inicio" class="form-control" required>
+          </div>
+          <div class="mk-col-3">
+            <label class="form-label">Periodo fin *</label>
+            <input type="date" name="periodo_fin" class="form-control" required>
+          </div>
+
+          <div class="mk-col-4">
+            <label class="form-label">Linea de negocio *</label>
+            <select id="linea-negocio" name="linea_negocio_id" class="form-select" required>
+              <option value="">Seleccionar</option>
+              {% for ln in lineas_negocio %}
+              <option value="{{ ln.id }}">{{ ln.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mk-col-4">
+            <label class="form-label">Linea de familia *</label>
+            <select id="linea-familia" name="linea_familia_id" class="form-select" required disabled>
+              <option value="">Seleccionar primero linea de negocio</option>
+            </select>
+          </div>
+          <div class="mk-col-4">
+            <label class="form-label">Linea de producto *</label>
+            <select id="linea-producto" name="linea_producto_id" class="form-select" required disabled>
+              <option value="">Seleccionar primero linea de familia</option>
+            </select>
+          </div>
+
+          <div class="mk-col-4">
+            <label class="form-label">Producto *</label>
+            <input type="text" name="producto" class="form-control" required maxlength="120" placeholder="Ej. Fertilizante X45">
+          </div>
+
+          <div class="mk-col-3">
+            <label class="form-label">Conversion CP (%)</label>
+            <input type="number" step="0.01" min="0" name="conversion_cp" class="form-control" placeholder="0.00">
+          </div>
+          <div class="mk-col-3">
+            <label class="form-label">Costo por resultado</label>
+            <input type="number" step="0.01" min="0" name="costo_por_resultado" class="form-control" placeholder="0.00">
+          </div>
+          <div class="mk-col-3">
+            <label class="form-label">Inversion</label>
+            <input type="number" step="0.01" min="0" name="inversion" class="form-control" placeholder="0.00">
+          </div>
+          <div class="mk-col-3">
+            <label class="form-label">Impresiones</label>
+            <input type="number" min="0" name="impresiones" class="form-control" placeholder="0">
+          </div>
+
+          <div class="mk-col-3">
+            <label class="form-label">Alcance</label>
+            <input type="number" min="0" name="alcance" class="form-control" placeholder="0">
+          </div>
+
+          <div class="mk-col-12 d-flex justify-content-end mt-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-save"></i> Guardar Campana
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+      <strong><i class="bi bi-list-check"></i> Campanas registradas</strong>
+      <span class="text-muted">Total: {{ campaigns|length }}</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive mk-campaigns-table-wrapper">
+        <table class="table table-striped table-hover mb-0 mk-table">
+          <thead class="table-dark">
+            <tr>
+              <th>ID</th>
+              <th>Campana</th>
+              <th>Producto</th>
+              <th>Periodo</th>
+              <th>Canal</th>
+              <th>Linea negocio</th>
+              <th>Inversion</th>
+              <th>Leads</th>
+              <th class="text-end">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in campaigns %}
+            <tr>
+              <td>#{{ c.id }}</td>
+              <td>
+                <div class="fw-semibold">{{ c.nombre_campana }}</div>
+                <small class="text-muted">Lanzamiento: {{ c.fecha_lanzamiento }}</small>
+              </td>
+              <td>{{ c.producto or '-' }}</td>
+              <td>
+                <span class="badge bg-secondary">{{ c.periodo_inicio }}</span>
+                <span class="badge bg-secondary">{{ c.periodo_fin }}</span>
+              </td>
+              <td>{{ canales.get(c.canal, '-') if c.canal else '-' }}</td>
+              <td>{{ c.linea_negocio or '-' }}</td>
+              <td>{{ c.inversion if c.inversion is not none else '-' }}</td>
+              <td><span class="badge bg-primary">{{ c.leads_vinculados }}</span></td>
+              <td class="text-end">
+                {% set current_origin = request.full_path[:-1] if request.full_path.endswith('?') else request.full_path %}
+                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('marketing.marketing_campaign_edit', campaign_id=c.id, next=current_origin) }}">
+                  <i class="bi bi-pencil-square"></i> Editar
+                </a>
+                <a class="btn btn-sm btn-outline-success" href="{{ url_for('marketing.marketing_campaign_results', campaign_id=c.id, next=current_origin) }}">
+                  <i class="bi bi-bar-chart-line"></i> Resultados
+                </a>
+                <a class="btn btn-sm btn-outline-info" href="{{ url_for('marketing.marketing_campaign_leads', campaign_id=c.id, next=current_origin) }}">
+                  <i class="bi bi-diagram-3"></i> Vincular Leads
+                </a>
+                {% if session.get('id_rol','')|lower in ['administrador','gerente','marketing'] %}
+                <button type="button" class="btn btn-sm btn-outline-danger js-delete-campaign"
+                        data-init-url="{{ url_for('marketing.marketing_campaign_delete_init', campaign_id=c.id) }}"
+                        data-confirm-url="{{ url_for('marketing.marketing_campaign_delete_confirm', campaign_id=c.id) }}"
+                        data-delete-name="{{ c.nombre_campana|e }}"
+                        data-delete-id="{{ c.id }}">
+                  <i class="bi bi-trash"></i> Eliminar
+                </button>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="9" class="text-center text-muted py-4">Aun no hay campanas registradas.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<div id="marketing-campanas-config"
+     data-familia-api="{{ url_for('marketing.marketing_lineas_familia_api') }}"
+     data-producto-api="{{ url_for('marketing.marketing_lineas_producto_api') }}"
+     hidden></div>
+<script src="{{ url_for('static', filename='js/marketing-campanas.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/marketing-delete.js') }}" defer></script>
+{% endblock %}

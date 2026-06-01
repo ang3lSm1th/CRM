@@ -1,0 +1,10 @@
+{
+  "tool_name": "tool_sales_report",
+  "original_name": "tool_sales_report",
+  "description": "Analiza ventas por cliente y periodo con salida agregada.",
+  "created_at": "2026-05-11T20:02:29.881439",
+  "created_by": "ToolAutoFactory",
+  "correlation_id": "corr-test-1",
+  "python_file": "generated_tools\\tool_sales_report.py",
+  "manifest_file": "generated_tools\\tool_sales_report.json"
+}

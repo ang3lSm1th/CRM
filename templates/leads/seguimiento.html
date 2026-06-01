@@ -1,0 +1,737 @@
+{% extends "base.html" %}
+{% block content %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/seguimiento.css') }}">
+<style>
+  /* Botón eliminar: grande, rojo, borde rojo, palpitante */
+  .btn-animated-delete {
+    animation: pulse-red 1.8s infinite;
+    border: 2px solid #dc3545;
+    color: #fff;
+    background-color: #dc3545;
+  }
+  .btn-animated-delete.btn-lg { padding: 0.6rem 1.1rem; font-size: 1.05rem; }
+  @keyframes pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(220,53,69,0.45); transform: scale(1); }
+    50% { box-shadow: 0 0 0 10px rgba(220,53,69,0); transform: scale(1.03); }
+    100% { box-shadow: 0 0 0 0 rgba(220,53,69,0); transform: scale(1); }
+  }
+  /* Forzar color y borde rojo al pasar el cursor o foco (anula Bootstrap) */
+  .btn-animated-delete:hover,
+  .btn-animated-delete:focus {
+    background-color: #b02a37 !important;
+    border-color: #b02a37 !important;
+    color: #fff !important;
+  }
+</style>
+ 
+<div class="seguimiento">
+ <div class="seguimiento-grid-header">
+     <h2 class="mb-4">📋 Seguimiento del Lead {{ lead.codigo }}<a class="btn-new-lead" 
+   href="{{ url_for('leads.create_lead',
+       nombre=lead.nombre,
+       ruc_dni=lead.ruc_dni,
+       telefono=lead.telefono,
+       contacto=lead.contacto,
+       direccion=lead.direccion,
+       departamento=lead.departamento or lead.idDepartamento,
+       provincia=lead.provincia or lead.idProvincia,
+       distrito=lead.distrito or lead.idDistrito,
+       bien_servicio_id=lead.bien_servicio_id,
+       asignado_a=lead.asignado_a if es_asesor else '',
+   ) }}">
+   ➕ Nueva Cotización
+
+   
+</a>
+
+    <!-- Botón eliminar lead (visible solo para administrador/gerente/RRHH) -->
+    {% if session["id_rol"] in ["administrador", "gerente", "RRHH"] %}
+      <button id="btn-delete-lead" type="button" class="btn btn-danger btn-lg btn-animated-delete">Eliminar</button>
+    {% endif %}
+</h2>
+  
+  <!-- Formulario POST para eliminar el lead (se envía tras confirmación) -->
+  <form id="form-delete-lead" method="POST" action="{{ url_for('leads.delete_lead', codigo=lead.codigo) }}" style="display:none;"></form>
+  
+
+  <div class="mb-3">
+    <a href="{{ return_url }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> {{ return_label }}</a>
+    <a href="{{ url_for('leads.edit_lead', codigo=lead.codigo, next=return_url) }}" class="btn btn-outline-primary">Editar</a>
+    <a href="{{ url_for('leads.seguimiento_lead', codigo=lead.codigo, next=return_url) }}" class="btn btn-primary">Seguimiento</a>
+    {% if puede_consultar_equipo %}
+    <button type="button" id="btn-estado-tractor" class="tab-pill hover-lift" data-codigo="{{ lead.codigo }}">
+      <i class="bi bi-truck me-1"></i> Estado del tractor
+    </button>
+    {% endif %}
+    {% if session["id_rol"] in ["administrador", "gerente", "RRHH"] %}
+    <button type="button" id="btn-historial-cambios" class="tab-pill hover-lift" data-codigo="{{ lead.codigo }}">
+      <i class="bi bi-clock-history me-1"></i> Historial de cambios
+    </button>
+    {% endif %}
+  </div>
+
+  {# ===== fallbacks ===== #}
+  {% set f_proceso = request.form.get('proceso_id') or (ultimo.proceso_id|string if ultimo and ultimo.proceso_id is not none else '') %}
+  {% set f_canal   = request.form.get('canal_contacto') or (ultimo.canal_contacto|string if ultimo and ultimo.canal_contacto is not none else '') %}
+  {% set f_fecha   = request.form.get('fecha_programada') or (ultimo.fecha_programada if ultimo and ultimo.fecha_programada else '') %}
+  {% set f_cot     = request.form.get('cotizacion') or (ultimo.cotizacion if ultimo and ultimo.cotizacion else '') %}
+  {% set f_monto   = request.form.get('monto') or (ultimo.monto if ultimo and ultimo.monto is not none else '') %}
+  {% set f_moneda  = request.form.get('moneda_id') or (ultimo.moneda_id|string if ultimo and ultimo.moneda_id is not none else '') %}
+  {% set f_motivo  = request.form.get('motivo_no_venta_id') or (ultimo.motivo_no_venta_id|string if ultimo and ultimo.motivo_no_venta_id is not none else '') %}
+  {% set f_com     = request.form.get('comentario') or (ultimo.comentario if ultimo and ultimo.comentario else '') %}
+
+  <form method="POST" action="{{ url_for('leads.seguimiento_lead', codigo=lead.codigo) }}" id="form-seguimiento">
+    <input type="hidden" name="next" value="{{ return_url }}">
+    <div class="seguimiento-grid">
+      <!-- Columna izquierda -->
+      <div class="col-left">
+        <div class="card p-3">
+
+          <div class="mb-3 control-line">
+            <label class="form-label mb-0">Código</label>
+            <input type="text" class="form-control" value="{{ lead.codigo }}" readonly>
+          </div>
+
+          <div class="mb-3 control-line">
+            <label class="form-label mb-0">Fecha</label>
+            <input type="text" class="form-control" value="{{ lead.fecha }}" readonly>
+          </div>
+
+          <div class="mb-3 control-line">
+            <label class="form-label mb-0">Teléfono</label>
+            <input type="text" class="form-control" value="{{ lead.telefono }}" readonly>
+          </div>
+
+          <div class="mb-3 control-line">
+            <label class="form-label mb-0">Proceso</label>
+            <select id="proceso_select" name="proceso_id" class="form-select" {{ 'disabled' if lock_proceso else '' }}>
+              {% for p in procesos %}
+                {% set pid = (p.id if p.id is defined else p['id']) | string %}
+                {% set pnombre = p.nombre_proceso if p.nombre_proceso is defined else p['nombre_proceso'] %}
+                <option value="{{ pid }}" {{ 'selected' if f_proceso == pid else '' }}>{{ pnombre }}</option>
+              {% endfor %}
+            </select>
+            {% if lock_proceso %}
+              <input type="hidden" name="proceso_id" value="{{ f_proceso }}">
+            {% endif %}
+          </div>
+          <!-- Canal de contacto -->
+          <div id="sec-canal" class="mb-3 control-line" style="display:none;">
+            <label class="form-label mb-0">Canal de contacto</label>
+
+            <select name="canal_contacto" id="canal_contacto" class="form-select">
+            <option value="" disabled {{ 'selected' if not f_canal }}>-- Seleccione un canal de contacto --</option>
+            {% for c in canales %}
+              {% set cid = (c.id if c.id is defined else c['id']) | string %}
+              {% set cnombre = c.nombre if c.nombre is defined else c['nombre'] %}
+              <option value="{{ cid }}" {{ 'selected' if f_canal == cid else '' }}>{{ cnombre }}</option>
+            {% endfor %}
+          </select>
+
+
+            <!-- respaldo por si el select queda disabled -->
+            <input type="hidden" id="canal_contacto_hidden" name="canal_contacto" value="{{ f_canal }}">
+            <script>
+              (function(){
+                const sel = document.getElementById('canal_contacto');
+                const hid = document.getElementById('canal_contacto_hidden');
+                const form = document.getElementById('form-seguimiento');
+                if (sel && hid) sel.addEventListener('change', ()=> hid.value = sel.value || '');
+                if (form) form.addEventListener('submit', ()=> { 
+                  if (sel) sel.disabled = false; 
+                  if (hid && sel) hid.value = sel.value || ''; 
+                });
+              })();
+            </script>
+          </div>
+
+
+
+
+          <div id="sec-fecha" class="mb-3 control-line" style="display:none;">
+            <label class="form-label mb-0">Fecha de programación</label>
+            <div class="position-relative date-input-group">
+              <input type="date" name="fecha_programada" id="fecha_programada" class="form-control pe-5" value="{{ f_fecha }}">
+              <span class="date-icon position-absolute top-50 end-0 translate-middle-y me-3" style="cursor:pointer;">
+                <i class="bi bi-calendar-date fs-5 text-secondary"></i>
+              </span>
+            </div>
+          </div>
+
+          <div id="sec-cotizacion" class="card p-3 mb-3" style="display:none;">
+            <h5 class="mb-3">💰 Cotización</h5>
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Código</label>
+              <input type="text" name="cotizacion" id="cotizacion" class="form-control" maxlength="20" placeholder="Ej: ABC12345" value="{{ f_cot }}">
+            </div>
+            <div class="mb-3 control-line">
+              <label class="form-label mb-0">Monto</label>
+              <input type="number" name="monto" id="monto" class="form-control" min="0" step="0.01" placeholder="0.00" value="{{ f_monto }}">
+            </div>
+            <div class="mb-0 control-line">
+              <label class="form-label mb-0">Moneda</label>
+              <select id="moneda" name="moneda_id" class="form-select">
+                <option value="" disabled {{ 'selected' if not f_moneda }}>-- Seleccione una Moneda --</option>
+                {% for m in monedas %}
+                  {% set mid = (m.id if m.id is defined else m['id']) | string %}
+                  {% set mnombre = m.nombre_moneda if m.nombre_moneda is defined else m['nombre_moneda'] %}
+                  <option value="{{ mid }}" {{ 'selected' if f_moneda == mid else '' }}>{{ mnombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div id="sec-motivo" class="mb-3 control-line" style="display:none;">
+            <label class="form-label mb-0">Motivo (No vendido)</label>
+            <select id="motivo_no_venta_id" name="motivo_no_venta_id" class="form-select">
+              <option value="" disabled {{ 'selected' if not f_motivo }}>-- Seleccione un motivo de no venta --</option>
+              {% for mt in motivos %}
+                {% set mtid = (mt.id if mt.id is defined else mt['id']) | string %}
+                {% set mtnombre = mt.motivo_no_venta if mt.motivo_no_venta is defined else mt['motivo_no_venta'] %}
+                <option value="{{ mtid }}" {{ 'selected' if f_motivo == mtid else '' }}>{{ mtnombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Columna derecha -->
+      <div class="col-right">
+        <div class="card p-3">
+          <div class="mb-3 control-line">
+            <label class="form-label mb-0">Distrito</label>
+            <input type="text" class="form-control" value="{{ lead.distrito or '' }}" readonly>
+          </div>
+          <div class="mb-3 control-line">
+            <label class="form-label mb-0">Bien/Servicio</label>
+            <input type="text" class="form-control" value="{{ bien_servicio_nombre or '' }}" readonly>
+          </div>
+          <div class="mb-3 control-line">
+            <label class="form-label mb-0">E-mail</label>
+            <input type="text" class="form-control" value="{{ lead.email or '' }}" readonly>
+          </div>
+          <div class="mb-2 control-line control-line--area">
+            <label class="form-label mb-0">Comentario</label>
+            <textarea id="comentario" name="comentario" class="form-control" rows="4" placeholder="Escribe tus observaciones aquí...">{{ f_com }}</textarea>
+          </div>
+        </div>
+        {% if puede_consultar_equipo %}
+        <div id="sec-serie-equipo" class="card p-3 mt-3" style="display:none;">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0">Consulta de equipo por serie</h6>
+            <span class="badge bg-light text-dark border">Tabla Tractor</span>
+          </div>
+          <div class="input-group mb-2">
+            <input
+              type="text"
+              id="serie_equipo_lookup"
+              name="serie_equipo_lookup"
+              class="form-control"
+              maxlength="60"
+              placeholder="Ej: ZNZEUF800S7049218"
+              autocomplete="off"
+              value="{{ tractor_guardado.serie if tractor_guardado else '' }}"
+            >
+            <button type="button" id="btn-buscar-serie" class="btn btn-outline-primary">Buscar</button>
+          </div>
+          <div id="serie_equipo_feedback" class="small text-muted mb-2">Disponible solo cuando el proceso sea Cotizado.</div>
+          <div class="mb-2 control-line">
+            <label class="form-label mb-0">Equipo</label>
+            <input type="text" id="serie_equipo_equipo" name="serie_equipo_equipo" class="form-control" readonly value="{{ tractor_guardado.equipo if tractor_guardado else '' }}">
+          </div>
+          <div class="mb-2 control-line">
+            <label class="form-label mb-0">Modelo</label>
+            <input type="text" id="serie_equipo_modelo" name="serie_equipo_modelo" class="form-control" readonly value="{{ tractor_guardado.modelo if tractor_guardado else '' }}">
+          </div>
+          <div class="mb-0 control-line">
+            <label class="form-label mb-0">Estado</label>
+            <input type="text" id="serie_equipo_estado" name="serie_equipo_estado" class="form-control" readonly value="{{ tractor_guardado.estado if tractor_guardado else '' }}">
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="actions-right mb-3">
+      <button type="submit" class="btn btn-success btn-sm">Guardar</button>
+    </div>
+
+  </form>
+
+  <h4 class="mt-4 mb-2">Actividades de Cliente</h4>
+
+  <form class="mb-3 d-flex" style="gap:.5rem;" onsubmit="return false;">
+    <input type="text" class="form-control live-search" placeholder="Buscar en actividades..." id="q-actividades" data-target="#tabla-actividades" data-counter="#cnt-actividades">
+    <button type="button" class="btn btn-primary search-btn" data-input="#q-actividades">Buscar</button>
+    <button type="button" class="btn btn-outline-secondary clear-btn" data-input="#q-actividades">Limpiar</button>
+    <div class="text-muted" style="align-self:center;">
+      <small>Coincidencias: <span id="cnt-actividades">0</span></small>
+    </div>
+  </form>
+
+  <div class="table-responsive actividades-scroll">
+    <table class="table table-modern table-striped table-sm" id="tabla-actividades">
+      <thead>
+        <tr>
+          <th>Código Lead</th>
+          <th>Nombre</th>
+          <th>Fecha del Lead</th>
+          <th>Contacto</th>
+          <th>Bien/Servicio</th>
+          <th>Teléfono</th>
+          <th>Código Cotización</th>
+          <th>Monto &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</th>
+          <th>Moneda</th>
+          <th>Proceso</th>
+          <th class="col-comentario">Comentario</th>
+          <th>Fecha de Guardado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in seguimientos %}
+        <tr>
+          <td>{{ lead.codigo }}</td>
+          <td>{{ lead_nombre or lead.nombre or lead.razon_social or lead.nombre_completo or '' }}</td>
+          <td>{{ lead.fecha }}</td>
+          <td>{{ lead_contacto or lead.contacto or lead.persona_contacto or '' }}</td>
+          <td>{{ bien_servicio_nombre or '' }}</td>
+          <td>{{ lead.telefono }}</td>
+          <td>{{ s.cotizacion }}</td>
+          <td>{{ s.monto|number_format if s.monto else '' }}</td>
+          <td>{{ mone_map.get(s.moneda_id) or '' }}</td>
+          <td>{{ proc_map.get(s.proceso_id) or '' }}</td>
+          <td class="col-comentario" title="{{ s.comentario or '' }}">
+            <div class="comentario-full">{{ s.comentario or '' }}</div>
+          </td>
+          <td>{{ s.fecha_guardado }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="12" class="text-center text-muted no-data">Sin actividades registradas.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+<!-- SweetAlert2 (confirm dialog for delete lead) -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var btn = document.getElementById('btn-delete-lead');
+  var form = document.getElementById('form-delete-lead');
+  if (btn && form) {
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      
+      // Verificar si el lead está cerrado (proceso_id = 5)
+      var leadEstado = '{{ lead.proceso_id }}';
+      var esCerrado = (leadEstado === '5');
+      
+      if (esCerrado) {
+        // Confirmación doble para leads cerrados con venta
+        Swal.fire({
+          title: '⚠️ Lead Cerrado con Venta',
+          html: '<p><strong>Este lead tiene una venta asociada.</strong></p>' +
+                '<p>Al eliminarlo, también se eliminará de la tabla de ventas concretadas.</p>' +
+                '<p class="text-danger mt-3"><i class="fa-solid fa-triangle-exclamation"></i> Esta acción no se puede deshacer.</p>',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Continuar',
+          cancelButtonText: 'Cancelar',
+          confirmButtonColor: '#dc3545',
+          cancelButtonColor: '#6c757d'
+        }).then(function(result){
+          if (result.isConfirmed) {
+            // Segunda confirmación
+            Swal.fire({
+              title: '¿Estás completamente seguro?',
+              text: 'Escribe "ELIMINAR" para confirmar',
+              input: 'text',
+              icon: 'error',
+              showCancelButton: true,
+              confirmButtonText: 'Sí, eliminar todo',
+              cancelButtonText: 'Cancelar',
+              confirmButtonColor: '#dc3545',
+              cancelButtonColor: '#6c757d',
+              preConfirm: (value) => {
+                if (value !== 'ELIMINAR') {
+                  Swal.showValidationMessage('Debes escribir "ELIMINAR" exactamente');
+                  return false;
+                }
+                return true;
+              }
+            }).then(function(result2){
+              if (result2.isConfirmed) {
+                form.submit();
+              }
+            });
+          }
+        });
+      } else {
+        // Confirmación simple para leads no cerrados
+        Swal.fire({
+          title: '¿Estás seguro que quieres eliminar este lead?',
+          text: 'Esta acción no se puede deshacer.',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar',
+          confirmButtonColor: '#dc3545',
+          cancelButtonColor: '#6c757d'
+        }).then(function(result){
+          if (result.isConfirmed) {
+            form.submit();
+          }
+        });
+      }
+    });
+  }
+});
+
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const cotizacionInput = document.getElementById('cotizacion');
+
+    // --- Limita cotizacionInput a solo números y máximo 10 caracteres ---
+    if (cotizacionInput) {
+        cotizacionInput.addEventListener('input', function() {
+            this.value = this.value.replace(/\D/g, '').slice(0, 10);
+        });
+    }
+});
+</script>
+
+{% if puede_consultar_equipo %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const secSerie = document.getElementById('sec-serie-equipo');
+  const procesoSelect = document.getElementById('proceso_select');
+  const inputSerie = document.getElementById('serie_equipo_lookup');
+  const btnBuscar = document.getElementById('btn-buscar-serie');
+  const inputEquipo = document.getElementById('serie_equipo_equipo');
+  const inputModelo = document.getElementById('serie_equipo_modelo');
+  const inputEstado = document.getElementById('serie_equipo_estado');
+  const feedback = document.getElementById('serie_equipo_feedback');
+  const endpoint = "{{ url_for('leads.api_equipo_por_serie', codigo=lead.codigo) }}";
+  const saveEndpoint = "{{ url_for('leads.api_guardar_equipo_por_serie', codigo=lead.codigo) }}";
+
+  if (!secSerie || !procesoSelect || !inputSerie || !btnBuscar || !inputEquipo || !inputModelo || !inputEstado || !feedback) {
+    return;
+  }
+
+  function getProcesoSeleccionado() {
+    return (procesoSelect.options[procesoSelect.selectedIndex]?.text || '').trim();
+  }
+
+  function isCotizadoOCerrado() {
+    const p = getProcesoSeleccionado().toLowerCase();
+    return p === 'cotizado' || p.includes('cerrad');
+  }
+
+  function setFeedback(message, kind) {
+    feedback.textContent = message || '';
+    feedback.classList.remove('text-muted', 'text-danger', 'text-success');
+    if (kind === 'error') {
+      feedback.classList.add('text-danger');
+    } else if (kind === 'ok') {
+      feedback.classList.add('text-success');
+    } else {
+      feedback.classList.add('text-muted');
+    }
+  }
+
+  function clearResultado() {
+    inputEquipo.value = '';
+    inputModelo.value = '';
+    inputEstado.value = '';
+  }
+
+  function syncVisibility() {
+    if (isCotizadoOCerrado()) {
+      secSerie.style.display = 'block';
+      if (!inputEquipo.value && !inputModelo.value && !inputEstado.value) {
+        setFeedback('Ingresa la serie para buscar automáticamente.', 'muted');
+      }
+      return;
+    }
+    secSerie.style.display = 'none';
+    clearResultado();
+  }
+
+  async function buscarSerie() {
+    const serie = (inputSerie.value || '').trim();
+    if (!serie) {
+      setFeedback('Ingresa una serie para consultar.', 'error');
+      inputSerie.focus();
+      return;
+    }
+
+    btnBuscar.disabled = true;
+    setFeedback('Consultando tabla tractor...', 'muted');
+
+    try {
+      const params = new URLSearchParams({
+        serie: serie,
+        proceso: getProcesoSeleccionado()
+      });
+      const response = await fetch(endpoint + '?' + params.toString());
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        clearResultado();
+        setFeedback(data.message || 'No se encontró información para la serie ingresada.', 'error');
+        return;
+      }
+
+      inputEquipo.value = data.equipo || '';
+      inputModelo.value = data.modelo || '';
+      inputEstado.value = data.estado || '';
+      setFeedback('Equipo encontrado.', 'ok');
+    } catch (error) {
+      clearResultado();
+      setFeedback('No se pudo consultar la tabla tractor en este momento.', 'error');
+    } finally {
+      btnBuscar.disabled = false;
+    }
+  }
+
+  // Devuelve true si el guardado fue ok (o no hay datos de tractor que guardar)
+  async function guardarSerieIfNeeded() {
+    const serie = (inputSerie.value || '').trim();
+    if (!serie) return true;  // nada que guardar, dejar pasar
+
+    const equipo = (inputEquipo.value || '').trim();
+    const modelo = (inputModelo.value || '').trim();
+    const estado = (inputEstado.value || '').trim();
+
+    if (!equipo && !modelo && !estado) {
+      setFeedback('Busca la serie antes de guardar.', 'error');
+      return false;
+    }
+
+    if (estado.toUpperCase() !== 'STOCK') {
+      setFeedback('Solo se puede guardar cuando el tractor esté en STOCK. Estado actual: ' + (estado || 'sin estado') + '.', 'error');
+      return false;
+    }
+
+    setFeedback('Guardando datos del tractor...', 'muted');
+    try {
+      const response = await fetch(saveEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serie, equipo, modelo, estado, proceso: getProcesoSeleccionado() })
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        setFeedback(data.message || 'No se pudo guardar los datos del tractor.', 'error');
+        return false;
+      }
+      setFeedback('Tractor guardado.', 'ok');
+      return true;
+    } catch (e) {
+      setFeedback('Error de conexión al guardar el tractor.', 'error');
+      return false;
+    }
+  }
+
+  procesoSelect.addEventListener('change', syncVisibility);
+  btnBuscar.addEventListener('click', buscarSerie);
+
+  let _debounceTimer = null;
+  inputSerie.addEventListener('input', function () {
+    clearTimeout(_debounceTimer);
+    const val = (inputSerie.value || '').trim();
+    if (!val) {
+      clearResultado();
+      setFeedback('Ingresa la serie para buscar automáticamente.', 'muted');
+      return;
+    }
+    setFeedback('Buscando...', 'muted');
+    _debounceTimer = setTimeout(buscarSerie, 700);
+  });
+
+  inputSerie.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      buscarSerie();
+    }
+  });
+
+  syncVisibility();
+  if (inputSerie.value || inputEquipo.value || inputModelo.value || inputEstado.value) {
+    setFeedback('Tractor cargado desde el ultimo guardado.', 'ok');
+  }
+});
+</script>
+{% endif %}
+
+{% if puede_consultar_equipo %}
+<script>
+(function () {
+  var btn = document.getElementById('btn-estado-tractor');
+  var serieInput = document.getElementById('serie_equipo_lookup');
+  var procesoSelect = document.getElementById('proceso_select');
+  if (!btn || !serieInput || !procesoSelect) return;
+
+  function escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function procesoActual() {
+    var item = procesoSelect.options[procesoSelect.selectedIndex];
+    return (item && item.text ? item.text : '').trim();
+  }
+
+  function renderRows(items) {
+    if (!items || !items.length) {
+      return '<p class="text-muted text-center py-3 mb-0">No hay registros con requerimiento Preparacion para esta serie.</p>';
+    }
+    var html = '<div class="table-responsive" style="max-height:52vh; overflow:auto;">' +
+      '<table class="table table-sm table-hover align-middle mb-0">' +
+      '<thead class="table-light"><tr>' +
+      '<th>Codigo Req</th><th>Requerimiento</th><th>Estado</th>' +
+      '</tr></thead><tbody>';
+
+    items.forEach(function (row) {
+      html += '<tr>' +
+        '<td>' + escapeHtml(row.codigo_req) + '</td>' +
+        '<td>' + escapeHtml(row.requerimiento) + '</td>' +
+        '<td><span class="fw-semibold">' + escapeHtml(row.estado) + '</span></td>' +
+        '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  btn.addEventListener('click', function () {
+    if (typeof Swal === 'undefined') return;
+
+    var serie = (serieInput.value || '').trim();
+    if (!serie) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Serie requerida',
+        text: 'Primero ingresa la serie del tractor para consultar su estado.'
+      });
+      serieInput.focus();
+      return;
+    }
+
+    Swal.fire({
+      title: '<i class="bi bi-truck me-2"></i>Estado del tractor',
+      html: '<div id="estado-tractor-body" class="text-center text-muted py-3">Consultando agente MaSe...</div>',
+      width: 920,
+      confirmButtonText: 'Cerrar',
+      showCloseButton: true,
+      didOpen: function () {
+        var body = document.getElementById('estado-tractor-body');
+        if (!body) return;
+
+        var params = new URLSearchParams({
+          serie: serie,
+          proceso: procesoActual()
+        });
+
+        fetch("{{ url_for('leads.api_tractor_estado', codigo=lead.codigo) }}" + '?' + params.toString())
+          .then(function (r) { return r.json().then(function (json) { return { ok: r.ok, data: json }; }); })
+          .then(function (payload) {
+            var data = payload.data || {};
+            if (!payload.ok || !data.ok) {
+              body.innerHTML = '<p class="text-danger text-center py-3 mb-0">' + escapeHtml(data.message || 'No fue posible consultar el estado del tractor.') + '</p>';
+              return;
+            }
+
+            var summary = '<div class="small text-muted mb-2">Agente: ' + escapeHtml(data.agent || 'MaSe') + '</div>';
+            body.innerHTML = summary + renderRows(data.items || []);
+          })
+          .catch(function () {
+            body.innerHTML = '<p class="text-danger text-center py-3 mb-0">Error al consultar el estado del tractor.</p>';
+          });
+      }
+    });
+  });
+}());
+</script>
+{% endif %}
+
+<script>
+(function () {
+  var btn = document.getElementById('btn-historial-cambios');
+  if (!btn) return;
+
+  btn.addEventListener('click', function () {
+    if (typeof Swal === 'undefined') return;
+
+    Swal.fire({
+      title: '<i class="bi bi-clock-history me-2"></i>Historial de cambios — Lead ' + escapeHtml(btn.dataset.codigo || ''),
+      html: '<div id="historial-cambios-body" class="text-center text-muted py-3">Cargando...</div>',
+      width: 980,
+      confirmButtonText: 'Cerrar',
+      showCloseButton: true,
+      didOpen: function () {
+        var body = document.getElementById('historial-cambios-body');
+        if (!body) return;
+
+        var codigo = btn.dataset.codigo;
+        fetch('/leads/api/lead-cambios/' + encodeURIComponent(codigo))
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data || data.length === 0) {
+              body.innerHTML = '<p class="text-muted text-center py-3"><i class="bi bi-inbox me-2"></i>No hay cambios registrados aún.</p>';
+              return;
+            }
+
+            var etiqueta = {
+              'Canal de recepción': '<i class="bi bi-broadcast me-1 text-info"></i>',
+              'Bien / Servicio':    '<i class="bi bi-box-seam me-1 text-success"></i>',
+              'Asignación':         '<i class="bi bi-person-fill-gear me-1 text-warning"></i>',
+            };
+
+            var html = '<div class="table-responsive" style="max-height: 52vh; overflow:auto;"><table class="table table-sm table-hover align-middle">' +
+              '<thead class="table-light"><tr>' +
+              '<th>Campo</th><th>Anterior</th><th>Nuevo</th><th>Usuario</th><th>Fecha</th>' +
+              '</tr></thead><tbody>';
+
+            data.forEach(function (r) {
+              var icono = etiqueta[r.campo] || '<i class="bi bi-pencil me-1"></i>';
+              html += '<tr>' +
+                '<td>' + icono + escapeHtml(r.campo) + '</td>' +
+                '<td><span class="text-danger">' + escapeHtml(r.anterior) + '</span></td>' +
+                '<td><span class="text-success fw-semibold">' + escapeHtml(r.nuevo) + '</span></td>' +
+                '<td>' + escapeHtml(r.usuario) + '</td>' +
+                '<td class="text-muted small">' + escapeHtml(r.fecha) + '</td>' +
+                '</tr>';
+            });
+            html += '</tbody></table></div>';
+            body.innerHTML = html;
+          })
+          .catch(function () {
+            body.innerHTML = '<p class="text-danger text-center py-3"><i class="bi bi-exclamation-triangle me-2"></i>Error al cargar el historial.</p>';
+          });
+      }
+    });
+  });
+
+  function escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+}());
+</script>
+
+
+{% endblock %}

@@ -1,0 +1,538 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/marketing-roadmap.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="mk-roadmap-container">
+    <div class="mk-title-wrap mb-4">
+      <div>
+        <h2 class="mb-1"><i class="bi bi-signpost-split"></i> Roadmap de Marketing</h2>
+        <div class="text-muted">Resumen de volumen e inversión para campañas, ferias y eventos especiales.</div>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-primary" href="{{ url_for('marketing.marketing_campaigns') }}">
+          <i class="bi bi-bullseye"></i> Ir a Campañas
+        </a>
+        <a class="btn btn-outline-secondary" href="{{ url_for('marketing.marketing_ferias') }}">
+          <i class="bi bi-calendar-event"></i> Ir a Ferias
+        </a>
+      </div>
+    </div>
+
+    <section class="card mk-period-filter mb-4" id="period-filter-container">
+      <div class="card-body">
+        <form id="period-filter-form" method="get" action="{{ url_for('marketing.marketing_roadmap') }}" class="mk-period-form">
+          <input type="hidden" id="period-input" name="period" value="{{ selected_period or 'all' }}">
+
+          <div class="mk-period-chips">
+            <button type="button" class="mk-period-chip js-period-chip {% if (selected_period or 'all') == 'all' %}is-active{% endif %}" data-period="all">Todo</button>
+            <button type="button" class="mk-period-chip js-period-chip {% if selected_period == 'day' %}is-active{% endif %}" data-period="day">Día</button>
+            <button type="button" class="mk-period-chip js-period-chip {% if selected_period == 'week' %}is-active{% endif %}" data-period="week">Última semana</button>
+            <button type="button" class="mk-period-chip js-period-chip {% if selected_period == 'month' %}is-active{% endif %}" data-period="month">Último mes</button>
+            <button type="button" class="mk-period-chip js-period-chip {% if selected_period == 'custom' %}is-active{% endif %}" data-period="custom">Escoger rango</button>
+          </div>
+
+          <div id="custom-range-wrap" class="mk-custom-range {% if selected_period != 'custom' %}d-none{% endif %}">
+            <div>
+              <label for="start_date" class="form-label mb-1">Desde</label>
+              <input type="date" id="start_date" name="start_date" class="form-control" value="{{ selected_start_date or '' }}">
+            </div>
+            <div>
+              <label for="end_date" class="form-label mb-1">Hasta</label>
+              <input type="date" id="end_date" name="end_date" class="form-control" value="{{ selected_end_date or '' }}">
+            </div>
+            <div class="d-grid">
+              <button type="submit" class="btn btn-primary">Aplicar rango</button>
+            </div>
+          </div>
+
+          <div class="mk-period-active">
+            <span class="mk-period-active-label">Rango activo:</span>
+            <span class="mk-period-active-value" id="period-active-value">{{ selected_period_label }}</span>
+            <span class="mk-period-active-range" id="period-active-range">{{ selected_period_range_label }}</span>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="mk-kpi-grid mb-4">
+      <article class="mk-kpi-card mk-kpi-campaign">
+        <div class="mk-kpi-label">Total campañas publicadas</div>
+        <div class="mk-kpi-value" id="kpi-total-campaigns">{{ total_campaigns or 0 }}</div>
+      </article>
+
+      <article class="mk-kpi-card mk-kpi-feria">
+        <div class="mk-kpi-label">Total ferias / demostraciones</div>
+        <div class="mk-kpi-value" id="kpi-total-ferias">{{ total_ferias_demostraciones or 0 }}</div>
+      </article>
+
+      <article class="mk-kpi-card mk-kpi-special">
+        <div class="mk-kpi-label">Total revistas / medios / eventos / viajes</div>
+        <div class="mk-kpi-value" id="kpi-total-special">{{ total_special_events or 0 }}</div>
+      </article>
+    </section>
+
+    <section class="mk-rois-stack mb-4">
+      <article class="card mk-rois-panel" id="rois-total-container">
+        <div class="card-header bg-light">
+          <strong><i class="bi bi-calculator"></i> ROIS por Total</strong>
+        </div>
+        <div class="card-body">
+          <div class="mk-rois-formula">ventas cerradas globales / inversión total global</div>
+          <div class="mk-rois-value" id="rois-global-value">
+            {% if rois_global is not none %}
+              {{ '%.4f'|format(rois_global) }}
+            {% else %}
+              -
+            {% endif %}
+          </div>
+          <div class="mk-rois-meta">Ventas cerradas: <strong id="rois-global-sales">{{ total_global_closed_sales or 0 }}</strong></div>
+          <div class="mk-rois-meta">Inversión total: <strong id="rois-global-investment">S/ {{ total_global_inversion|number_format }}</strong></div>
+        </div>
+      </article>
+
+      <article class="card mk-rois-panel" id="rois-campaign-container">
+        <div class="card-header bg-light">
+          <strong><i class="bi bi-bullseye"></i> ROIS de Campaña</strong>
+        </div>
+        <div class="card-body">
+          <div class="mk-rois-formula">ventas cerradas de campaña / inversión de campaña</div>
+          <div class="mk-rois-context">Campañas del período seleccionado</div>
+          <div class="mk-rois-value" id="rois-campaign-value">
+            {% if rois_campaign is not none %}
+              {{ '%.4f'|format(rois_campaign) }}
+            {% else %}
+              -
+            {% endif %}
+          </div>
+          <div class="mk-rois-meta">Ventas cerradas: <strong id="rois-campaign-sales">{{ total_campaign_closed_sales or 0 }}</strong></div>
+          <div class="mk-rois-meta">Inversión: <strong id="rois-campaign-investment">S/ {{ total_campaign_inversion|number_format }}</strong></div>
+        </div>
+      </article>
+
+      <article class="card mk-rois-panel" id="rois-feria-container">
+        <div class="card-header bg-light">
+          <strong><i class="bi bi-calendar-event"></i> ROIS de Feria</strong>
+        </div>
+        <div class="card-body">
+          <div class="mk-rois-formula">ventas cerradas de ferias / inversión de ferias</div>
+          <div class="mk-rois-context">Ferias del período seleccionado</div>
+          <div class="mk-rois-value" id="rois-feria-value">
+            {% if rois_feria is not none %}
+              {{ '%.4f'|format(rois_feria) }}
+            {% else %}
+              -
+            {% endif %}
+          </div>
+          <div class="mk-rois-meta">Ventas cerradas: <strong id="rois-feria-sales">{{ total_feria_closed_sales or 0 }}</strong></div>
+          <div class="mk-rois-meta">Inversión: <strong id="rois-feria-investment">S/ {{ total_feria_inversion|number_format }}</strong></div>
+        </div>
+      </article>
+    </section>
+
+    
+    <section class="card mb-4">
+      <div class="card-header bg-light">
+        <strong><i class="bi bi-graph-up-arrow"></i> Métricas de Campañas</strong>
+      </div>
+      <div class="card-body">
+        <div class="mk-campaign-metrics-grid">
+          <article class="mk-metric-card">
+            <div class="mk-metric-label">CAC</div>
+            <div class="mk-metric-value" id="metric-cac-value">
+              {% if campaign_cac is not none %}
+                S/ {{ campaign_cac|number_format }}
+              {% else %}
+                -
+              {% endif %}
+            </div>
+            <div class="mk-metric-formula">inversion total / leads cerrados</div>
+            <div class="mk-metric-meta">Inv: <span id="metric-cac-inv">S/ {{ total_campaign_inversion|number_format }}</span> | Cerrados: <span id="metric-cac-cerrados">{{ total_campaign_closed_sales or 0 }}</span></div>
+          </article>
+
+          <article class="mk-metric-card">
+            <div class="mk-metric-label">CPC</div>
+            <div class="mk-metric-value" id="metric-cpc-value">
+              {% if campaign_cpc is not none %}
+                S/ {{ campaign_cpc|number_format }}
+              {% else %}
+                -
+              {% endif %}
+            </div>
+            <div class="mk-metric-formula">inversion total / alcance total</div>
+            <div class="mk-metric-meta">Inv: <span id="metric-cpc-inv">S/ {{ total_campaign_inversion|number_format }}</span> | Alcance: <span id="metric-cpc-alcance">{{ total_campaign_alcance or 0 }}</span></div>
+          </article>
+
+          <article class="mk-metric-card">
+            <div class="mk-metric-label">Tasa de conversion</div>
+            <div class="mk-metric-value" id="metric-conversion-value">{{ '%.2f'|format(campaign_conversion_rate or 0) }}%</div>
+            <div class="mk-metric-formula">leads cerrados / total leads x 100</div>
+            <div class="mk-metric-meta">Cerrados: <span id="metric-conversion-cerrados">{{ total_campaign_closed_sales or 0 }}</span> | Leads: <span id="metric-conversion-leads">{{ total_campaign_leads or 0 }}</span></div>
+          </article>
+
+          <article class="mk-metric-card">
+            <div class="mk-metric-label">CPM</div>
+            <div class="mk-metric-value" id="metric-cpm-value">
+              {% if campaign_cpm is not none %}
+                S/ {{ campaign_cpm|number_format }}
+              {% else %}
+                -
+              {% endif %}
+            </div>
+            <div class="mk-metric-formula">inversion total / impresiones</div>
+            <div class="mk-metric-meta">Inv: <span id="metric-cpm-inv">S/ {{ total_campaign_inversion|number_format }}</span> | Impresiones: <span id="metric-cpm-impresiones">{{ total_campaign_impresiones or 0 }}</span></div>
+          </article>
+
+          <article class="mk-metric-card">
+            <div class="mk-metric-label">CTR</div>
+            <div class="mk-metric-value" id="metric-ctr-value">
+              {% if campaign_ctr is not none %}
+                {{ '%.6f'|format(campaign_ctr) }}
+              {% else %}
+                -
+              {% endif %}
+            </div>
+            <div class="mk-metric-formula">total leads / impresiones</div>
+            <div class="mk-metric-meta">Leads: <span id="metric-ctr-leads">{{ total_campaign_leads or 0 }}</span> | Impresiones: <span id="metric-ctr-impresiones">{{ total_campaign_impresiones or 0 }}</span></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="mk-rois-tables mb-4">
+      <article class="card mk-rois-table-wrap">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+          <strong><i class="bi bi-table"></i> Campañas con ROIS</strong>
+          <span class="text-muted small">ROIS y porcentaje por campaña</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover table-sm align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Campaña</th>
+                  <th class="text-end">Ventas cerradas</th>
+                  <th class="text-end">Inversión</th>
+                  <th class="text-end">ROIS</th>
+                  <th class="text-end">ROIS %</th>
+                  <th class="text-center mk-rois-col-action">Ver detalle</th>
+                </tr>
+              </thead>
+              <tbody id="campaign-rois-tbody">
+                {% if campaign_rois_rows %}
+                  {% for row in campaign_rois_rows %}
+                  <tr>
+                    <td>{{ row.name }}</td>
+                    <td class="text-end">{{ row.closed_sales or 0 }}</td>
+                    <td class="text-end">S/ {{ row.investment|number_format }}</td>
+                    <td class="text-end">
+                      {% if row.rois is not none %}
+                        {{ '%.4f'|format(row.rois) }}
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td class="text-end">
+                      {% if row.rois_percent is not none %}
+                        {{ '%.2f'|format(row.rois_percent) }}%
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td class="text-center mk-rois-col-action">
+                      <a class="btn btn-outline-primary btn-sm" href="{{ row.detail_url }}">Ver detalle</a>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr>
+                    <td colspan="6" class="text-center text-muted py-3">No hay campañas en este período.</td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </article>
+
+      <article class="card mk-rois-table-wrap">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+          <strong><i class="bi bi-table"></i> Ferias con ROIS</strong>
+          <span class="text-muted small">ROIS y porcentaje por feria</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover table-sm align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Feria</th>
+                  <th class="text-end">Ventas cerradas</th>
+                  <th class="text-end">Inversión</th>
+                  <th class="text-end">ROIS</th>
+                  <th class="text-end">ROIS %</th>
+                  <th class="text-center mk-rois-col-action">Ver detalle</th>
+                </tr>
+              </thead>
+              <tbody id="feria-rois-tbody">
+                {% if feria_rois_rows %}
+                  {% for row in feria_rois_rows %}
+                  <tr>
+                    <td>{{ row.name }}</td>
+                    <td class="text-end">{{ row.closed_sales or 0 }}</td>
+                    <td class="text-end">S/ {{ row.investment|number_format }}</td>
+                    <td class="text-end">
+                      {% if row.rois is not none %}
+                        {{ '%.4f'|format(row.rois) }}
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td class="text-end">
+                      {% if row.rois_percent is not none %}
+                        {{ '%.2f'|format(row.rois_percent) }}%
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td class="text-center mk-rois-col-action">
+                      <a class="btn btn-outline-secondary btn-sm" href="{{ row.detail_url }}">Ver detalle</a>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr>
+                    <td colspan="6" class="text-center text-muted py-3">No hay ferias en este período.</td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </article>
+    </section>
+        <section class="mk-subtotals card">
+      <div class="card-header bg-light">
+        <strong><i class="bi bi-bar-chart"></i> Subtotales de referencia</strong>
+      </div>
+      <div class="card-body">
+        <div class="mk-subtotals-grid">
+          <div class="mk-subtotal-card">
+            <div class="mk-subtotal-title">Campañas (todas)</div>
+            <div>Ventas cerradas: <strong id="subtotal-campaign-sales">{{ total_campaign_closed_sales or 0 }}</strong></div>
+            <div>Inversión: <strong id="subtotal-campaign-investment">S/ {{ total_campaign_inversion|number_format }}</strong></div>
+          </div>
+
+          <div class="mk-subtotal-card">
+            <div class="mk-subtotal-title">Ferias (todas)</div>
+            <div>Ventas cerradas: <strong id="subtotal-feria-sales">{{ total_feria_closed_sales or 0 }}</strong></div>
+            <div>Inversión: <strong id="subtotal-feria-investment">S/ {{ total_feria_inversion|number_format }}</strong></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<div id="roadmap-config" data-live-endpoint="{{ url_for('marketing.marketing_roadmap_live') }}" hidden></div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const roadmapContainer = document.querySelector('.mk-roadmap-container');
+  const configEl = document.getElementById('roadmap-config');
+  const liveEndpoint = (configEl && configEl.dataset.liveEndpoint) || '';
+
+  const periodForm = document.getElementById('period-filter-form');
+  const periodInput = document.getElementById('period-input');
+  const customRangeWrap = document.getElementById('custom-range-wrap');
+  const startDateInput = document.getElementById('start_date');
+  const endDateInput = document.getElementById('end_date');
+  const periodButtons = Array.from(document.querySelectorAll('.js-period-chip'));
+
+  let activeController = null;
+
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  }
+
+  function escapeHtml(raw) {
+    return String(raw || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function renderRoisRows(tbodyId, rows, emptyLabel, buttonClass) {
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">${escapeHtml(emptyLabel)}</td></tr>`;
+      return;
+    }
+
+    const html = rows.map((row) => {
+      const name = escapeHtml(row.name || '-');
+      const sales = escapeHtml(String(row.closed_sales ?? 0));
+      const investment = escapeHtml(row.investment || 'S/ 0.00');
+      const rois = escapeHtml(row.rois || '-');
+      const roisPercent = escapeHtml(row.rois_percent || '-');
+      const detailUrl = escapeHtml(row.detail_url || '#');
+      return `
+        <tr>
+          <td>${name}</td>
+          <td class="text-end">${sales}</td>
+          <td class="text-end">${investment}</td>
+          <td class="text-end">${rois}</td>
+          <td class="text-end">${roisPercent}</td>
+          <td class="text-center mk-rois-col-action"><a class="btn ${buttonClass} btn-sm" href="${detailUrl}">Ver detalle</a></td>
+        </tr>
+      `;
+    }).join('');
+
+    tbody.innerHTML = html;
+  }
+
+  function buildQueryParams() {
+    const params = new URLSearchParams();
+    const period = (periodInput && periodInput.value) ? periodInput.value : 'all';
+    params.set('period', period);
+    if (period === 'custom') {
+      if (startDateInput && startDateInput.value) params.set('start_date', startDateInput.value);
+      if (endDateInput && endDateInput.value) params.set('end_date', endDateInput.value);
+    }
+    return params;
+  }
+
+  function updateRoadmapValues(payload) {
+    setText('period-active-value', payload.period_label || 'Todo');
+    setText('period-active-range', payload.period_range_label || 'Sin límite de fechas');
+
+    setText('kpi-total-campaigns', String(payload.total_campaigns || 0));
+    setText('kpi-total-ferias', String(payload.total_ferias_demostraciones || 0));
+    setText('kpi-total-special', String(payload.total_special_events || 0));
+
+    setText('rois-global-value', payload.rois_global || '-');
+    setText('rois-campaign-value', payload.rois_campaign || '-');
+    setText('rois-feria-value', payload.rois_feria || '-');
+    setText('rois-global-sales', String(payload.total_global_closed_sales || 0));
+    setText('rois-campaign-sales', String(payload.total_campaign_closed_sales || 0));
+    setText('rois-feria-sales', String(payload.total_feria_closed_sales || 0));
+    setText('rois-global-investment', payload.total_global_inversion || 'S/ 0.00');
+    setText('rois-campaign-investment', payload.total_campaign_inversion || 'S/ 0.00');
+    setText('rois-feria-investment', payload.total_feria_inversion || 'S/ 0.00');
+
+    setText('metric-cac-value', payload.campaign_cac || '-');
+    setText('metric-cpc-value', payload.campaign_cpc || '-');
+    setText('metric-conversion-value', payload.campaign_conversion_rate || '0.00%');
+    setText('metric-cpm-value', payload.campaign_cpm || '-');
+    setText('metric-ctr-value', payload.campaign_ctr || '-');
+    setText('metric-cac-inv', payload.total_campaign_inversion || 'S/ 0.00');
+    setText('metric-cac-cerrados', String(payload.total_campaign_closed_sales || 0));
+    setText('metric-cpc-inv', payload.total_campaign_inversion || 'S/ 0.00');
+    setText('metric-cpc-alcance', String(payload.total_campaign_alcance || 0));
+    setText('metric-conversion-cerrados', String(payload.total_campaign_closed_sales || 0));
+    setText('metric-conversion-leads', String(payload.total_campaign_leads || 0));
+    setText('metric-cpm-inv', payload.total_campaign_inversion || 'S/ 0.00');
+    setText('metric-cpm-impresiones', String(payload.total_campaign_impresiones || 0));
+    setText('metric-ctr-leads', String(payload.total_campaign_leads || 0));
+    setText('metric-ctr-impresiones', String(payload.total_campaign_impresiones || 0));
+
+    setText('subtotal-campaign-sales', String(payload.total_campaign_closed_sales || 0));
+    setText('subtotal-campaign-investment', payload.total_campaign_inversion || 'S/ 0.00');
+    setText('subtotal-feria-sales', String(payload.total_feria_closed_sales || 0));
+    setText('subtotal-feria-investment', payload.total_feria_inversion || 'S/ 0.00');
+
+    renderRoisRows('campaign-rois-tbody', payload.campaign_rois_rows || [], 'No hay campañas en este período.', 'btn-outline-primary');
+    renderRoisRows('feria-rois-tbody', payload.feria_rois_rows || [], 'No hay ferias en este período.', 'btn-outline-secondary');
+  }
+
+  async function refreshRoadmap() {
+    if (!liveEndpoint || !roadmapContainer) {
+      periodForm.submit();
+      return;
+    }
+
+    const params = buildQueryParams();
+    if (activeController) activeController.abort();
+    activeController = new AbortController();
+
+    roadmapContainer.classList.add('is-updating');
+
+    try {
+      const response = await fetch(`${liveEndpoint}?${params.toString()}`, {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        signal: activeController.signal,
+      });
+      if (!response.ok) throw new Error('No se pudo actualizar el roadmap.');
+
+      const payload = await response.json();
+      if (!payload || payload.ok !== true) throw new Error('Respuesta inválida del servidor.');
+
+      updateRoadmapValues(payload);
+      history.replaceState({}, '', `${window.location.pathname}?${params.toString()}#period-filter-container`);
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.error(error);
+        periodForm.submit();
+      }
+    } finally {
+      roadmapContainer.classList.remove('is-updating');
+    }
+  }
+
+  function setActivePeriodChip(period) {
+    periodButtons.forEach((button) => {
+      if (button.dataset.period === period) button.classList.add('is-active');
+      else button.classList.remove('is-active');
+    });
+  }
+
+
+  if (periodButtons.length && periodForm && periodInput) {
+    periodButtons.forEach((button) => {
+      button.addEventListener('click', function () {
+        const selected = button.dataset.period || 'all';
+        periodInput.value = selected;
+        setActivePeriodChip(selected);
+
+        if (selected === 'custom') {
+          if (customRangeWrap) customRangeWrap.classList.remove('d-none');
+          return;
+        }
+
+        if (customRangeWrap) customRangeWrap.classList.add('d-none');
+        if (startDateInput) startDateInput.value = '';
+        if (endDateInput) endDateInput.value = '';
+        refreshRoadmap();
+      });
+    });
+
+    periodForm.addEventListener('submit', function (event) {
+      event.preventDefault();
+      const selected = (periodInput.value || 'all').toLowerCase();
+      if (selected !== 'custom') {
+        refreshRoadmap();
+        return;
+      }
+      const startValue = (startDateInput && startDateInput.value) || '';
+      const endValue = (endDateInput && endDateInput.value) || '';
+      if (!startValue || !endValue) {
+        alert('Seleccione fecha de inicio y fecha de fin para el rango personalizado.');
+        return;
+      }
+      refreshRoadmap();
+    });
+  }
+});
+</script>
+{% endblock %}

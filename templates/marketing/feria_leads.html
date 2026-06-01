@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes.css') }}">
+<style>
+  .mk-leads-container { max-width: 1400px; margin: 0 auto; }
+  .feria-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; border-radius: 0.5rem; margin-bottom: 2rem; }
+  .feria-header h2 { margin: 0 0 0.5rem 0; font-size: 2rem; }
+  .feria-dates { display: flex; gap: 1rem; font-size: 0.95rem; opacity: 0.9; }
+  .feria-meta { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.75rem; }
+  .feria-chip { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.35); border-radius: 999px; padding: 0.25rem 0.75rem; font-size: 0.82rem; }
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+  .stat-card { background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1.5rem; text-align: center; }
+  .stat-card h3 { margin: 0.5rem 0 0 0; font-size: 0.9rem; color: #718096; font-weight: 500; }
+  .stat-card .value { font-size: 2rem; font-weight: 700; color: #2d3748; margin: 0.5rem 0 0 0; }
+  .mk-leads-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  .mk-leads-table thead th { background: #2d3748; color: white; padding: 0.75rem; text-align: left; }
+  .mk-leads-table tbody td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; }
+  .mk-leads-table tbody tr:hover { background: #f7fafc; }
+  .badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.8rem; font-weight: 500; }
+  .bg-primary { background: #4299e1; color: white; }
+  .bg-success { background: #48bb78; color: white; }
+  .bg-warning { background: #ff9800; color: white; }
+  .bg-danger { background: #f56565; color: white; }
+  .btn-back { margin-bottom: 1.5rem; }
+  .process-badge { width: 100%; margin-bottom: 0.5rem; }
+  .process-badge.closed { background: #48bb78; color: white; }
+  .process-badge.quoted { background: #ff9800; color: white; }
+  .process-badge.scheduled { background: #4299e1; color: white; }
+  .process-badge.neutral { background: #cbd5e0; color: #2d3748; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="mk-leads-container">
+    <!-- Header de Feria -->
+    <div class="feria-header">
+      <h2><i class="bi bi-calendar-event"></i> {{ feria.nombre }}</h2>
+      <div class="feria-dates">
+        <span><strong>Inicio:</strong> {{ feria.fecha_inicio }}</span>
+        <span><strong>Fin:</strong> {{ feria.fecha_fin }}</span>
+      </div>
+      <div class="feria-meta">
+        <span class="feria-chip">Tipo: {{ feria.tipo or 'N/A' }}</span>
+        <span class="feria-chip">Ubicación: {{ feria.departamento or '-' }} / {{ feria.provincia or '-' }} / {{ feria.distrito or '-' }}</span>
+        <span class="feria-chip">Inversión total: S/ {{ "%.2f"|format(feria.total_inversion or 0) }}</span>
+      </div>
+    </div>
+
+    {% set current_origin = request.full_path[:-1] if request.full_path.endswith('?') else request.full_path %}
+
+    <!-- Botones de navegación -->
+    <div class="d-flex gap-2 flex-wrap btn-back">
+      <a href="{{ return_url }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> {{ return_label }}
+      </a>
+      <a href="{{ url_for('marketing.marketing_feria_resultados', feria_id=feria.id, next=current_origin) }}" class="btn btn-outline-success">
+        <i class="bi bi-bar-chart-line"></i> Ver Resultados
+      </a>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="badge bg-primary" style="width: 100%; margin-bottom: 0.5rem;">Total Leads</div>
+        <h3>Leads Vinculados</h3>
+        <div class="value">{{ stats.total_leads }}</div>
+      </div>
+      {% for proceso, count in stats.leads_por_proceso.items() %}
+      {% set proceso_lower = proceso.lower() %}
+      {% if 'cerrado' in proceso_lower and 'no' not in proceso_lower %}
+        {% set proceso_class = 'closed' %}
+      {% elif 'cotizado' in proceso_lower %}
+        {% set proceso_class = 'quoted' %}
+      {% elif 'programado' in proceso_lower %}
+        {% set proceso_class = 'scheduled' %}
+      {% else %}
+        {% set proceso_class = 'neutral' %}
+      {% endif %}
+      <div class="stat-card">
+        <div class="badge process-badge {{ proceso_class }}">{{ proceso }}</div>
+        <h3>Proceso</h3>
+        <div class="value">{{ count }}</div>
+      </div>
+      {% endfor %}
+      <div class="stat-card">
+        <div class="badge bg-success" style="width: 100%; margin-bottom: 0.5rem;">Ingresos</div>
+        <h3>Monto Total</h3>
+        <div class="value">S/ {{ "%.2f"|format(stats.ingresos_total) }}</div>
+      </div>
+    </div>
+
+    <!-- Tabla de Leads -->
+    <div class="card">
+      <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <strong><i class="bi bi-diagram-3"></i> Leads Vinculados</strong>
+        <span class="text-muted">Total: {{ leads|length }}</span>
+      </div>
+      <div class="card-body p-0">
+        <div style="overflow-x: auto;">
+          <table class="table table-striped table-hover mb-0 mk-leads-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Contacto</th>
+                <th>Bien/Servicio</th>
+                <th>Estado</th>
+                <th>Asesor</th>
+                <th>Monto</th>
+                <th>Último Movimiento</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for lead in leads %}
+              <tr>
+                <td><strong>{{ lead.codigo }}</strong></td>
+                <td>{{ lead.nombre }}</td>
+                <td>
+                  <small>📱 {{ lead.telefono or '-' }}</small><br>
+                  <small>📧 {{ lead.ruc_dni or '-' }}</small>
+                </td>
+                <td>{{ lead.bien_servicio_nombre or '-' }}</td>
+                <td>
+                  {% if 'cerrado' in lead.proceso_actual.lower() and 'no' not in lead.proceso_actual.lower() %}
+                    <span class="badge bg-success">{{ lead.proceso_actual }}</span>
+                  {% elif 'cotizado' in lead.proceso_actual.lower() %}
+                    <span class="badge bg-warning">{{ lead.proceso_actual }}</span>
+                  {% elif 'programado' in lead.proceso_actual.lower() %}
+                    <span class="badge bg-primary">{{ lead.proceso_actual }}</span>
+                  {% else %}
+                    <span class="badge" style="background: #cbd5e0; color: #2d3748;">{{ lead.proceso_actual }}</span>
+                  {% endif %}
+                </td>
+                <td>{{ lead.asesor_nombre or '-' }}</td>
+                <td>
+                  {% if lead.monto %}
+                    <strong>{{ lead.nombre_moneda or 'S/' }} {{ "%.2f"|format(lead.monto) }}</strong>
+                  {% else %}
+                    <span class="text-muted">-</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <small class="text-muted">{{ lead.fecha_guardado or '-' }}</small>
+                  {% if lead.comentario %}
+                    <br><small><em>{{ lead.comentario[:50] }}...</em></small>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="8" class="text-center text-muted py-4">No hay leads vinculados a esta feria aún.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

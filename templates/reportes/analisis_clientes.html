@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes-analisis-clientes.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">
+                <i class="fas fa-chart-pie"></i> Análisis de Clientes y Líneas de Compra
+            </h2>
+            <p class="text-muted">
+                Análisis detallado de líneas de compra por bien/servicio, frecuencia mensual y departamentos
+            </p>
+        </div>
+    </div>
+
+    <!-- Filtro de periodo -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <form method="get" class="row g-2 align-items-center">
+                <div class="col-auto">
+                    <label class="form-label mb-0">Periodo</label>
+                    <select name="period" id="ac-period" class="form-select form-select-sm">
+                        <option value="all" {% if period=='all' %}selected{% endif %}>Todos</option>
+                        <option value="today" {% if period=='today' %}selected{% endif %}>Hoy</option>
+                        <option value="last_week" {% if period=='last_week' %}selected{% endif %}>Última semana</option>
+                        <option value="last_month" {% if period=='last_month' %}selected{% endif %}>Último mes</option>
+                        <option value="custom" {% if period=='custom' %}selected{% endif %}>Personalizado</option>
+                    </select>
+                </div>
+                <div class="col-auto" id="ac-dates"
+                    style="display: {% if period == 'custom' %}flex{% else %}none{% endif %}; gap:0.5rem;">
+                    <input type="date" name="date_from" id="ac-date-from" class="form-control form-control-sm"
+                        value="{{ date_from }}">
+                    <input type="date" name="date_to" id="ac-date-to" class="form-control form-control-sm"
+                        value="{{ date_to }}">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-sm btn-primary">Aplicar</button>
+                    <a href="{{ url_for('reportes.analisis_clientes') }}"
+                        class="btn btn-sm btn-outline-secondary">Limpiar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {# Tarjetas de totales removidas por solicitud: se mantiene el selector de periodo arriba #}
+
+    <!-- Tabs de Navegación -->
+    <ul class="nav nav-tabs mb-4" id="analisistabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="lineas-tab" data-bs-toggle="tab" data-bs-target="#lineas" type="button"
+                role="tab">
+                <i class="fas fa-boxes"></i> Líneas por Departamento
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="frecuencia-tab" data-bs-toggle="tab" data-bs-target="#frecuencia" type="button"
+                role="tab">
+                <i class="fas fa-calendar-alt"></i> Frecuencia Mensual
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="top-departamentos-tab" data-bs-toggle="tab" data-bs-target="#top-departamentos"
+                type="button" role="tab">
+                <i class="fas fa-map-marked-alt"></i> Top Departamentos
+            </button>
+        </li>
+    </ul>
+
+    <!-- Contenido de Tabs -->
+    <div class="tab-content" id="analisisTabContent">
+        <!-- Tab 1: Líneas por Departamento -->
+        <div class="tab-pane fade show active" id="lineas" role="tabpanel">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-boxes"></i> Líneas de Compra por Bien/Servicio y Departamento
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <input type="text" id="searchLineas" class="form-control"
+                            placeholder="Buscar por bien/servicio o departamento...">
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped" id="tablaLineas">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Bien/Servicio</th>
+                                    <th>Departamento</th>
+                                    <th class="text-end">Total Leads</th>
+                                    <th class="text-end">Ventas Cerradas</th>
+                                    <th class="text-end">Monto Total (S/)</th>
+                                    <th class="text-end">Tasa Conversión</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for linea in lineas_por_departamento %}
+                                {% set tasa = (linea.ventas_cerradas / linea.cantidad_leads * 100) if
+                                linea.cantidad_leads > 0 else 0 %}
+                                <tr>
+                                    <td><strong>{{ linea.bien_servicio or 'Sin especificar' }}</strong></td>
+                                    <td>
+                                        <i class="fas fa-map-marker-alt text-muted"></i> {{ linea.departamento }}
+                                    </td>
+                                    <td class="text-end">{{ linea.cantidad_leads }}</td>
+                                    <td class="text-end">
+                                        <span class="badge bg-success">{{ linea.ventas_cerradas }}</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong>S/ {{ (linea.monto_total or 0)|number_format }}</strong>
+                                    </td>
+                                    <td class="text-end">
+                                        {% if tasa > 50 %}
+                                        <span class="badge bg-success">{{ "%.1f"|format(tasa) }}%</span>
+                                        {% elif tasa > 25 %}
+                                        <span class="badge bg-warning">{{ "%.1f"|format(tasa) }}%</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">{{ "%.1f"|format(tasa) }}%</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">
+                                        <i class="fas fa-info-circle"></i> No hay datos disponibles
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Frecuencia Mensual -->
+        <div class="tab-pane fade" id="frecuencia" role="tabpanel">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-alt"></i> Frecuencia de Compras por Mes (Últimos 12 meses)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <input type="text" id="searchFrecuencia" class="form-control"
+                            placeholder="Buscar por bien/servicio o mes...">
+                    </div>
+
+                    <!-- Información para campañas -->
+                    <div class="alert alert-info">
+                        <i class="fas fa-lightbulb"></i>
+                        <strong>Sugerencia:</strong> Los meses con mayor actividad son ideales para lanzar campañas de
+                        marketing.
+                        Identifica patrones estacionales para optimizar tus estrategias de ventas.
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped" id="tablaFrecuencia">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Bien/Servicio</th>
+                                    <th>Mes</th>
+                                    <th>Año</th>
+                                    <th class="text-end">Total Leads</th>
+                                    <th class="text-end">Ventas Cerradas</th>
+                                    <th class="text-end">Monto Total (S/)</th>
+                                    <th class="text-end">Promedio por Venta</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for freq in frecuencia_mensual %}
+                                {% set promedio = (freq.monto_total / freq.ventas_cerradas) if freq.ventas_cerradas > 0
+                                else 0 %}
+                                <tr>
+                                    <td><strong>{{ freq.bien_servicio or 'Sin especificar' }}</strong></td>
+                                    <td>
+                                        <i class="fas fa-calendar"></i> {{ freq.nombre_mes }}
+                                    </td>
+                                    <td>{{ freq.anio }}</td>
+                                    <td class="text-end">{{ freq.cantidad_leads }}</td>
+                                    <td class="text-end">
+                                        <span class="badge bg-success">{{ freq.ventas_cerradas }}</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong>S/ {{ (freq.monto_total or 0)|number_format }}</strong>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="text-muted">S/ {{ promedio|number_format }}</span>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">
+                                        <i class="fas fa-info-circle"></i> No hay datos disponibles
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: Top Departamentos -->
+        <div class="tab-pane fade" id="top-departamentos" role="tabpanel">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-map-marked-alt"></i> Departamentos con Mayor Actividad por Línea
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-bullseye"></i>
+                        <strong>Para Campañas Dirigidas:</strong> Identifica los departamentos con mayor demanda
+                        para cada línea de producto/servicio y enfoca tus recursos de marketing en esas zonas.
+                    </div>
+
+                    {% set current_servicio = namespace(value=None) %}
+                    {% for item in top_departamentos %}
+                    {% if current_servicio.value != item.bien_servicio %}
+                    {% if current_servicio.value is not none %}
+                    </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+            {% set current_servicio.value = item.bien_servicio %}
+
+            <div class="card mb-3">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="fas fa-box"></i> {{ item.bien_servicio or 'Sin especificar' }}
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Posición</th>
+                                <th>Departamento</th>
+                                <th class="text-end">Leads</th>
+                                <th class="text-end">Ventas</th>
+                                <th class="text-end">Monto (S/)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% endif %}
+                            {% set loop_index = loop.index %}
+                            <tr>
+                                <td>
+                                    {% if loop_index <= 3 %} <span class="badge bg-warning text-dark">Top {{ loop_index
+                                        }}</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">{{ loop_index }}</span>
+                                        {% endif %}
+                                </td>
+                                <td>
+                                    <i class="fas fa-map-marker-alt"></i> {{ item.departamento }}
+                                </td>
+                                <td class="text-end">{{ item.cantidad_leads }}</td>
+                                <td class="text-end">
+                                    <span class="badge bg-success">{{ item.ventas_cerradas }}</span>
+                                </td>
+                                <td class="text-end">
+                                    <strong>S/ {{ (item.monto_total or 0)|number_format }}</strong>
+                                </td>
+                            </tr>
+                            {% endfor %}
+
+                            {% if current_servicio.value is not none %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if not top_departamentos %}
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-info-circle fa-3x mb-3"></i>
+                <p>No hay datos de departamentos disponibles</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- Botones de Acción -->
+<div class="row mt-4">
+    <div class="col-12">
+        <a href="{{ url_for('reportes.dashboard_recompra_clientes') }}" class="btn btn-dark">
+            <i class="fas fa-rocket"></i> Dashboard Recompra Inteligente
+        </a>
+        <a href="{{ url_for('reportes.reporte_asesores') }}" class="btn btn-primary">
+            <i class="fas fa-users"></i> Ver Reporte de Asesores
+        </a>
+        <button onclick="window.print()" class="btn btn-secondary">
+            <i class="fas fa-print"></i> Imprimir
+        </button>
+        <button onclick="exportarDatos()" class="btn btn-success">
+            <i class="fas fa-file-excel"></i> Exportar Datos
+        </button>
+    </div>
+</div>
+</div>
+
+<script src="{{ url_for('static', filename='js/reportes-analisis-clientes.js') }}" defer></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const sel = document.getElementById('ac-period');
+        const dates = document.getElementById('ac-dates');
+        if (sel && dates) {
+            sel.addEventListener('change', function () {
+                if (sel.value === 'custom') dates.style.display = 'flex';
+                else dates.style.display = 'none';
+            });
+        }
+    });
+</script>
+{% endblock %}

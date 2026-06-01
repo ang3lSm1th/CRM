@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4 animate-fade-in">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10">
+      
+      <!-- Encabezado -->
+      <div class="d-flex justify-content-between align-items-center mb-4 animate-slide-in-left">
+        <div>
+          <h2 class="h3 mb-1 fw-bold text-gradient">
+            <i class="bi bi-box-seam me-2"></i>Bienes / Servicios
+          </h2>
+          <small class="text-muted">Administra bienes y servicios disponibles</small>
+        </div>
+      </div>
+
+      <!-- Formulario para agregar -->
+      <div class="card shadow-lg mb-4 border-0 hover-lift animate-scale-in" style="animation-delay: 0.1s">
+        <div class="card-header bg-gradient-primary text-white">
+          <i class="bi bi-plus-circle me-2"></i>Agregar Nuevo
+        </div>
+        <div class="card-body">
+          <form id="form-agregar" method="POST" 
+                action="{{ url_for('bienes_servicios.create_bien') }}" 
+                class="d-flex align-items-center justify-content-start gap-2" >
+            
+            <!-- Campo de entrada reducido -->
+            <input name="nombre" 
+                   class="form-control me-2" 
+                   style="max-width: 400px;" 
+                   placeholder="Ingrese un nuevo bien o servicio" 
+                   required>
+
+            <!-- Botón alineado -->
+            <button class="btn btn-primary hover-lift shadow-primary" type="submit">
+              <i class="bi bi-plus-lg me-1"></i> Agregar
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="card shadow-lg border-0 animate-fade-in-up" style="animation-delay: 0.2s">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+              <thead class="table-primary">
+                <tr class="text-center">
+                  <th><i class="bi bi-box me-1"></i> Nombre</th>
+                  <th style="width:160px;"><i class="bi bi-gear me-1"></i> Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for b in bienes %}
+                <tr class="animate-fade-in" style="animation-delay: {{ loop.index0 * 0.05 }}s">
+                  <td>
+        <form method="POST" 
+          action="{{ url_for('bienes_servicios.edit_bien', bien_id=b.id) }}" 
+          class="d-flex form-editar gap-2">
+                      <input name="nombre" value="{{ b.nombre }}" 
+                             class="form-control form-control-sm me-2" required>
+                      <button class="btn btn-sm btn-success hover-lift shadow-success" type="submit" title="Guardar cambios">
+                        <i class="bi bi-check2 me-1"></i> Guardar
+                      </button>
+                    </form>
+                  </td>
+                  <td class="text-center">
+                    <form method="POST" 
+                          action="{{ url_for('bienes_servicios.delete_bien', bien_id=b.id) }}" 
+                          class="d-inline form-eliminar">
+                      <button class="btn btn-sm btn-danger hover-scale shadow-danger" type="submit" title="Eliminar">
+                        <i class="bi bi-trash me-1"></i> Eliminar
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="2" class="text-center py-3 text-muted">
+                    No hay bienes o servicios registrados
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- Flash messages stored as JSON to avoid JS parser issues for editors -->
+<div id="flashed-messages-json" style="display:none;" data-messages='{{ get_flashed_messages(with_categories=true) | tojson | safe }}'></div>
+
+<script src="{{ url_for('static', filename='js/leads-bienes-servicios.js') }}" defer></script>
+
+{% endblock %}

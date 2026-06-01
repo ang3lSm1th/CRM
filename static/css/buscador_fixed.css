@@ -1,0 +1,22 @@
+/* buscador_fixed.css - Hace el buscador fijo en la parte superior de la ventana, pero desplazable horizontalmente */
+
+.buscador-fixed-wrapper {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: #f5f6fa;
+  box-shadow: 0 2px 12px rgba(37,99,235,0.07);
+  border-bottom: 1.5px solid #e0e7ef;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  margin-bottom: 18px;
+  transition: box-shadow .18s;
+}
+
+@media (max-width: 900px) {
+  .buscador-fixed-wrapper {
+    padding-top: 2px;
+    padding-bottom: 2px;
+    margin-bottom: 10px;
+  }
+}

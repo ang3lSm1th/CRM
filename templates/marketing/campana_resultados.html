@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/marketing-campana-resultados.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="mk-page">
+  <div class="mk-shell">
+    <section class="mk-hero">
+      <div class="mk-hero-top">
+        <div>
+          <h2 class="mb-1"><i class="bi bi-graph-up-arrow"></i> Resultados de Campana</h2>
+          <div class="mk-muted">Vista ejecutiva y operativa de rendimiento, conversion y valor generado.</div>
+          <div class="mk-badges">
+            <span class="mk-pill">Campana: {{ campaign.nombre_campana }}</span>
+            <span class="mk-pill">Canal: {{ canales.get(campaign.canal, '-') if campaign.canal else '-' }}</span>
+            <span class="mk-pill">Periodo: {{ campaign.periodo_inicio }} a {{ campaign.periodo_fin }}</span>
+          </div>
+        </div>
+        {% set current_origin = request.full_path[:-1] if request.full_path.endswith('?') else request.full_path %}
+        <div class="d-flex gap-2 flex-wrap">
+          <a class="btn btn-outline-secondary" href="{{ return_url }}">
+            <i class="bi bi-arrow-left"></i> {{ return_label }}
+          </a>
+          <a class="btn btn-primary" href="{{ url_for('marketing.marketing_campaign_leads', campaign_id=campaign.id, next=current_origin) }}">
+            <i class="bi bi-diagram-3"></i> Gestionar Leads
+          </a>
+        </div>
+      </div>
+
+      <div class="mk-meta-grid mt-4">
+        <div class="mk-stat">
+          <div class="mk-stat-label">Linea comercial</div>
+          <div class="mk-stat-note">{{ campaign.linea_negocio or '-' }} / {{ campaign.linea_familia or '-' }} / {{ campaign.linea_producto or '-' }}</div>
+        </div>
+        <div class="mk-stat">
+          <div class="mk-stat-label">Producto promocionado</div>
+          <div class="mk-stat-note">{{ campaign.producto or '-' }}</div>
+        </div>
+        <div class="mk-stat">
+          <div class="mk-stat-label">Inversion declarada</div>
+          <div class="mk-stat-note">{{ '%.2f'|format(financials.inversion) }}</div>
+        </div>
+        <div class="mk-stat">
+          <div class="mk-stat-label">Audiencia</div>
+          <div class="mk-stat-note">Impresiones: {{ campaign.impresiones or 0 }} | Alcance: {{ campaign.alcance or 0 }}</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mk-kpi-grid">
+      <article class="mk-stat">
+        <div class="mk-stat-label">Leads atribuidos</div>
+        <div class="mk-stat-value">{{ kpis.total_leads or 0 }}</div>
+        <div class="mk-stat-note">Base total asociada a la campana</div>
+      </article>
+      <article class="mk-stat">
+        <div class="mk-stat-label">Ventas cerradas</div>
+        <div class="mk-stat-value">{{ kpis.ventas_cerradas or 0 }}</div>
+        <div class="mk-stat-note">Conversion final: {{ '%.2f'|format(conversion_rate) }}%</div>
+      </article>
+      <article class="mk-stat">
+        <div class="mk-stat-label">Cotizados</div>
+        <div class="mk-stat-value">{{ kpis.cotizados or 0 }}</div>
+        <div class="mk-stat-note">Tasa de avance comercial: {{ '%.2f'|format(quote_rate) }}%</div>
+      </article>
+      <article class="mk-stat">
+        <div class="mk-stat-label">Costo por lead</div>
+        <div class="mk-stat-value">{{ '%.2f'|format(financials.cost_per_lead) }}</div>
+        <div class="mk-stat-note">Inversion / leads atribuidos</div>
+      </article>
+      <article class="mk-stat">
+        <div class="mk-stat-label">Costo por venta</div>
+        <div class="mk-stat-value">{{ '%.2f'|format(financials.cost_per_sale) }}</div>
+        <div class="mk-stat-note">Inversion / cierres vendidos</div>
+      </article>
+      <article class="mk-stat">
+        <div class="mk-stat-label">Cerrados no vendidos</div>
+        <div class="mk-stat-value">{{ kpis.cerrados_no_vendidos or 0 }}</div>
+        <div class="mk-stat-note">Perdida comercial: {{ '%.2f'|format(loss_rate) }}%</div>
+      </article>
+    </section>
+
+    {% if ingresos_por_moneda|length > 1 %}
+    <div class="mk-note">
+      Los ingresos aparecen separados por moneda. No se calcula utilidad ni ROAS consolidado porque la campana tiene cierres con multiples monedas.
+    </div>
+    {% endif %}
+
+    <section class="mk-split">
+      <article class="mk-card">
+        <div class="mk-card-header">
+          <h4>Embudo por proceso</h4>
+          <span class="mk-muted">Estado actual de cada lead vinculado</span>
+        </div>
+        <div class="mk-card-body">
+          <div class="mk-process-list">
+            {% for item in process_breakdown %}
+            <div class="mk-process-item">
+              <div>
+                <div class="mk-process-name">{{ item.proceso }}</div>
+                <div class="mk-process-meta">{{ item.total }} lead(s)</div>
+              </div>
+              <div class="text-end">
+                <div class="mk-process-name">{{ item.ingresos or 0 }}</div>
+                <div class="mk-process-meta">Monto nominal asociado</div>
+              </div>
+            </div>
+            {% else %}
+            <div class="text-muted">No hay leads vinculados a esta campana.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </article>
+
+      <article class="mk-card">
+        <div class="mk-card-header">
+          <h4>Resumen financiero</h4>
+          <span class="mk-muted">Rentabilidad y ticket comercial</span>
+        </div>
+        <div class="mk-card-body">
+          <div class="mk-financial-list">
+            <div class="mk-financial-item">
+              <div>
+                <div class="mk-financial-name">Inversion</div>
+                <div class="mk-financial-meta">Monto declarado en la campana</div>
+              </div>
+              <div class="mk-financial-name">{{ '%.2f'|format(financials.inversion) }}</div>
+            </div>
+            <div class="mk-financial-item">
+              <div>
+                <div class="mk-financial-name">Ingresos cerrados</div>
+                <div class="mk-financial-meta">Suma de montos del ultimo seguimiento en estado Cerrado</div>
+              </div>
+              <div class="mk-financial-name">
+                {% if financials.single_currency %}
+                {{ '%.2f'|format(financials.total_ingresos) }} {{ financials.single_currency }}
+                {% else %}
+                Ver desglose por moneda
+                {% endif %}
+              </div>
+            </div>
+            <div class="mk-financial-item">
+              <div>
+                <div class="mk-financial-name">Utilidad estimada</div>
+                <div class="mk-financial-meta">Ingresos menos inversion</div>
+              </div>
+              <div class="mk-financial-name">{{ '%.2f'|format(financials.utilidad) if financials.utilidad is not none else '-' }}</div>
+            </div>
+            <div class="mk-financial-item">
+              <div>
+                <div class="mk-financial-name">ROAS</div>
+                <div class="mk-financial-meta">Ingresos / inversion</div>
+              </div>
+              <div class="mk-financial-name">{{ '%.2f'|format(financials.roas) if financials.roas is not none else '-' }}</div>
+            </div>
+            <div class="mk-financial-item">
+              <div>
+                <div class="mk-financial-name">Ticket promedio</div>
+                <div class="mk-financial-meta">Valor medio por venta cerrada</div>
+              </div>
+              <div class="mk-financial-name">{{ '%.2f'|format(financials.ticket_promedio) if financials.ticket_promedio is not none else '-' }}</div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="mk-bottom-grid">
+      <article class="mk-card">
+        <div class="mk-card-header">
+          <h4>Ingresos por moneda</h4>
+          <span class="mk-muted">Solo cierres vendidos</span>
+        </div>
+        <div class="mk-card-body">
+          <div class="mk-financial-list">
+            {% for item in ingresos_por_moneda %}
+            <div class="mk-financial-item">
+              <div>
+                <div class="mk-financial-name">{{ item.moneda }}</div>
+                <div class="mk-financial-meta">{{ item.ventas }} venta(s)</div>
+              </div>
+              <div class="mk-financial-name">{{ '%.2f'|format(item.ingresos or 0) }}</div>
+            </div>
+            {% else %}
+            <div class="text-muted">Aun no hay ingresos registrados con estado Cerrado.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </article>
+
+      <article class="mk-card">
+        <div class="mk-card-header">
+          <h4>Evolucion mensual</h4>
+          <span class="mk-muted">Volumen y cierres por mes de captacion</span>
+        </div>
+        <div class="mk-card-body">
+          <div class="table-responsive">
+            <table class="mk-timeline">
+              <thead>
+                <tr>
+                  <th>Periodo</th>
+                  <th>Leads</th>
+                  <th>Ventas</th>
+                  <th>Ingresos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in timeline %}
+                <tr>
+                  <td>{{ row.periodo or '-' }}</td>
+                  <td>{{ row.leads or 0 }}</td>
+                  <td>{{ row.ventas or 0 }}</td>
+                  <td>{{ '%.2f'|format(row.ingresos or 0) }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="4" class="text-center text-muted">Sin datos de timeline para esta campana.</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="mk-card">
+      <div class="mk-card-header">
+        <h4>Detalle de leads atribuidos</h4>
+        <span class="mk-muted">Proceso actual, valor potencial y trazabilidad de atribucion</span>
+      </div>
+      <div class="mk-table-wrap">
+        <div class="mk-detail-wrapper">
+          <table class="table table-striped table-hover mb-0 mk-table">
+            <thead class="table-dark sticky-top">
+              <tr>
+                <th>Codigo</th>
+                <th>Fecha</th>
+                <th>Cliente</th>
+                <th>Gestion comercial</th>
+                <th>Valor</th>
+                <th>Trazabilidad</th>
+                <th>Comentario</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in lead_results %}
+              <tr>
+                <td class="text-tight">{{ row.codigo }}</td>
+                <td class="text-tight">{{ row.fecha }}</td>
+                <td class="text-medium">
+                  <div class="fw-semibold">{{ row.nombre }}</div>
+                  <small class="text-muted d-block">{{ row.telefono or '-' }}</small>
+                  <small class="text-muted d-block">{{ row.ruc_dni or '-' }}</small>
+                </td>
+                <td class="text-medium">
+                  <div class="mk-stack">
+                    <strong>{{ row.asesor_nombre or '-' }}</strong>
+                    <span class="badge bg-secondary align-self-start">{{ row.proceso_actual }}</span>
+                    <span class="mk-subtle">{{ row.canal_nombre or '-' }} | {{ row.bien_servicio_nombre or '-' }}</span>
+                  </div>
+                </td>
+                <td class="text-tight">
+                  <div class="mk-stack">
+                    <strong>{{ '%.2f'|format(row.monto) if row.monto is not none else '-' }}</strong>
+                    <span class="mk-subtle">{{ row.nombre_moneda or '-' }}</span>
+                  </div>
+                </td>
+                <td class="text-medium">
+                  <div class="mk-stack">
+                    <strong>Ult. mov.: {{ row.fecha_ultimo_movimiento or '-' }}</strong>
+                    <span class="mk-subtle">Atribucion: {{ row.fecha_atribucion or '-' }}</span>
+                    <span class="mk-subtle">Metodo: {{ row.metodo_atribucion or '-' }}</span>
+                  </div>
+                </td>
+                <td class="text-wrap">{{ row.comentario or row.cotizacion or '-' }}</td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="7" class="text-center text-muted py-4">No hay leads vinculados para analizar.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/register.css') }}">
+
+<div class="register-page animate-fade-in-up">
+  <div class="register-card card shadow-2xl rounded-2xl overflow-hidden">
+    <!-- Encabezado -->
+    <div class="card-header bg-gradient-primary text-white">
+      <h4 class="title flex items-center gap-2">
+        <i class="bi bi-person-plus-fill"></i> 
+        Crea una cuenta
+      </h4>
+      <p class="subtitle">Por favor ingrese sus datos</p>
+    </div>
+
+    <!-- Cuerpo -->
+    <div class="card-body p-lg">
+      <form method="POST" action="{{ url_for('register.register') }}" novalidate class="form-grid" data-validate>
+        
+        <!-- Nombre -->
+        <div class="form-row animate-fade-in" style="animation-delay: 0.1s">
+          <label class="form-label font-semibold">
+            <i class="bi bi-person text-primary"></i>
+            Nombre
+          </label>
+          <input type="text" name="nombre" class="form-control transition-all"
+                 value="{{ form_data.nombre if form_data and form_data.nombre }}"
+                 placeholder="Ej: Ana Rodríguez" required>
+        </div>
+
+        <!-- Usuario -->
+        <div class="form-row animate-fade-in" style="animation-delay: 0.2s">
+          <label class="form-label font-semibold">
+            <i class="bi bi-at text-primary"></i>
+            Usuario
+          </label>
+          <input type="text" name="username" class="form-control transition-all"
+                 value="{{ form_data.username if form_data and form_data.username }}"
+                 placeholder="Mínimo 5 caracteres (a-z, 0-9)" required minlength="5">
+        </div>
+
+        <!-- Clave -->
+        <div class="form-row animate-fade-in" style="animation-delay: 0.3s">
+          <label class="form-label font-semibold">
+            <i class="bi bi-lock text-primary"></i>
+            Clave
+          </label>
+          <input type="password" name="password" class="form-control transition-all"
+                 placeholder="Mínimo 8 caracteres, con mayúscula y número" required minlength="8">
+        </div>
+
+        <!-- Rol -->
+        <div class="form-row animate-fade-in" style="animation-delay: 0.4s">
+          <label class="form-label font-semibold">
+            <i class="bi bi-shield-check text-primary"></i>
+            Rol
+          </label>
+          <select name="rol" class="form-select transition-all" required>
+            <option value="">Seleccione un rol</option>
+            {% for rol in roles %}
+              <option value="{{ rol.id }}"
+                {% if form_data and form_data.rol_id == rol.id|string %}selected{% endif %}>
+                {{ rol.nombre }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Empresa / Negocio -->
+        <div class="form-row animate-fade-in" style="animation-delay: 0.45s">
+          <label class="form-label font-semibold">
+            <i class="bi bi-building text-primary"></i>
+            Empresa
+          </label>
+          <select name="negocio_id" id="negocio_id" class="form-select transition-all">
+            <option value="">Seleccione una empresa</option>
+            {% for n in negocios %}
+              <option value="{{ n.id }}" {% if form_data and form_data.negocio_id == n.id|string %}selected{% endif %}>{{ n.nombre }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-text small text-muted">Si el rol no es administrador, seleccionar empresa es obligatorio.</div>
+        </div>
+
+        <!-- Botón -->
+        <div class="actions animate-fade-in" style="animation-delay: 0.5s">
+          <button type="submit" class="btn btn-primary btn-lg hover-lift w-full">
+            <i class="bi bi-check-circle"></i>
+            <span>Guardar</span>
+          </button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/auth-register.js') }}" defer></script>
+{% endblock %}

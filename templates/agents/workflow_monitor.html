@@ -1,0 +1,360 @@
+{% extends 'base.html' %}
+
+{% block title %}Workflow Multiagente Leads{% endblock %}
+
+{% block styles %}
+<style>
+    .wf-toolbar { display: flex; gap: .5rem; flex-wrap: wrap; align-items: end; margin-bottom: 1rem; }
+    .wf-card {
+        background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+        box-shadow: 0 8px 20px rgba(2, 6, 23, 0.05); padding: 1rem; margin-bottom: 1rem;
+    }
+    .wf-title { margin: 0 0 .75rem; font-weight: 700; color: #0f172a; font-size: 1rem; }
+
+    .json-panel {
+        background: #0f172a;
+        color: #e2e8f0;
+        border-radius: 10px;
+        padding: 1rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: .78rem;
+        line-height: 1.45;
+        max-height: 520px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .json-key { color: #7dd3fc; }
+    .json-str { color: #86efac; }
+    .json-num { color: #fcd34d; }
+    .json-bool { color: #f472b6; }
+
+    .pipeline-track { display: flex; align-items: flex-start; gap: 0; overflow-x: auto; padding: .5rem 0; }
+    .pipe-node { flex: 1; min-width: 100px; text-align: center; position: relative; }
+    .pipe-node:not(:last-child)::after {
+        content: '→'; position: absolute; right: -8px; top: 14px; color: #94a3b8; font-weight: 700;
+    }
+    .pipe-dot {
+        width: 32px; height: 32px; border-radius: 50%; margin: 0 auto .35rem;
+        display: flex; align-items: center; justify-content: center;
+        font-size: .7rem; font-weight: 700; border: 2px solid #cbd5e1; background: #f8fafc; color: #64748b;
+    }
+    .pipe-node.completed .pipe-dot { background: #dcfce7; border-color: #22c55e; color: #166534; }
+    .pipe-node.active .pipe-dot { background: #dbeafe; border-color: #3b82f6; color: #1d4ed8; box-shadow: 0 0 0 3px rgba(59,130,246,.2); }
+    .pipe-label { font-size: .65rem; font-weight: 600; color: #334155; }
+    .pipe-agent { font-size: .6rem; color: #64748b; }
+
+    .nav-tabs .nav-link { font-size: .85rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div>
+            <h1 class="h4 mb-1">Workflow Lead IA — Orquestador multiagente</h1>
+            <p class="text-muted mb-0 small">Recorrido del lead por cada agente, herramientas usadas y salida JSON en tiempo real.</p>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm" id="btnRefresh">Actualizar</button>
+    </div>
+
+    <div class="wf-card">
+        <div class="wf-toolbar">
+            <div>
+                <label class="form-label mb-1 small">Código lead</label>
+                <input type="text" class="form-control form-control-sm" id="codigoInput" placeholder="LED-4938" style="width:140px;">
+            </div>
+            <button class="btn btn-primary btn-sm" id="btnProcess">▶ Iniciar workflow</button>
+            <button class="btn btn-outline-primary btn-sm" id="btnAnalyze">Solo scoring</button>
+            <button class="btn btn-outline-success btn-sm" id="btnSimRespond">Simular respuesta</button>
+            <button class="btn btn-outline-warning btn-sm" id="btnSimNoResp">Sin respuesta</button>
+            <button class="btn btn-outline-dark btn-sm" id="btnCopyJson">Copiar JSON</button>
+        </div>
+        <div id="leadHeader" class="small text-muted">Use el código exacto de la tabla leads (ej. LED-4376). No es el ID interno.</div>
+    </div>
+
+    <ul class="nav nav-tabs mb-2" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabJson">JSON orquestador</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabVisual">Vista pipeline</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabCatalog">Catálogo agentes</button></li>
+    </ul>
+
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="tabJson">
+            <div class="wf-card mb-0">
+                <h2 class="wf-title"><i class="fas fa-code me-1"></i> orchestrator_flow — paso a paso</h2>
+                <div class="json-panel" id="jsonOrchestrator">{ "message": "Inicie workflow o seleccione un lead de la lista" }</div>
+            </div>
+            <div class="wf-card mt-3 mb-0">
+                <h2 class="wf-title"><i class="fas fa-file-code me-1"></i> trace completo (API /lead_workflow/trace)</h2>
+                <div class="json-panel" id="jsonFullTrace" style="max-height:360px;">{}</div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tabVisual">
+            <div class="wf-card">
+                <h2 class="wf-title">Pipeline del orquestador</h2>
+                <div class="pipeline-track" id="pipelineTrack"></div>
+            </div>
+            <div class="wf-card">
+                <h2 class="wf-title">Timeline de interacciones</h2>
+                <div id="traceTimeline"><p class="text-muted small mb-0">Sin trazas.</p></div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tabCatalog">
+            <div class="wf-card mb-0">
+                <div class="json-panel" id="jsonCatalog" style="max-height:600px;">{}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-3 g-3">
+        <div class="col-md-6">
+            <div class="wf-card mb-0">
+                <h2 class="wf-title">Leads en workflow <small class="text-muted fw-normal">(clic → trace)</small></h2>
+                <div id="workflowList"></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="wf-card mb-0">
+                <h2 class="wf-title">Últimas interacciones</h2>
+                <div id="interactionList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const codigoInput = document.getElementById('codigoInput');
+    const jsonOrchestrator = document.getElementById('jsonOrchestrator');
+    const jsonFullTrace = document.getElementById('jsonFullTrace');
+    const jsonCatalog = document.getElementById('jsonCatalog');
+    const pipelineTrack = document.getElementById('pipelineTrack');
+    const traceTimeline = document.getElementById('traceTimeline');
+    const leadHeader = document.getElementById('leadHeader');
+    const workflowList = document.getElementById('workflowList');
+    const interactionList = document.getElementById('interactionList');
+
+    function normalizeCodigo(raw) {
+        return (raw || '').trim().toUpperCase();
+    }
+
+    function getCodigo() {
+        return normalizeCodigo(codigoInput.value);
+    }
+
+    function encodeCodigo(codigo) {
+        return encodeURIComponent(normalizeCodigo(codigo));
+    }
+
+    let lastTrace = null;
+
+    function prettyJson(obj) {
+        return JSON.stringify(obj, null, 2);
+    }
+
+    function setJson(el, obj) {
+        el.textContent = prettyJson(obj);
+    }
+
+    async function loadCatalog() {
+        const res = await fetch('/lead_workflow/catalog');
+        const data = await res.json();
+        setJson(jsonCatalog, data);
+        renderPipeline((data.pipeline || []).map(n => ({ ...n, status: 'pending' })));
+    }
+
+    function renderPipeline(nodes) {
+        pipelineTrack.innerHTML = nodes.map((n, i) => `
+            <div class="pipe-node ${n.status || 'pending'}">
+                <div class="pipe-dot">${i + 1}</div>
+                <div class="pipe-label">${n.label || n.node}</div>
+                <div class="pipe-agent">${n.agent || ''}</div>
+            </div>
+        `).join('');
+    }
+
+    function renderTimeline(timeline) {
+        if (!timeline || !timeline.length) {
+            traceTimeline.innerHTML = '<p class="text-muted small mb-0">Sin pasos.</p>';
+            return;
+        }
+        traceTimeline.innerHTML = timeline.map(step => `
+            <div class="border-start border-3 border-primary ps-2 mb-2 pb-2" style="border-color:#3b82f6!important;">
+                <div class="small">
+                    <strong>#${step.order}</strong>
+                    <span class="badge bg-primary">${step.label || step.node}</span>
+                    <span class="badge bg-secondary">${step.agent}</span>
+                </div>
+                ${(step.tools || []).length ? `<div class="small text-muted mt-1">Tools: ${step.tools.join(' · ')}</div>` : ''}
+                ${step.content ? `<div class="small mt-1">${step.content}</div>` : ''}
+            </div>
+        `).join('');
+    }
+
+    function applyTrace(data) {
+        lastTrace = data;
+        const codigo = data.codigo || data.lead?.codigo || '';
+        if (data.ok === false) {
+            leadHeader.textContent = data.error || 'Sin workflow';
+        } else if (data.workflow_started === false) {
+            leadHeader.innerHTML = `<strong>${codigo}</strong> ${data.lead?.nombre || ''} ·
+               <span class="badge bg-warning text-dark">Sin workflow</span> ·
+               ${data.orchestrator_flow?.message || 'Pulse Iniciar workflow'}`;
+        } else {
+            leadHeader.innerHTML = `<strong>${codigo}</strong> ${data.lead?.nombre || ''} ·
+               Nodo: <span class="badge bg-primary">${data.current_node}</span> ·
+               ${data.state?.workflow_status || 'active'}`;
+        }
+
+        setJson(jsonOrchestrator, data.orchestrator_flow || { message: 'Sin orchestrator_flow' });
+        setJson(jsonFullTrace, data);
+        renderPipeline(data.pipeline || []);
+        renderTimeline(data.timeline || []);
+    }
+
+    async function loadTrace(codigo) {
+        const c = normalizeCodigo(codigo);
+        if (!c) return null;
+        const res = await fetch('/lead_workflow/trace/' + encodeCodigo(c));
+        const data = await res.json();
+        applyTrace(data);
+        return data;
+    }
+
+    async function loadRecent() {
+        const res = await fetch('/lead_workflow/recent?limit=30');
+        const data = await res.json();
+        if (!data.ok) return;
+
+        workflowList.innerHTML = (data.workflows || []).map(it => {
+            const codigo = it.codigo || it.lead_codigo || '';
+            return `
+            <div class="border rounded p-2 mb-2" style="cursor:pointer;background:#f8fafc;" data-codigo="${codigo}">
+                <strong>${codigo}</strong> ${it.lead_nombre || ''}
+                <span class="badge bg-secondary ms-1">${it.current_node}</span>
+                <span class="badge bg-info ms-1">Score ${it.score || 0}</span>
+            </div>`;
+        }).join('') || '<p class="text-muted small mb-0">Sin workflows.</p>';
+
+        workflowList.querySelectorAll('[data-codigo]').forEach(el => {
+            el.addEventListener('click', () => {
+                codigoInput.value = el.dataset.codigo;
+                loadTrace(el.dataset.codigo);
+            });
+        });
+
+        interactionList.innerHTML = (data.interactions || []).slice(0, 12).map(it => {
+            const codigo = it.codigo || it.lead_codigo || '';
+            return `
+            <div class="border rounded p-2 mb-2 small">
+                <span class="badge bg-light text-dark">${it.agent_name}</span> ${codigo}
+                <div class="mt-1">${it.content || ''}</div>
+            </div>`;
+        }).join('') || '<p class="text-muted small mb-0">Sin interacciones.</p>';
+    }
+
+    async function postJson(url, body) {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        let data;
+        try {
+            data = await res.json();
+        } catch (_) {
+            throw new Error('Respuesta inválida del servidor (¿sesión expirada?)');
+        }
+        if (!res.ok && data && !data.error) {
+            data.error = data.error || `Error HTTP ${res.status}`;
+            data.ok = false;
+        }
+        return data;
+    }
+
+    function setBusy(btn, busy, labelBusy, labelIdle) {
+        if (!btn) return;
+        btn.disabled = busy;
+        btn.textContent = busy ? labelBusy : labelIdle;
+    }
+
+    document.getElementById('btnProcess').addEventListener('click', async () => {
+        const btn = document.getElementById('btnProcess');
+        const codigo = getCodigo();
+        if (!codigo) return alert('Ingrese código del lead (ej. LED-4938)');
+        setBusy(btn, true, 'Procesando…', '▶ Iniciar workflow');
+        try {
+            const data = await postJson('/lead_workflow/process', { codigo, async: false, auto_advance: true });
+            if (!data.ok) return alert(data.error || 'Error al iniciar workflow');
+            setJson(jsonOrchestrator, {
+                process_result: data,
+                steps_from_orchestrator: data.steps,
+                note: 'Pasos ejecutados en esta corrida; trace completo abajo.',
+            });
+            codigoInput.value = data.codigo || codigo;
+            await loadTrace(data.codigo || codigo);
+            await loadRecent();
+        } catch (err) {
+            alert(err.message || 'Error de conexión');
+        } finally {
+            setBusy(btn, false, 'Procesando…', '▶ Iniciar workflow');
+        }
+    });
+
+    document.getElementById('btnAnalyze').addEventListener('click', async () => {
+        const codigo = getCodigo();
+        if (!codigo) return alert('Ingrese código del lead');
+        const res = await fetch('/lead_workflow/analyze/' + encodeCodigo(codigo));
+        const data = await res.json();
+        if (!data.ok) return alert(data.error);
+        setJson(jsonOrchestrator, {
+            mode: 'scoring_only',
+            codigo: data.codigo || codigo,
+            analysis: data.analysis,
+            sub_agents: data.analysis?.agent_outputs,
+            weights: data.analysis?.weights,
+        });
+        leadHeader.textContent = `Análisis ${data.codigo || codigo} · Score ${data.analysis?.global_score} (sin avanzar workflow)`;
+    });
+
+    document.getElementById('btnSimRespond').addEventListener('click', async () => {
+        const codigo = getCodigo();
+        if (!codigo) return alert('Ingrese código del lead');
+        const data = await postJson('/lead_workflow/manual', { codigo, action: 'simulate_response', payload: { sale_won: true, monto: 500 } });
+        if (!data.ok) return alert(data.error || 'Error al simular respuesta');
+        await loadTrace(codigo);
+        await loadRecent();
+    });
+
+    document.getElementById('btnSimNoResp').addEventListener('click', async () => {
+        const codigo = getCodigo();
+        if (!codigo) return alert('Ingrese código del lead');
+        const data = await postJson('/lead_workflow/manual', { codigo, action: 'simulate_no_response' });
+        if (!data.ok) return alert(data.error || 'Error al simular sin respuesta');
+        await loadTrace(codigo);
+        await loadRecent();
+    });
+
+    document.getElementById('btnCopyJson').addEventListener('click', () => {
+        const text = jsonOrchestrator.textContent;
+        navigator.clipboard.writeText(text).then(() => alert('JSON copiado'));
+    });
+
+    document.getElementById('btnRefresh').addEventListener('click', () => {
+        loadRecent();
+        const codigo = getCodigo();
+        if (codigo) loadTrace(codigo);
+    });
+
+    loadCatalog();
+    loadRecent();
+    setInterval(loadRecent, 20000);
+})();
+</script>
+{% endblock %}

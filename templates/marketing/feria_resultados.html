@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes.css') }}">
+<style>
+  .mk-results-container { max-width: 1400px; margin: 0 auto; }
+  .feria-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; border-radius: 0.5rem; margin-bottom: 2rem; }
+  .feria-header h2 { margin: 0 0 0.5rem 0; font-size: 2rem; }
+  .feria-dates { display: flex; gap: 1rem; font-size: 0.95rem; opacity: 0.9; }
+  .feria-meta { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.75rem; }
+  .feria-chip { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.35); border-radius: 999px; padding: 0.25rem 0.75rem; font-size: 0.82rem; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+  .kpi-card { background: white; border-left: 4px solid #667eea; border-radius: 0.5rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .kpi-card.success { border-left-color: #48bb78; }
+  .kpi-card.warning { border-left-color: #ff9800; }
+  .kpi-card.danger { border-left-color: #f56565; }
+  .kpi-card.info { border-left-color: #4299e1; }
+  .kpi-label { color: #718096; font-size: 0.9rem; margin-bottom: 0.5rem; }
+  .kpi-value { font-size: 2rem; font-weight: 700; color: #2d3748; margin: 0; }
+  .kpi-subtext { color: #a0aec0; font-size: 0.85rem; margin-top: 0.5rem; }
+  .process-breakdown { margin-bottom: 2rem; }
+  .breakdown-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid #e2e8f0; }
+  .breakdown-item:last-child { border-bottom: none; }
+  .process-name { font-weight: 500; }
+  .process-bar { flex: 1; height: 8px; background: #e2e8f0; border-radius: 4px; margin: 0 1rem; overflow: hidden; }
+  .process-fill { height: 100%; background: #667eea; border-radius: 4px; transition: width 0.3s; }
+  .btn-back { margin-bottom: 1.5rem; }
+  .process-progress { width: 100%; height: 8px; appearance: none; border: 0; }
+  .process-progress::-webkit-progress-bar { background: #e2e8f0; border-radius: 4px; }
+  .process-progress::-webkit-progress-value { background: #667eea; border-radius: 4px; }
+  .process-progress::-moz-progress-bar { background: #667eea; border-radius: 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="mk-results-container">
+    <!-- Header de Feria -->
+    <div class="feria-header">
+      <h2><i class="bi bi-bar-chart-line"></i> Resultados - {{ feria.nombre }}</h2>
+      <div class="feria-dates">
+        <span><strong>Período:</strong> {{ feria.fecha_inicio }} al {{ feria.fecha_fin }}</span>
+      </div>
+      <div class="feria-meta">
+        <span class="feria-chip">Tipo: {{ feria.tipo or 'N/A' }}</span>
+        <span class="feria-chip">Ubicación: {{ feria.departamento or '-' }} / {{ feria.provincia or '-' }} / {{ feria.distrito or '-' }}</span>
+        <span class="feria-chip">Inversión total: S/ {{ "%.2f"|format(feria.total_inversion or 0) }}</span>
+      </div>
+    </div>
+
+      <!-- Detalle de Gasto Seleccionado -->
+      {% if tipo_gasto %}
+      <div class="card mb-3">
+        <div class="card-header bg-white">
+          <strong>Gasto Seleccionado</strong>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Detalle</th>
+                  <th>Factura</th>
+                  <th class="text-end">Monto (S/)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{{ tipo_gasto.tipo_factura or '-' }}</td>
+                  <td>{{ feria.factura or '-' }}</td>
+                  <td class="text-end">{{ '%.2f'|format(feria.total_inversion or 0) }}</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th colspan="2">Total</th>
+                  <th class="text-end">S/ {{ '%.2f'|format(feria.total_inversion or 0) }}</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+    <!-- Botón de retorno -->
+    <a href="{{ return_url }}" class="btn btn-outline-secondary btn-back">
+      <i class="bi bi-arrow-left"></i> {{ return_label }}
+    </a>
+
+    <!-- KPIs Principales -->
+    <div class="kpi-grid">
+      <div class="kpi-card info">
+        <div class="kpi-label"><i class="bi bi-person-circle"></i> Leads Generados</div>
+        <p class="kpi-value">{{ total_leads }}</p>
+        <div class="kpi-subtext">Contactos totales capturados</div>
+      </div>
+
+      <div class="kpi-card success">
+        <div class="kpi-label"><i class="bi bi-check-circle"></i> Ventas Cerradas</div>
+        <p class="kpi-value">{{ cerrados }}</p>
+        <div class="kpi-subtext">
+          {% if total_leads > 0 %}
+            Tasa: {{ "%.1f"|format(conversion_rate) }}%
+          {% else %}
+            N/A
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="kpi-card warning">
+        <div class="kpi-label"><i class="bi bi-currency-dollar"></i> Ingresos Generados</div>
+        <p class="kpi-value">S/ {{ "%.2f"|format(ingresos) }}</p>
+        <div class="kpi-subtext">Monto total de ventas</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label"><i class="bi bi-percent"></i> Tasa de Conversión</div>
+        <p class="kpi-value">{{ "%.1f"|format(conversion_rate) }}%</p>
+        <div class="kpi-subtext">Leads a Ventas</div>
+      </div>
+    </div>
+
+    <!-- Desglose por Proceso -->
+    <div class="card process-breakdown">
+      <div class="card-header bg-light">
+        <strong><i class="bi bi-diagram-2"></i> Desglose por Estado del Lead</strong>
+      </div>
+      <div class="card-body">
+        {% if kpis_by_process %}
+          {% set total = total_leads %}
+          {% for kpi in kpis_by_process %}
+            {% if total > 0 %}
+              {% set process_width = (kpi.total|float / total * 100)|int %}
+              {% set process_percentage = "%.1f"|format(kpi.total|float / total * 100) %}
+            {% else %}
+              {% set process_width = 0 %}
+              {% set process_percentage = '0' %}
+            {% endif %}
+            <div class="breakdown-item">
+              <span class="process-name">
+                {% if 'cerrado' in kpi.proceso_actual.lower() and 'no' not in kpi.proceso_actual.lower() %}
+                  <span class="badge bg-success">{{ kpi.proceso_actual }}</span>
+                {% elif 'cotizado' in kpi.proceso_actual.lower() %}
+                  <span class="badge bg-warning">{{ kpi.proceso_actual }}</span>
+                {% elif 'programado' in kpi.proceso_actual.lower() %}
+                  <span class="badge bg-primary">{{ kpi.proceso_actual }}</span>
+                {% else %}
+                  <span class="badge" style="background: #cbd5e0; color: #2d3748;">{{ kpi.proceso_actual }}</span>
+                {% endif %}
+              </span>
+              <div class="process-bar">
+                <progress class="process-progress" value="{{ process_width }}" max="100"></progress>
+              </div>
+              <span style="min-width: 60px; text-align: right;">
+                <strong>{{ kpi.total }}</strong> ({{ process_percentage }}%)
+              </span>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted text-center py-3">No hay datos disponibles.</p>
+        {% endif %}
+      </div>
+    </div>
+
+      <!-- Desglose de Gastos -->
+      <div class="card mt-4">
+        <div class="card-header bg-light">
+          <strong><i class="bi bi-wallet2"></i> Desglose de Gastos</strong>
+        </div>
+        <div class="card-body">
+          {% if gastos %}
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Detalle</th>
+                  <th>Factura</th>
+                  <th class="text-end">Monto (S/)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for g in gastos %}
+                <tr>
+                  <td>{{ g.tipo or '-' }}</td>
+                  <td>{{ g.detalle if g.detalle is defined else '-' }}</td>
+                  <td>{{ g.factura or '-' }}</td>
+                  <td class="text-end">{{ '%.2f'|format(g.monto or 0) }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th colspan="3">Total Gastos</th>
+                  <th class="text-end">S/ {{ '%.2f'|format((gastos|map(attribute='monto')|sum) or 0) }}</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          {% else %}
+            <p class="text-muted">No se han registrado gastos detallados para esta feria.</p>
+          {% endif %}
+        </div>
+      </div>
+
+    <!-- Métricas Resumidas -->
+    <div class="card mt-4">
+      <div class="card-header bg-light">
+        <strong><i class="bi bi-graph-up"></i> Resumen de Desempeño</strong>
+      </div>
+      <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+          <div>
+            <strong>Leads Totales:</strong>
+            <p style="font-size: 1.3rem; color: #667eea; margin: 0.5rem 0 0 0;">{{ total_leads }}</p>
+          </div>
+          <div>
+            <strong>Conversion Rate:</strong>
+            <p style="font-size: 1.3rem; color: #48bb78; margin: 0.5rem 0 0 0;">{{ "%.2f"|format(conversion_rate) }}%</p>
+          </div>
+          <div>
+            <strong>Ingreso por Lead:</strong>
+            <p style="font-size: 1.3rem; color: #ff9800; margin: 0.5rem 0 0 0;">
+              {% if total_leads > 0 %}
+                S/ {{ "%.2f"|format(ingresos / total_leads) }}
+              {% else %}
+                S/ 0.00
+              {% endif %}
+            </p>
+          </div>
+          <div>
+            <strong>Ventas en Pesos:</strong>
+            <p style="font-size: 1.3rem; color: #f56565; margin: 0.5rem 0 0 0;">{{ cerrados }} de {{ total_leads }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

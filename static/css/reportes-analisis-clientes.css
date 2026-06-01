@@ -1,0 +1,9 @@
+@media print {
+  .btn, .navbar, .sidebar, .nav-tabs {
+    display: none !important;
+  }
+  .tab-pane {
+    display: block !important;
+    opacity: 1 !important;
+  }
+}

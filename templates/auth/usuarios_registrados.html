@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/usuarios_registrados.css') }}">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="usuarios-page animate-fade-in">
+    <div class="card shadow-lg hover-lift">
+        <div class="card-header d-flex justify-content-between align-items-center bg-gradient-primary text-white animate-slide-in-left">
+            <div>
+                <h4 class="title mb-0"><i class="bi bi-people-fill me-2"></i> Usuarios Registrados</h4>
+                <p class="subtitle mb-0 small">Visualización y restablecimiento de contraseñas</p>
+            </div>
+        </div>
+        {% set user_role = (session.get('id_rol', '') or '')|lower %}
+
+            <table class="table table-hover align-middle">
+                <thead>
+                        <tr>
+                            <th>#</th>
+                            <th class="sortable" data-key="nombre" style="cursor:pointer; user-select:none;"><i class="bi bi-person me-1"></i> Nombre <span class="sort-indicator ms-1"></span></th>
+                            <th class="sortable" data-key="usuario" style="cursor:pointer; user-select:none;"><i class="bi bi-person-badge me-1"></i> Usuario <span class="sort-indicator ms-1"></span></th>
+                            <th class="sortable" data-key="rol" style="cursor:pointer; user-select:none;"><i class="bi bi-shield me-1"></i> Rol <span class="sort-indicator ms-1"></span></th>
+                            <th class="sortable" data-key="empresa" style="cursor:pointer; user-select:none;"><i class="bi bi-building me-1"></i> Empresa <span class="sort-indicator ms-1"></span></th>
+                            <th class="text-center"><i class="bi bi-gear me-1"></i> Acciones</th>
+                        </tr>
+                </thead>
+                <tbody>
+                    {% for u in usuarios %}
+                    <tr class="animate-fade-in" data-user-row data-user-id="{{ u.id }}">
+                        <td><span class="badge badge-primary">{{ loop.index }}</span></td>
+                        <td>{{ u.nombre }}</td>
+                        <td>{{ u.usuario }}</td>
+                        <td><span class="badge badge-info">{{ u.id_rol }}</span></td>
+                        <td>{{ u.negocio_nombre or u.negocio_slug or '-' }}</td>
+                        <td class="text-center">
+                            {% if user_role in ['administrador', 'gerente', 'rrhh'] %}
+                            <button type="button"
+                                    class="btn btn-sm btn-warning btn-action btn-open-edit-name hover-lift"
+                                    data-bs-toggle="modal" data-bs-target="#editNameModal"
+                                    data-user-id="{{ u.id }}"
+                                    data-username="{{ u.usuario|e }}"
+                                    data-nombre="{{ u.nombre|e }}"
+                                    title="Editar nombre">
+                                <i class="bi bi-pencil-square"></i>
+                            </button>
+                            {% endif %}
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-secondary btn-action btn-view-user hover-lift"
+                                    data-bs-toggle="modal" data-bs-target="#viewUserModal"
+                                    data-nombre="{{ u.nombre|e }}"
+                                    data-username="{{ u.usuario|e }}"
+                                    data-rol="{{ u.id_rol|e }}"
+                                    data-negocio-name="{{ u.negocio_nombre|e }}"
+                                    title="Ver usuario">
+                                <i class="bi bi-eye-fill"></i>
+                            </button>
+                            <button type="button"
+                                    class="btn btn-sm btn-primary btn-action btn-open-reset hover-lift shadow-primary"
+                                    data-bs-toggle="modal" data-bs-target="#resetPwModal"
+                                    data-user-id="{{ u.id }}"
+                                    data-username="{{ u.usuario|e }}"
+                                    data-nombre="{{ u.nombre|e }}"
+                                    title="Restablecer contraseña">
+                                <i class="bi bi-key-fill"></i>
+                            </button>
+                            <button type="button"
+                                    class="btn btn-sm btn-danger btn-action btn-open-delete hover-scale shadow-danger"
+                                    data-bs-toggle="modal" data-bs-target="#deleteUserModal"
+                                    data-user-id="{{ u.id }}"
+                                    data-username="{{ u.usuario|e }}"
+                                    data-nombre="{{ u.nombre|e }}"
+                                    title="Eliminar usuario">
+                                <i class="bi bi-trash-fill"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center">No hay usuarios registrados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="resetPwModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-sm-custom animate-scale-in">
+        <div class="modal-content">
+            <form id="resetPwForm">
+                <div class="modal-header bg-gradient-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-key-fill me-2"></i> Restablecer Contraseña</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="modal_user_id" name="user_id">
+                    <div class="mb-2">
+                        <label class="form-label">Nombre</label>
+                        <input type="text" id="modal_nombre" class="form-control" readonly>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Usuario</label>
+                        <input type="text" id="modal_username" class="form-control" readonly>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Nueva contraseña</label>
+                        <input type="password" id="modal_new_password" name="new_password" class="form-control" required minlength="6">
+                    </div>
+                    <div class="form-text small text-muted">
+                        La nueva contraseña se guardará de forma segura (hasheada).
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editNameModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-sm-custom animate-scale-in">
+        <div class="modal-content">
+            <form id="editNameForm">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i> Editar Nombre</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="edit_name_user_id">
+                    <div class="mb-2">
+                        <label class="form-label">Usuario</label>
+                        <input type="text" id="edit_name_username" class="form-control" readonly>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Nombre actual</label>
+                        <input type="text" id="edit_name_current" class="form-control" readonly>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Nuevo nombre</label>
+                        <input type="text" id="edit_name_new" class="form-control" required minlength="2" maxlength="100">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning text-dark">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="viewUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-sm-custom">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title"><i class="bi bi-person-badge-fill"></i> Detalle Usuario</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Nombre:</strong> <span id="view_nombre"></span></p>
+                <p><strong>Usuario:</strong> <span id="view_usuario"></span></p>
+                <p><strong>Rol:</strong> <span id="view_rol"></span></p>
+                <p><strong>Empresa:</strong> <span id="view_empresa"></span></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-sm-custom">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill"></i> Confirmar Eliminación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que quieres eliminar al usuario **<span id="delete_nombre"></span>** (<span id="delete_usuario"></span>)?</p>
+                <p class="text-danger small"><i class="bi bi-info-circle-fill"></i> Esta acción es irreversible.</p>
+                <input type="hidden" id="delete_user_id">
+                <input type="hidden" id="delete_user_username">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/usuarios.js') }}"></script>
+{% endblock %}

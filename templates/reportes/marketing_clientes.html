@@ -1,0 +1,674 @@
+  {% extends "base.html" %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes.css') }}">
+<style>
+  /* Ajustes de presentación para asegurar que el contenido se vea arriba */
+  .mk-wrapper { padding-top: 12px; }
+  .mk-filters .form-label { font-weight: 600; font-size: .9rem; }
+  .mk-sticky-actions { display:flex; gap:.5rem; align-items:center; }
+  @media (max-width: 992px){
+    .mk-filters .col { margin-bottom: .5rem; }
+  }
+  /* Mejorar visibilidad de la tabla en temas claros/oscuro */
+  .mk-table thead th { white-space: nowrap; }
+  .mk-table td, .mk-table th { vertical-align: middle; }
+  .mk-table .lineas { max-width: 520px; }
+  .mk-card-header { display:flex; justify-content:space-between; align-items:center; }
+  .wa-template-preview { border:1px dashed #ced4da; min-height:72px; display:flex; align-items:center; justify-content:center; border-radius:6px; text-align:center; font-size:.85rem; color:#6c757d; padding:.5rem; background-size:cover; background-position:center; position:relative; transition:background-color .2s ease; }
+  .wa-template-preview[data-has-image="true"] { color:#fff; }
+  .wa-template-preview a { color:inherit; text-decoration:underline; font-weight:600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 mk-wrapper">
+  <div class="row mb-3">
+    <div class="col-12">
+      <h2 class="mb-1">
+        <i class="bi bi-bullseye"></i> Marketing: Clientes y Líneas Compradas
+      </h2>
+      <div class="text-muted">Usa los filtros para segmentar clientes y exportar el listado.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header mk-card-header bg-light">
+      <div class="mk-sticky-actions">
+        <span class="text-muted">Resultados: <strong>{{ clientes|length }}</strong> clientes</span>
+      </div>
+      <div>
+        <a class="btn btn-outline-primary me-2" href="{{ url_for('marketing.marketing_campaigns') }}">
+          <i class="bi bi-bullseye"></i> Campanas y Leads
+        </a>
+        <a class="btn btn-outline-secondary me-2" href="{{ url_for('marketing.marketing_ferias') }}">
+          <i class="bi bi-calendar-event"></i> Ferias
+        </a>
+        <a class="btn btn-success" href="{{ url_for('marketing.marketing_clientes', q=q, bien_servicio_id=bien_servicio_id, departamento=departamento, f_ini=f_ini, f_fin=f_fin, export='csv') }}">
+          <i class="bi bi-download"></i> Exportar CSV
+        </a>
+      </div>
+    </div>
+    <div class="card-body">
+      <!-- Card: Compositor de mensaje -->
+      <div class="card mb-3">
+        <div class="card-header bg-light"><i class="bi bi-chat-left-dots"></i> Mensaje y adjuntos</div>
+        <div class="card-body">
+          <div class="row g-2 align-items-start">
+            <div class="col-12 col-lg-8">
+              <label class="form-label">Mensaje (soporta variables)</label>
+              <textarea class="form-control" id="wa-message" rows="4" placeholder="Escribe tu mensaje usando {nombre}, {lineas}">Hola {nombre},
+Tenemos novedades en {{ bienes_servicios|selectattr('id', 'equalto', bien_servicio_id|int)|map(attribute='nombre')|list|first if bien_servicio_id else 'nuestras líneas' }} que podrían interesarte.
+¿Te gustaría recibir más información?
+Equipo ORBES Agrícola</textarea>
+              <small class="text-muted">Variables disponibles: {nombre}, {lineas}. Las imágenes se agregarán como enlaces debajo del mensaje.</small>
+              <div class="mt-3">
+                <label class="form-label">Variables del cuerpo (globales)</label>
+                <div class="row g-2 align-items-end">
+                  <div class="col-12 col-md-5">
+                    <div class="form-floating">
+                      <input type="text" class="form-control" id="wa-var1" placeholder="Valor var1">
+                      <label for="wa-var1">Valor para {var1}</label>
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-5">
+                    <div class="form-floating">
+                      <input type="text" class="form-control" id="wa-var2" placeholder="Valor var2">
+                      <label for="wa-var2">Valor para {var2}</label>
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-2 d-flex gap-2">
+                    <button type="button" class="btn btn-outline-primary w-100" id="btn-insert-var1" title="Insertar {var1} en el mensaje">{var1}</button>
+                    <button type="button" class="btn btn-outline-primary w-100" id="btn-insert-var2" title="Insertar {var2} en el mensaje">{var2}</button>
+                  </div>
+                </div>
+                <small class="text-muted">Usa {var1} y {var2} dentro del mensaje. Se reemplazarán por los valores indicados para todos los destinatarios.</small>
+              </div>
+            </div>
+            <div class="col-12 col-lg-4">
+              <label class="form-label">Imágenes (enlace en el mensaje)</label>
+              <div class="d-flex gap-2 mb-2">
+                <input type="file" id="wa-image-input" accept="image/*" class="form-control" />
+                <button type="button" class="btn btn-outline-secondary" id="wa-upload-btn">
+                  <i class="bi bi-upload"></i> Subir
+                </button>
+              </div>
+              <div class="input-group mb-2">
+                <input type="url" class="form-control" id="wa-image-url-input" placeholder="https://..." aria-label="URL de imagen" />
+                <button type="button" class="btn btn-outline-primary" id="wa-add-image-url">Agregar URL</button>
+              </div>
+              <small class="text-muted d-block mb-2">Puedes usar imágenes alojadas públicamente (HTTPS). Se agregarán como enlaces.</small>
+              <div id="wa-images" class="d-flex flex-wrap gap-2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card: WhatsApp Web (manual) -->
+      <div class="card mb-3">
+        <div class="card-header bg-light"><i class="bi bi-browser-chrome"></i> WhatsApp Web (manual)</div>
+        <div class="card-body">
+          <div class="mb-2 small"><i class="bi bi-info-circle me-1"></i> Usa el mensaje del compositor. Se abrirá una pestaña por contacto para confirmar el envío.</div>
+          <button type="button" class="btn btn-outline-success" id="btn-whatsapp-masivo">
+            <i class="bi bi-whatsapp"></i> Enviar WhatsApp Web
+          </button>
+        </div>
+      </div>
+
+      <!-- Card: WhatsApp API (automático) -->
+      <div class="card mb-3">
+        <div class="card-header bg-light"><i class="bi bi-rocket-takeoff"></i> WhatsApp API (automático)</div>
+        <div class="card-body">
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-lg-6">
+              <label class="form-label">Plantillas aprobadas (desde API)</label>
+              <select class="form-select" id="wa-tpl-select"><option value="">— Cargar plantillas —</option></select>
+              <small id="wa-tpl-info" class="text-muted"></small>
+            </div>
+          </div>
+          <div class="small text-muted mt-1">Nota: "Enviar plantilla" usa plantillas aprobadas en Meta; el texto del compositor no se envía como plantilla.</div>
+          <div class="row g-2 align-items-end mt-2">
+            <div class="col-12 col-lg-4">
+              <label class="form-label">Plantilla (API)</label>
+              <input type="text" class="form-control" id="wa-tpl-name-bulk" value="hello_world" />
+            </div>
+            <div class="col-6 col-lg-2">
+              <label class="form-label">Idioma</label>
+              <input type="text" class="form-control" id="wa-tpl-lang-bulk" value="en_US" />
+            </div>
+            <div class="col-12 col-lg-6">
+              <label class="form-label">Valores para variables del cuerpo</label>
+              <div id="wa-tpl-body-params" class="d-flex flex-column gap-2"></div>
+              <small class="text-muted">Se crearán campos según los placeholders del body ({{'{{1}}'}}, {{'{{2}}'}}, …). Consejos: usa {nombre} y {lineas} para personalizar.</small>
+            </div>
+            <div class="col-12 col-lg-6 col-xl-4">
+              <label class="form-label">Imagen de cabecera (opcional)</label>
+              <div class="d-flex flex-wrap gap-2 mb-2">
+                <input type="file" class="form-control" id="wa-tpl-image-input" accept="image/*" />
+                <button type="button" class="btn btn-outline-secondary" id="wa-tpl-image-upload">
+                  <i class="bi bi-upload"></i> Subir
+                </button>
+                <button type="button" class="btn btn-outline-danger" id="wa-tpl-image-clear">
+                  <i class="bi bi-x-circle"></i> Quitar
+                </button>
+              </div>
+              <div class="input-group mb-2">
+                <input type="url" class="form-control" id="wa-tpl-image-url-input" placeholder="https://..." aria-label="URL de cabecera" />
+                <button type="button" class="btn btn-outline-primary" id="wa-tpl-image-url-set">Usar URL</button>
+              </div>
+              <div class="wa-template-preview" id="wa-tpl-image-preview" data-has-image="false">Sin imagen seleccionada</div>
+              <small class="text-muted d-block mt-1">Requerido si la plantilla en Meta usa cabecera de imagen.</small>
+            </div>
+            <div class="col-12 d-flex gap-2 mt-2">
+              <button type="button" class="btn btn-success" id="btn-whatsapp-api" title="Usa la API si has configurado WA_TOKEN y WA_PHONE_NUMBER_ID en el servidor.">
+                <i class="bi bi-rocket-takeoff"></i> Enviar por API (texto + imágenes)
+              </button>
+              <button type="button" class="btn btn-primary" id="btn-whatsapp-api-template" title="Enviar plantilla aprobada para iniciar conversación fuera de 24h">
+                <i class="bi bi-envelope-paper"></i> Enviar plantilla por API
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <form method="get" class="mk-filters">
+        <div class="row g-2 align-items-end">
+          <div class="col-12 col-lg-4">
+            <label for="q" class="form-label">Buscar</label>
+            <input type="text" class="form-control" id="q" name="q" value="{{ q or '' }}" placeholder="Nombre, RUC/DNI, email o teléfono">
+          </div>
+          <div class="col-6 col-lg-2">
+            <label for="bien_servicio_id" class="form-label">Bien/Servicio</label>
+            <select class="form-select" id="bien_servicio_id" name="bien_servicio_id">
+              <option value="">Todos</option>
+              {% for bs in bienes_servicios %}
+                <option value="{{ bs.id }}" {% if (bien_servicio_id|string) == (bs.id|string) %}selected{% endif %}>{{ bs.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-6 col-lg-2">
+            <label for="departamento" class="form-label">Departamento</label>
+            <select class="form-select" id="departamento" name="departamento">
+              <option value="">Todos</option>
+              {% for d in departamentos %}
+                <option value="{{ d.id }}" {% if (departamento|string) == (d.id|string) %}selected{% endif %}>{{ d.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-6 col-lg-2">
+            <label for="f_ini" class="form-label">Desde</label>
+            <input type="date" class="form-control" id="f_ini" name="f_ini" value="{{ f_ini or '' }}">
+          </div>
+          <div class="col-6 col-lg-2">
+            <label for="f_fin" class="form-label">Hasta</label>
+            <input type="date" class="form-control" id="f_fin" name="f_fin" value="{{ f_fin or '' }}">
+          </div>
+          <div class="col-12 col-lg-12 d-flex gap-2 mt-2">
+            <button class="btn btn-primary" type="submit">Aplicar</button>
+            <a class="btn btn-secondary" href="{{ url_for('marketing.marketing_clientes') }}">Limpiar</a>
+          </div>
+        </div>
+      </form>
+
+      <div class="table-responsive mt-3">
+        <table class="table table-hover table-striped mk-table">
+          <thead class="table-dark">
+            <tr>
+              <th style="width:36px;" class="text-center">
+                <input type="checkbox" id="wa-select-all" />
+              </th>
+              <th>Cliente</th>
+              <th>RUC/DNI</th>
+              <th>Email</th>
+              <th>Teléfono</th>
+              <th>Departamento</th>
+              <th class="lineas">Líneas compradas</th>
+              <th class="text-end">Compras</th>
+              <th class="text-end">Monto Total</th>
+              <th>Última compra</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if not clientes %}
+              <tr>
+                <td colspan="10" class="text-center text-muted">No hay resultados para los filtros seleccionados.</td>
+              </tr>
+            {% else %}
+              {% for c in clientes %}
+                <tr>
+                  <td class="text-center">
+                    <input type="checkbox" class="wa-row" data-phone="{{ (c.telefono or '')|replace(' ', '') }}" data-name="{{ c.cliente_nombre }}" data-lineas="{{ c.lineas or '' }}" />
+                  </td>
+                  <td><strong>{{ c.cliente_nombre }}</strong></td>
+                  <td>{{ c.ruc_dni or '' }}</td>
+                  <td>{{ c.email or '' }}</td>
+                  <td>{{ c.telefono or '' }}</td>
+                  <td>{{ c.departamento_nombre or '' }}</td>
+                  <td>{{ c.lineas or '' }}</td>
+                  <td class="text-end">{{ c.compras }}</td>
+                  <td class="text-end">{{ c.monto_total|number_format }}</td>
+                  <td>{{ c.ultima_compra or '' }}</td>
+                </tr>
+              {% endfor %}
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  (function(){
+    const selectAll = document.getElementById('wa-select-all');
+    const rows = () => Array.from(document.querySelectorAll('.wa-row'));
+    const btn = document.getElementById('btn-whatsapp-masivo');
+    const btnApi = document.getElementById('btn-whatsapp-api');
+    const btnTpl = document.getElementById('btn-whatsapp-api-template');
+    const msgInput = document.getElementById('wa-message');
+    const var1Input = document.getElementById('wa-var1');
+    const var2Input = document.getElementById('wa-var2');
+    const insertVar1Btn = document.getElementById('btn-insert-var1');
+    const insertVar2Btn = document.getElementById('btn-insert-var2');
+    const imgInput = document.getElementById('wa-image-input');
+    const imgBtn = document.getElementById('wa-upload-btn');
+    const imgWrap = document.getElementById('wa-images');
+    const imgUrlInput = document.getElementById('wa-image-url-input');
+    const imgUrlBtn = document.getElementById('wa-add-image-url');
+    const uploaded = [];
+    const tplName = document.getElementById('wa-tpl-name-bulk');
+    const tplLang = document.getElementById('wa-tpl-lang-bulk');
+    const tplParamsWrap = document.getElementById('wa-tpl-body-params');
+    const tplImgInput = document.getElementById('wa-tpl-image-input');
+    const tplImgBtn = document.getElementById('wa-tpl-image-upload');
+    const tplImgClear = document.getElementById('wa-tpl-image-clear');
+    const tplImgPreview = document.getElementById('wa-tpl-image-preview');
+    const tplImgUrlInput = document.getElementById('wa-tpl-image-url-input');
+    const tplImgUrlBtn = document.getElementById('wa-tpl-image-url-set');
+    let tplHeaderUrl = '';
+    let tplSelectedMeta = null;
+
+        function isValidImageUrl(raw){
+          const str = String(raw || '').trim();
+          if (!str) return false;
+          try {
+            const url = new URL(str);
+            return url.protocol === 'https:' || url.protocol === 'http:';
+          } catch(err) {
+            return false;
+          }
+        }
+
+        function setTplHeaderUrl(url){
+          tplHeaderUrl = url || '';
+          if (!tplImgPreview) return;
+          tplImgPreview.dataset.hasImage = tplHeaderUrl ? 'true' : 'false';
+          if (tplHeaderUrl){
+            tplImgPreview.style.backgroundImage = `url('${tplHeaderUrl}')`;
+            tplImgPreview.innerHTML = '';
+            const link = document.createElement('a');
+            link.href = tplHeaderUrl;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.textContent = 'Ver imagen';
+            tplImgPreview.appendChild(link);
+          } else {
+            tplImgPreview.style.backgroundImage = 'none';
+            tplImgPreview.textContent = 'Sin imagen seleccionada';
+          }
+        }
+
+        setTplHeaderUrl('');
+        function insertAtCursor(textarea, text){
+          if (!textarea) return;
+          const start = textarea.selectionStart ?? textarea.value.length;
+          const end = textarea.selectionEnd ?? textarea.value.length;
+          const before = textarea.value.substring(0, start);
+          const after = textarea.value.substring(end);
+          textarea.value = before + text + after;
+          const pos = start + text.length;
+          textarea.focus();
+          textarea.setSelectionRange(pos, pos);
+        }
+
+        function applyGlobals(text){
+          const v1 = (var1Input && var1Input.value) ? var1Input.value : '';
+          const v2 = (var2Input && var2Input.value) ? var2Input.value : '';
+          return String(text || '')
+            .replaceAll('{var1}', v1)
+            .replaceAll('{var2}', v2)
+            .replaceAll('{{var1}}', v1)
+            .replaceAll('{{ var1 }}', v1)
+            .replaceAll('{{var2}}', v2)
+            .replaceAll('{{ var2 }}', v2);
+        }
+        function renderTplParamInputs(count){
+          if (!tplParamsWrap) return;
+          tplParamsWrap.innerHTML = '';
+          const n = Number(count || 0);
+          for (let i = 1; i <= n; i++){
+            const line = document.createElement('div');
+            const lbl = document.createElement('label');
+            lbl.className = 'form-label small mb-1';
+            lbl.textContent = `Valor para #${i}`;
+            const inp = document.createElement('input');
+            inp.type = 'text';
+            inp.className = 'form-control wa-tpl-param';
+            inp.placeholder = i === 1 ? '{nombre}' : (i === 2 ? '{lineas}' : ('{' + '{' + i + '}' + '}'));
+            const hint = document.createElement('div');
+            hint.className = 'form-text text-muted';
+            hint.textContent = 'Equivale a ' + '{' + '{' + i + '}' + '}';
+            line.appendChild(lbl);
+            line.appendChild(inp);
+            line.appendChild(hint);
+            tplParamsWrap.appendChild(line);
+          }
+          if (n === 0){
+            const msg = document.createElement('div');
+            msg.className = 'small text-muted';
+            msg.textContent = 'Esta plantilla no requiere variables de cuerpo.';
+            tplParamsWrap.appendChild(msg);
+          }
+        }
+
+    const tplSelect = document.getElementById('wa-tpl-select');
+
+    if (insertVar1Btn){ insertVar1Btn.addEventListener('click', () => insertAtCursor(msgInput, '{var1}')); }
+    if (insertVar2Btn){ insertVar2Btn.addEventListener('click', () => insertAtCursor(msgInput, '{var2}')); }
+
+    if (selectAll) {
+      selectAll.addEventListener('change', () => {
+        rows().forEach(chk => { chk.checked = selectAll.checked; });
+      });
+    }
+
+    function buildWaUrl(phone, text){
+      const clean = String(phone || '').replace(/[^0-9]/g, '');
+      if (!clean) return null;
+      const t = encodeURIComponent(text || '');
+      return `https://wa.me/${clean}?text=${t}`;
+    }
+
+    function renderImages(){
+      imgWrap.innerHTML = '';
+      uploaded.forEach((u, i) => {
+        const item = document.createElement('div');
+        item.style.width = '64px';
+        item.style.height = '64px';
+        item.style.border = '1px solid #e5e7eb';
+        item.style.borderRadius = '6px';
+        item.style.background = `url('${u}') center/cover no-repeat`;
+        item.title = u;
+        item.dataset.index = i;
+        imgWrap.appendChild(item);
+      });
+    }
+
+    if (imgBtn && imgInput) {
+      imgBtn.addEventListener('click', async () => {
+        if (!imgInput.files || !imgInput.files[0]) { alert('Selecciona una imagen.'); return; }
+        const fd = new FormData();
+        fd.append('file', imgInput.files[0]);
+        try {
+          const res = await fetch("{{ url_for('marketing.marketing_upload_image') }}", { method: 'POST', body: fd });
+          if (!res.ok) { const t = await res.text(); throw new Error(t || 'Error al subir.'); }
+          const data = await res.json();
+          if (data && data.url) { uploaded.push(data.url); renderImages(); imgInput.value=''; }
+        } catch(err){
+          console.error(err); alert('No se pudo subir la imagen.');
+        }
+      });
+    }
+
+    if (imgUrlBtn && imgUrlInput) {
+      imgUrlBtn.addEventListener('click', () => {
+        const raw = imgUrlInput.value.trim();
+        if (!isValidImageUrl(raw)) { alert('Ingresa una URL válida (http/https).'); return; }
+        if (uploaded.includes(raw)) { alert('Esa URL ya está en la lista.'); return; }
+        uploaded.push(raw);
+        renderImages();
+        imgUrlInput.value = '';
+      });
+    }
+
+    if (tplImgBtn && tplImgInput) {
+      tplImgBtn.addEventListener('click', async () => {
+        if (!tplImgInput.files || !tplImgInput.files[0]) { alert('Selecciona una imagen.'); return; }
+        const fd = new FormData();
+        fd.append('file', tplImgInput.files[0]);
+        try {
+          const res = await fetch("{{ url_for('marketing.marketing_upload_image') }}", { method: 'POST', body: fd });
+          if (!res.ok) { const t = await res.text(); throw new Error(t || 'Error al subir.'); }
+          const data = await res.json();
+          if (data && data.url) { setTplHeaderUrl(data.url); tplImgInput.value = ''; }
+        } catch(err){
+          console.error(err); alert('No se pudo subir la imagen de cabecera.');
+        }
+      });
+    }
+
+    if (tplImgClear) {
+      tplImgClear.addEventListener('click', () => {
+        setTplHeaderUrl('');
+        if (tplImgInput) tplImgInput.value = '';
+        if (tplImgUrlInput) tplImgUrlInput.value = '';
+      });
+    }
+
+    if (tplImgUrlBtn && tplImgUrlInput) {
+      tplImgUrlBtn.addEventListener('click', () => {
+        const raw = tplImgUrlInput.value.trim();
+        if (!isValidImageUrl(raw)) { alert('Ingresa una URL válida (http/https).'); return; }
+        setTplHeaderUrl(raw);
+      });
+    }
+
+    if (btn) {
+      btn.addEventListener('click', () => {
+        const selected = rows().filter(chk => chk.checked);
+        if (!selected.length) { alert('Selecciona al menos un cliente.'); return; }
+        const baseMsg = msgInput ? msgInput.value.trim() : '';
+        const baseWithGlobals = applyGlobals(baseMsg);
+
+        // Abrir pestañas con un pequeño retraso para evitar bloqueos
+        let opened = 0;
+        selected.forEach((chk, idx) => {
+          const phone = chk.getAttribute('data-phone');
+          if (!phone) return;
+          const name = chk.getAttribute('data-name') || '';
+          const lineas = chk.getAttribute('data-lineas') || '';
+          // Reemplazar variables en el mensaje
+          let perMsg = baseWithGlobals
+            .replaceAll('{nombre}', name)
+            .replaceAll('{lineas}', lineas);
+          // Agregar enlaces de imágenes si existen
+          if (uploaded.length){
+            perMsg += `\n\n` + uploaded.map(u => `Imagen: ${u}`).join('\n');
+          }
+          const text = perMsg || name;
+          const url = buildWaUrl(phone, text);
+          if (url) {
+            setTimeout(() => { window.open(url, '_blank'); }, idx * 250);
+            opened++;
+          }
+        });
+        if (!opened) alert('No hay teléfonos válidos para enviar.');
+      });
+    }
+
+    if (btnApi) {
+      btnApi.addEventListener('click', async () => {
+        const selected = rows().filter(chk => chk.checked);
+        if (!selected.length) { alert('Selecciona al menos un cliente.'); return; }
+        const baseMsg = msgInput ? msgInput.value.trim() : '';
+        const baseWithGlobals = applyGlobals(baseMsg);
+        const payload = { messages: [], image_urls: uploaded.slice() };
+
+        selected.forEach(chk => {
+          const phone = chk.getAttribute('data-phone');
+          if (!phone) return;
+          const name = chk.getAttribute('data-name') || '';
+          const lineas = chk.getAttribute('data-lineas') || '';
+          let perMsg = baseWithGlobals
+            .replaceAll('{nombre}', name)
+            .replaceAll('{lineas}', lineas);
+          if (uploaded.length){
+            perMsg += `\n\n` + uploaded.map(u => `Imagen: ${u}`).join('\n');
+          }
+          payload.messages.push({ phone: String(phone).replace(/[^0-9]/g, ''), text: perMsg });
+        });
+
+        if (!payload.messages.length) { alert('No hay teléfonos válidos para enviar.'); return; }
+
+        try {
+          alert('Esta funcionalidad ha sido deshabilitada.');
+          return;
+          console.log('Resultados API:', data.results);
+        } catch(err){
+          console.error(err);
+          alert('Error de red llamando a la API.');
+        }
+      });
+    }
+
+    if (btnTpl) {
+      btnTpl.addEventListener('click', async () => {
+        const selected = rows().filter(chk => chk.checked);
+        if (!selected.length) { alert('Selecciona al menos un cliente.'); return; }
+        const name = (tplName && tplName.value.trim()) || '';
+        const lang = (tplLang && tplLang.value.trim()) || 'en_US';
+        if (!name) { alert('Indica el nombre de la plantilla.'); return; }
+
+        // Recoger valores de parámetros del body
+        const allInputs = Array.from(document.querySelectorAll('#wa-tpl-body-params .wa-tpl-param'));
+        const expectedCount = allInputs.length;
+        const filled = allInputs.filter(i => i.value.trim().length > 0);
+        const headerFormat = (tplSelectedMeta && tplSelectedMeta.header_format) ? String(tplSelectedMeta.header_format).toUpperCase() : '';
+        if (headerFormat === 'IMAGE' && !tplHeaderUrl){
+          alert('Esta plantilla requiere una imagen de cabecera aprobada. Sube una antes de enviar.');
+          return;
+        }
+        
+        // Validar que todos los campos requeridos estén llenos
+        if (expectedCount > 0 && filled.length < expectedCount){
+          alert(`La plantilla requiere ${expectedCount} variable(s) en el body. Completa todos los campos antes de enviar.`);
+          return;
+        }
+        
+        if (name.toLowerCase() === 'hello_world' && filled.length > 0){
+          alert('La plantilla hello_world no acepta variables. Deja los parámetros vacíos.');
+          return;
+        }
+
+        const payload = { template_name: name, language_code: lang, messages: [] };
+        const headerUrl = tplHeaderUrl;
+        selected.forEach(chk => {
+          const phone = chk.getAttribute('data-phone');
+          if (!phone) return;
+          const cname = chk.getAttribute('data-name') || '';
+          const lineas = chk.getAttribute('data-lineas') || '';
+          
+          const msgEntry = { phone: String(phone).replace(/[^0-9]/g, '') };
+          const components = [];
+
+          if (headerUrl){
+            components.push({ type: 'header', parameters: [{ type: 'image', image: { link: headerUrl } }] });
+          }
+
+          if (expectedCount > 0){
+            const params = allInputs.map(i => {
+              const t = (i.value || '').trim();
+              const withGlobals = applyGlobals(t);
+              let final = withGlobals.replaceAll('{nombre}', cname).replaceAll('{lineas}', lineas);
+              // Limpiar: trim, normalizar espacios, quitar saltos de línea y limitar a 256 caracteres
+              final = final.trim().replace(/\s+/g, ' ').replace(/[\r\n]+/g, ' ').substring(0, 256);
+              return { type: 'text', text: final };
+            });
+            components.push({ type: 'body', parameters: params });
+          }
+          
+          if (components.length){
+            msgEntry.components = components;
+          }
+          
+          payload.messages.push(msgEntry);
+        });
+
+        if (!payload.messages.length) { alert('No hay teléfonos válidos para enviar.'); return; }
+        console.log('Payload plantilla:', JSON.stringify(payload, null, 2));
+        try {
+          alert('Esta funcionalidad ha sido deshabilitada.');
+          return;
+          const total = payload.messages.length; const sent = Number(data.sent || 0);
+          const failed = data.results ? data.results.filter(r => !r.ok) : [];
+          if (failed.length > 0) {
+            console.warn('Envíos fallidos:', failed);
+            alert(`Envío finalizado. Exitosos: ${sent}/${total}.\n\nAlgunos fallaron. Revisa la consola (F12) para detalles.`);
+          } else {
+            alert(`Envío de plantilla finalizado. Exitosos: ${sent}/${total}.`);
+          }
+          console.log('Resultados plantilla:', data.results);
+        } catch(err) {
+          console.error(err); alert('Error de red enviando la plantilla.');
+        }
+      });
+    }
+
+    // Cargar plantillas desde API y autocompletar nombre/idioma/información
+    async function loadTemplates(){
+      if (!tplSelect) return;
+      try {
+        const res = await fetch("{{ url_for('marketing.marketing_list_wa_templates') }}");
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          tplSelect.innerHTML = '<option value="">— No se pudieron cargar —</option>';
+          return;
+        }
+        const items = data.templates || [];
+        tplSelect.innerHTML = '<option value="">— Selecciona plantilla —</option>' + items.map(t => `
+          <option value="${encodeURIComponent(JSON.stringify(t))}">${t.name} — ${t.language} (${t.status})</option>
+        `).join('');
+      } catch(err) {
+        console.error(err);
+        tplSelect.innerHTML = '<option value=\"\">— Error al cargar —</option>';
+      }
+    }
+    if (tplSelect) {
+      loadTemplates();
+      const info = document.getElementById('wa-tpl-info');
+      tplSelect.addEventListener('change', () => {
+        const value = tplSelect.value ? JSON.parse(decodeURIComponent(tplSelect.value)) : null;
+        const prev = tplSelectedMeta;
+        tplSelectedMeta = value;
+        if (!value) {
+          if (info) info.textContent = '';
+          renderTplParamInputs(0);
+          setTplHeaderUrl('');
+          return;
+        }
+        const changed = !prev || prev.name !== value.name || prev.language !== value.language;
+        if (tplName) tplName.value = value.name || '';
+        if (tplLang) tplLang.value = value.language || 'en_US';
+        const headerFormat = (value.header_format || '').toUpperCase();
+        let headerText = 'Sin cabecera';
+        if (headerFormat === 'IMAGE') headerText = 'Imagen';
+        else if (headerFormat === 'TEXT') headerText = 'Texto';
+        else if (headerFormat === 'DOCUMENT') headerText = 'Documento';
+        else if (headerFormat === 'VIDEO') headerText = 'Video';
+        if (info) {
+          let extra = `Estado: ${value.status} | Categoría: ${value.category} | Variables body: ${value.body_variables}`;
+          extra += ` | Cabecera: ${headerText}`;
+          if (headerFormat === 'IMAGE') {
+            extra += ' (requiere imagen)';
+          } else if (headerFormat && !['TEXT', 'IMAGE'].includes(headerFormat)) {
+            extra += ' (formato no soportado)';
+          }
+          info.textContent = extra;
+        }
+        renderTplParamInputs(value.body_variables || 0);
+        if (changed) {
+          setTplHeaderUrl('');
+        }
+      });
+    }
+  })();
+</script>
+{% endblock %}

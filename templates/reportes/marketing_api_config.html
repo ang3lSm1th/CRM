@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes-marketing-api-config.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="cfg-card card">
+    <div class="card-header bg-light d-flex align-items-center justify-content-between">
+      <div>
+        <h5 class="mb-0"><i class="bi bi-people"></i> Configuración de Redes Sociales</h5>
+        <div class="small small-hint">Marca: <strong>{{ brand|capitalize if brand else 'Orbes' }}</strong>. Estos valores se guardan en el archivo <span class="cfg-mono">.env</span> en la raíz del proyecto.</div>
+      </div>
+      <a class="btn btn-outline-secondary" href="{{ url_for('marketing.marketing_campaigns') }}">
+        <i class="bi bi-arrow-left-short"></i> Volver a Marketing
+      </a>
+    </div>
+    <div class="card-body">
+      <form method="post" autocomplete="off">
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-lg-6">
+            <label class="form-label">Meta Access Token</label>
+            <input type="password" class="form-control" name="meta_token" value="{{ meta_token }}" placeholder="EAAG..." />
+            <div class="form-text small-hint">Token de acceso de Meta para Facebook e Instagram.</div>
+          </div>
+          <div class="col-6 col-lg-3">
+            <label class="form-label">Meta API Version</label>
+            <input type="text" class="form-control" name="meta_api_version" value="{{ meta_api_version }}" placeholder="v20.0" />
+            <div class="form-text small-hint">Versión de Graph API para métricas sociales.</div>
+          </div>
+          <div class="col-6 col-lg-3">
+            <label class="form-label">Facebook Page ID</label>
+            <input type="text" class="form-control" name="fb_page_id" value="{{ fb_page_id }}" placeholder="Ej. 123456789012345" />
+            <div class="form-text small-hint">ID de la página de Facebook que quieres medir.</div>
+          </div>
+          <div class="col-12 col-lg-6">
+            <label class="form-label">Instagram Account ID</label>
+            <input type="text" class="form-control" name="ig_account_id" value="{{ ig_account_id }}" placeholder="Ej. 17841400000000000" />
+            <div class="form-text small-hint">ID de la cuenta Instagram Business o Creator conectada a Facebook.</div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save2"></i> Guardar configuración
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

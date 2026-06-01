@@ -1,0 +1,503 @@
+/**
+ * Responsive Design - CRM Orbes Agricola
+ * Mobile-first approach with modern breakpoints
+ */
+
+/* ========================================
+   BREAKPOINTS
+   ======================================== */
+/* 
+   xs: < 576px  (phones)
+   sm: >= 576px (landscape phones)
+   md: >= 768px (tablets)
+   lg: >= 992px (desktops)
+   xl: >= 1200px (large desktops)
+   xxl: >= 1400px (extra large desktops)
+*/
+
+/* ========================================
+   MOBILE FIRST DEFAULTS (< 576px)
+   ======================================== */
+
+/* Sidebar mobile */
+@media (max-width: 768px) {
+  .sidebar {
+    left: calc(-1 * var(--sidebar-width));
+    box-shadow: none;
+  }
+
+  .sidebar.show {
+    left: 0;
+    box-shadow: var(--shadow-2xl);
+  }
+
+  .sidebar.hidden {
+    left: calc(-1 * var(--sidebar-width));
+  }
+
+  .content-area {
+    margin-left: 0 !important;
+  }
+
+  #toggle-sidebar {
+    left: 0 !important;
+    top: var(--space-md);
+    border-radius: var(--radius-lg);
+    z-index: calc(var(--z-fixed) + 50);
+  }
+
+  /* Overlay cuando el sidebar está abierto */
+  .sidebar.show::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: var(--sidebar-width);
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: -1;
+    backdrop-filter: blur(2px);
+  }
+
+  /* Ajustar navegación del sidebar */
+  .sidebar-nav .nav-section-title {
+    font-size: var(--font-size-sm);
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .sidebar ul li a {
+    padding: var(--space-sm) var(--space-md) var(--space-sm) 36px;
+    font-size: var(--font-size-sm);
+    margin-left: var(--space-md);
+  }
+
+  .sidebar .logo img {
+    max-width: 160px;
+  }
+}
+
+/* ========================================
+   SMALL DEVICES (>= 576px)
+   ======================================== */
+
+@media (min-width: 576px) {
+  .container {
+    max-width: 540px;
+  }
+}
+
+/* ========================================
+   TABLETS (>= 768px)
+   ======================================== */
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 720px;
+  }
+
+  /* Restablecer sidebar en tablets hacia arriba */
+  .sidebar {
+    left: 0;
+  }
+
+  .content-area {
+    margin-left: var(--sidebar-width);
+  }
+}
+
+/* ========================================
+   DESKTOPS (>= 992px)
+   ======================================== */
+
+@media (min-width: 992px) {
+  .container {
+    max-width: 960px;
+  }
+
+  /* Tipografía más grande */
+  :root {
+    --font-size-base: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+  }
+}
+
+/* ========================================
+   LARGE DESKTOPS (>= 1200px)
+   ======================================== */
+
+@media (min-width: 1200px) {
+  .container {
+    max-width: 1140px;
+  }
+}
+
+/* ========================================
+   EXTRA LARGE DESKTOPS (>= 1400px)
+   ======================================== */
+
+@media (min-width: 1400px) {
+  .container {
+    max-width: 1320px;
+  }
+}
+
+/* ========================================
+   MOBILE OPTIMIZATIONS
+   ======================================== */
+
+@media (max-width: 768px) {
+  /* Typography adjustments */
+  h1, .h1 { font-size: var(--font-size-2xl); }
+  h2, .h2 { font-size: var(--font-size-xl); }
+  h3, .h3 { font-size: var(--font-size-lg); }
+  
+  /* Spacing reductions */
+  .main-section {
+    padding: var(--space-md);
+    margin-left: 0;
+  }
+
+  /* Cards */
+  .card {
+    border-radius: var(--radius-lg);
+  }
+
+  .card-header,
+  .card-body,
+  .card-footer {
+    padding: var(--space-md);
+  }
+
+  /* Forms */
+  .form-control,
+  .form-select,
+  textarea {
+    font-size: var(--font-size-base);
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  /* Buttons */
+  .btn {
+    padding: var(--space-sm) var(--space-md);
+    font-size: var(--font-size-sm);
+    width: 100%;
+  }
+
+  .btn-group {
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .btn-group .btn {
+    width: 100%;
+  }
+
+  /* Tables */
+  .table-responsive {
+    border-radius: var(--radius-md);
+  }
+
+  table {
+    font-size: var(--font-size-sm);
+  }
+
+  thead th,
+  tbody td {
+    padding: var(--space-sm);
+  }
+
+  /* Hide certain columns on mobile */
+  .hide-mobile {
+    display: none !important;
+  }
+
+  /* Modals */
+  .modal-dialog {
+    margin: var(--space-md);
+    max-width: calc(100% - 2rem);
+  }
+
+  .modal-content {
+    border-radius: var(--radius-lg);
+  }
+
+  /* Toast notifications */
+  .toast-container {
+    top: var(--space-md);
+    right: var(--space-md);
+    left: var(--space-md);
+    max-width: none;
+  }
+
+  .toast {
+    min-width: auto;
+    max-width: 100%;
+  }
+
+  /* Navigation */
+  .flex.between {
+    flex-direction: column;
+    gap: var(--space-md);
+    align-items: stretch !important;
+  }
+
+  /* Scroll to top button */
+  .scroll-to-top-btn {
+    bottom: var(--space-md);
+    right: var(--space-md);
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Grid layouts */
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Flex layouts */
+  .flex-md-row {
+    flex-direction: column;
+  }
+}
+
+/* ========================================
+   TABLET OPTIMIZATIONS (768px - 992px)
+   ======================================== */
+
+@media (min-width: 768px) and (max-width: 991px) {
+  .sidebar {
+    width: 200px;
+  }
+
+  :root {
+    --sidebar-width: 200px;
+  }
+
+  .content-area {
+    margin-left: 200px;
+  }
+
+  .sidebar ul li a {
+    padding: var(--space-xs) var(--space-sm) var(--space-xs) 36px;
+    font-size: var(--font-size-sm);
+  }
+
+  .sidebar .logo img {
+    max-width: 160px;
+  }
+
+  /* Grid adjustments */
+  .grid-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .grid-cols-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* ========================================
+   LANDSCAPE PHONE OPTIMIZATIONS
+   ======================================== */
+
+@media (max-width: 768px) and (orientation: landscape) {
+  .sidebar {
+    width: 200px;
+  }
+
+  :root {
+    --sidebar-width: 200px;
+  }
+
+  .sidebar-nav {
+    padding: 0;
+  }
+
+  .sidebar ul li a {
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  .sidebar .logo {
+    padding: var(--space-sm) 0;
+  }
+
+  .sidebar .logo img {
+    max-width: 140px;
+  }
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+
+@media print {
+  .sidebar,
+  #toggle-sidebar,
+  .scroll-to-top-btn,
+  .toast-container,
+  .loading-overlay,
+  .btn,
+  button {
+    display: none !important;
+  }
+
+  .content-area {
+    margin-left: 0 !important;
+  }
+
+  body {
+    background: white;
+  }
+
+  .card {
+    box-shadow: none;
+    border: 1px solid #ddd;
+    page-break-inside: avoid;
+  }
+
+  a[href]:after {
+    content: " (" attr(href) ")";
+  }
+
+  table {
+    page-break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+}
+
+/* ========================================
+   TOUCH DEVICE OPTIMIZATIONS
+   ======================================== */
+
+@media (hover: none) and (pointer: coarse) {
+  /* Larger touch targets */
+  .btn,
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+  }
+
+  /* Remove hover effects */
+  .hover-lift:hover,
+  .hover-scale:hover,
+  .hover-shadow:hover {
+    transform: none;
+    box-shadow: var(--shadow-md);
+  }
+
+  /* Tap highlight */
+  * {
+    -webkit-tap-highlight-color: rgba(37, 99, 235, 0.2);
+  }
+
+  /* Disable transform on buttons for better performance */
+  .btn:hover,
+  button:hover {
+    transform: none;
+  }
+}
+
+/* ========================================
+   HIGH DPI DISPLAYS
+   ======================================== */
+
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  /* Sharper borders and shadows */
+  .card,
+  .btn,
+  .form-control {
+    border-width: 0.5px;
+  }
+}
+
+/* ========================================
+   REDUCED MOTION
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .sidebar {
+    transition: none;
+  }
+
+  .toast,
+  .modal,
+  .alert {
+    animation: none;
+  }
+}
+
+/* ========================================
+   DARK MODE PREFERENCE (Future Ready)
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    /* Dark mode variables can be activated here if needed */
+    color-scheme: dark;
+  }
+}
+
+/* ========================================
+   UTILITY RESPONSIVE CLASSES
+   ======================================== */
+
+/* Hide/Show utilities */
+.hide-xs { display: none !important; }
+@media (min-width: 576px) { .hide-xs { display: block !important; } }
+
+.show-xs { display: block !important; }
+@media (min-width: 576px) { .show-xs { display: none !important; } }
+
+.hide-sm { display: none !important; }
+@media (min-width: 768px) { .hide-sm { display: block !important; } }
+
+.show-sm { display: block !important; }
+@media (min-width: 768px) { .show-sm { display: none !important; } }
+
+.hide-md { display: none !important; }
+@media (min-width: 992px) { .hide-md { display: block !important; } }
+
+.show-md { display: block !important; }
+@media (min-width: 992px) { .show-md { display: none !important; } }
+
+/* Text alignment responsive */
+@media (max-width: 768px) {
+  .text-sm-center { text-align: center !important; }
+  .text-sm-left { text-align: left !important; }
+  .text-sm-right { text-align: right !important; }
+}
+
+/* Flex direction responsive */
+@media (max-width: 768px) {
+  .flex-sm-column { flex-direction: column !important; }
+  .flex-sm-row { flex-direction: row !important; }
+}
+
+/* Padding/Margin responsive */
+@media (max-width: 768px) {
+  .p-sm-0 { padding: 0 !important; }
+  .p-sm-2 { padding: var(--space-sm) !important; }
+  .p-sm-4 { padding: var(--space-md) !important; }
+  
+  .m-sm-0 { margin: 0 !important; }
+  .m-sm-2 { margin: var(--space-sm) !important; }
+  .m-sm-4 { margin: var(--space-md) !important; }
+}

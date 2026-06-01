@@ -1,0 +1,460 @@
+{% extends "base.html" %}
+
+{% block title %}Análisis de Reportes{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes.css') }}">
+<style>
+    .page-header-banner {
+        background: linear-gradient(135deg, #0b3ea8 0%, #1597ff 100%);
+        border-radius: 12px;
+        padding: 1.5rem 2rem;
+        color: #fff;
+        margin-bottom: 1.25rem;
+    }
+
+    .filter-orbes {
+        border-radius: 12px;
+        border: 1px solid #d9e9ff;
+        background: #fff;
+    }
+
+    .pretest-panel {
+        border: 1px solid #cfe0ff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(11, 62, 168, 0.08);
+    }
+
+    .pretest-panel .pretest-head {
+        background: linear-gradient(135deg, #0b3ea8 0%, #1597ff 100%);
+        color: #fff;
+        padding: 1rem 1.25rem;
+    }
+
+    .pretest-table thead th {
+        background: #fff3cd;
+        font-size: 0.78rem;
+        text-align: center;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .pretest-table tbody td {
+        font-size: 0.82rem;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    .pretest-table tbody td:first-child {
+        text-align: left;
+        font-weight: 600;
+        color: #0b3ea8;
+    }
+
+    .campana-row {
+        cursor: pointer;
+        transition: background 0.15s ease;
+    }
+
+    .campana-row:hover {
+        background: #e8f2ff !important;
+    }
+
+    .campana-row.active {
+        background: #cfe2ff !important;
+        box-shadow: inset 3px 0 0 #0b3ea8;
+    }
+
+    .pretest-table .summary-row {
+        cursor: default;
+        background: #e8f2ff;
+        font-weight: 700;
+    }
+
+    .live-panel {
+        border: 1px solid #d5e5ff;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+    }
+
+    .live-panel-head {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e8eef7;
+        background: #f8fbff;
+    }
+
+    .kpi-live-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 0.75rem;
+        padding: 1rem 1.25rem;
+    }
+
+    .kpi-live-card {
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 0.85rem;
+        text-align: center;
+    }
+
+    .kpi-live-card .formula {
+        font-size: 0.7rem;
+        color: #666;
+        margin-bottom: 0.35rem;
+    }
+
+    .kpi-live-card .value {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: #0b3ea8;
+    }
+
+    .kpi-live-card .label {
+        font-size: 0.72rem;
+        color: #555;
+        margin-top: 0.25rem;
+    }
+
+    .kpi-live-card.accent-green .value { color: #00796b; }
+    .kpi-live-card.accent-purple .value { color: #6a1b9a; }
+    .kpi-live-card.accent-red .value { color: #c62828; }
+
+    .kpi-live-card.btn-card {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 110px;
+    }
+
+    .pdc-mini-table th {
+        background: #e0f2f1;
+        color: #00796b;
+        font-size: 0.75rem;
+        text-align: center;
+    }
+
+    .pdc-mini-table td {
+        font-size: 0.8rem;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    .pdc-mini-table td:nth-child(2) {
+        text-align: left;
+    }
+
+    .pdc-section-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #00796b;
+        margin: 1rem 0 0.5rem;
+    }
+
+    .empty-hint {
+        padding: 2rem;
+        text-align: center;
+        color: #888;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+
+    <div class="page-header-banner">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+                <h2 class="mb-1 fw-bold"><i class="fas fa-chart-line me-2"></i>Análisis de Reportes</h2>
+                <p class="mb-0 opacity-75 small">Selecciona una campaña para ver sus 5 variables en tiempo real</p>
+            </div>
+            <div class="text-end">
+                <div class="opacity-75 small">Periodo</div>
+                <div class="fw-semibold" id="periodo-display">{{ period_label }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3 border-0 shadow-sm filter-orbes">
+        <div class="card-body py-2">
+            <form method="get" class="row g-2 align-items-end" id="filtro-form">
+                <div class="col-auto">
+                    <label class="form-label small mb-1">Mes</label>
+                    <select name="month" id="month" class="form-select form-select-sm">
+                        <option value="0" {% if month_all %}selected{% endif %}>Todo el año</option>
+                        {% for m, label in [(1,'Enero'),(2,'Febrero'),(3,'Marzo'),(4,'Abril'),(5,'Mayo'),(6,'Junio'),(7,'Julio'),(8,'Agosto'),(9,'Septiembre'),(10,'Octubre'),(11,'Noviembre'),(12,'Diciembre')] %}
+                        <option value="{{ m }}" {% if not month_all and month==m %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label small mb-1">Año</label>
+                    <select name="year" id="year" class="form-select form-select-sm">
+                        {% for y in range(current_year - 3, current_year + 2) %}
+                        <option value="{{ y }}" {% if year==y %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter me-1"></i>Aplicar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if kpi.campanas_pretest and kpi.campanas_pretest.rows %}
+    <div class="pretest-panel mb-3">
+        <div class="pretest-head">
+            <h5 class="mb-0 fw-bold"><i class="fas fa-mouse-pointer me-2"></i>Campañas Orbes — clic para detalle</h5>
+        </div>
+        <div class="p-2 bg-white">
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered pretest-table mb-0" id="tabla-campanas">
+                    <thead>
+                        <tr>
+                            <th>Campaña</th>
+                            <th>DGA</th>
+                            <th>NLC</th>
+                            <th>CALC</th>
+                            <th>NLO</th>
+                            <th>TDA %</th>
+                            <th>TDR %</th>
+                            <th>Abandono %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in kpi.campanas_pretest.rows %}
+                        <tr class="campana-row" data-campaign-id="{{ c.campaign_id }}" tabindex="0">
+                            <td>{{ c.nombre }}</td>
+                            <td>S/ {{ '%.0f'|format(c.dga) }}</td>
+                            <td>{{ c.nlc }}</td>
+                            <td>S/ {{ '%.2f'|format(c.calc) }}</td>
+                            <td>{{ c.nlo }}</td>
+                            <td>{{ '%.2f'|format(c.tda_acq) }}%</td>
+                            <td>{{ '%.2f'|format(c.tdr) }}%</td>
+                            <td>{{ '%.2f'|format(c.tda_ret) }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="live-panel mb-4" id="live-panel">
+        <div class="live-panel-head d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h5 class="mb-0 fw-bold" id="live-campana-nombre">Selecciona una campaña</h5>
+                <small class="text-muted" id="live-campana-periodo"></small>
+            </div>
+            <span class="badge bg-primary" id="live-loading" style="display:none;">Actualizando…</span>
+        </div>
+
+        <div class="kpi-live-grid" id="kpi-live-grid">
+            <div class="kpi-live-card">
+                <div class="formula">CALC = DGA / NLC</div>
+                <div class="value" id="v-calc">—</div>
+                <div class="label">Costo adquisición</div>
+            </div>
+            <div class="kpi-live-card">
+                <div class="formula">TDA = (NLC / NLO) × 100</div>
+                <div class="value" id="v-tda">—</div>
+                <div class="label">Tasa adquisición</div>
+            </div>
+            <div class="kpi-live-card accent-purple">
+                <div class="formula">TDR = (NCCCACA / NTCCCA) × 100</div>
+                <div class="value" id="v-tdr">—</div>
+                <div class="label">Tasa retención</div>
+            </div>
+            <div class="kpi-live-card accent-red">
+                <div class="formula">TDA = 100 − TDR</div>
+                <div class="value" id="v-abandono">—</div>
+                <div class="label">Tasa abandono</div>
+            </div>
+            <div class="kpi-live-card accent-green">
+                <div class="formula">PDC = (MTP/MPC)<sup>NCMTP</sup> × 100</div>
+                <div class="value" id="v-pdc">—</div>
+                <div class="label">PDC promedio campaña</div>
+            </div>
+        </div>
+
+        <div class="px-3 pb-3">
+            <div class="row g-2 small text-muted" id="live-vars">
+                <div class="col-md-2"><strong>DGA:</strong> <span id="v-dga">—</span></div>
+                <div class="col-md-2"><strong>NLC:</strong> <span id="v-nlc">—</span></div>
+                <div class="col-md-2"><strong>NLO:</strong> <span id="v-nlo">—</span></div>
+                <div class="col-md-2"><strong>NCCCACA:</strong> <span id="v-ncccaca">—</span></div>
+                <div class="col-md-2"><strong>NTCCCA:</strong> <span id="v-ntccca">—</span></div>
+                <div class="col-md-2"><strong>MTP:</strong> <span id="v-mtp">—</span></div>
+                <div class="col-md-2"><strong>MPC:</strong> <span id="v-mpc">—</span></div>
+                <div class="col-md-2"><strong>Clientes:</strong> <span id="v-pdc-total">—</span></div>
+            </div>
+
+            <div class="pdc-section-title d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span><i class="fas fa-users me-1"></i> Probabilidad de compra por cliente (instrumento pretest)</span>
+                <small class="text-muted" id="pdc-table-hint">Mostrando hasta 50 clientes</small>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover pdc-mini-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Cliente</th>
+                            <th>MTP</th>
+                            <th>MPC</th>
+                            <th>NCMTP</th>
+                            <th>PDC %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pdc-tbody">
+                        <tr><td colspan="6" class="text-center text-muted py-3">Clic en una campaña para cargar clientes</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-2 text-end">
+                <a class="btn btn-sm btn-outline-success" id="link-pdc-full"
+                    href="{{ url_for('reportes.dashboard_recompra_clientes', quarter=redirect_quarter, year=year, top=50, from_page='analisis-reportes', return_month=month, return_year=year) }}">
+                    <i class="fas fa-external-link-alt me-1"></i> Panel completo 50 clientes
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script type="application/json" id="campanas-json">{{ kpi.campanas_pretest.rows|tojson }}</script>
+
+    {% else %}
+    <div class="live-panel mb-4">
+        <div class="empty-hint">
+            <i class="fas fa-info-circle me-1"></i>
+            No hay campañas para <strong>{{ period_label }}</strong>. Prueba otro mes, «Todo el año» o marca Orbes.
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const meses = {1:'Enero',2:'Febrero',3:'Marzo',4:'Abril',5:'Mayo',6:'Junio',7:'Julio',8:'Agosto',9:'Septiembre',10:'Octubre',11:'Noviembre',12:'Diciembre'};
+    const selMonth = document.getElementById('month');
+    const selYear = document.getElementById('year');
+    const disp = document.getElementById('periodo-display');
+
+    function getPeriodLabel() {
+        const m = Number(selMonth?.value ?? {{ month }});
+        const y = selYear?.value || '{{ year }}';
+        if (m === 0) return `Año ${y} (todo)`;
+        return `${meses[m] || 'Mes'} ${y}`;
+    }
+    if (disp) disp.textContent = getPeriodLabel();
+
+    selMonth?.addEventListener('change', () => { if (disp) disp.textContent = getPeriodLabel(); });
+    selYear?.addEventListener('change', () => { if (disp) disp.textContent = getPeriodLabel(); });
+
+    const rows = document.querySelectorAll('.campana-row');
+    const loading = document.getElementById('live-loading');
+    let activeId = null;
+
+    function fmtMoney(v) { return `S/ ${Number(v || 0).toFixed(2)}`; }
+    function fmtPct(v) { return `${Number(v || 0).toFixed(2)}%`; }
+
+    function applyCampana(c) {
+        document.getElementById('live-campana-nombre').textContent = c.nombre || 'Campaña';
+        document.getElementById('live-campana-periodo').textContent =
+            c.periodo_inicio && c.periodo_fin
+                ? `${c.periodo_inicio} → ${c.periodo_fin}`
+                : '';
+
+        document.getElementById('v-calc').textContent = fmtMoney(c.calc);
+        document.getElementById('v-tda').textContent = fmtPct(c.tda_acq);
+        document.getElementById('v-tdr').textContent = fmtPct(c.tdr);
+        document.getElementById('v-abandono').textContent = fmtPct(c.tda_ret);
+        document.getElementById('v-dga').textContent = fmtMoney(c.dga);
+        document.getElementById('v-nlc').textContent = c.nlc ?? '—';
+        document.getElementById('v-nlo').textContent = c.nlo ?? '—';
+        document.getElementById('v-ncccaca').textContent = c.ncccaca ?? '—';
+        document.getElementById('v-ntccca').textContent = c.ntccca ?? '—';
+        document.getElementById('v-pdc').textContent = fmtPct(c.pdc_promedio);
+
+        const firstCl = (c.pdc_clientes || [])[0];
+        document.getElementById('v-mtp').textContent = firstCl?.mtp ?? '—';
+        document.getElementById('v-mpc').textContent = firstCl?.mpc ?? '—';
+        document.getElementById('v-pdc-total').textContent =
+            c.pdc_total_clientes ?? (c.pdc_clientes || []).length ?? '—';
+
+        const tbody = document.getElementById('pdc-tbody');
+        const clientes = c.pdc_clientes || [];
+        const total = c.pdc_total_clientes ?? clientes.length;
+        const hint = document.getElementById('pdc-table-hint');
+        if (hint) {
+            hint.textContent = total > clientes.length
+                ? `Mostrando ${clientes.length} de ${total} clientes`
+                : `${total} clientes`;
+        }
+        if (!clientes.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Cargando clientes…</td></tr>';
+            return;
+        }
+        tbody.innerHTML = clientes.map((cl, i) => `
+            <tr>
+                <td>${i + 1}</td>
+                <td>${cl.cliente || '—'}</td>
+                <td>${cl.mtp ?? '—'}</td>
+                <td>${cl.mpc ?? '—'}</td>
+                <td>${cl.ncmtp ?? 0}</td>
+                <td><strong>${Number(cl.pdc || 0).toFixed(2)}%</strong></td>
+            </tr>
+        `).join('');
+    }
+
+    const campanasLocal = JSON.parse(document.getElementById('campanas-json')?.textContent || '[]');
+
+    function findCampana(campaignId) {
+        return campanasLocal.find(r => Number(r.campaign_id) === Number(campaignId));
+    }
+
+    async function loadCampana(campaignId) {
+        if (!campaignId) return;
+        rows.forEach(r => r.classList.toggle('active', Number(r.dataset.campaignId) === Number(campaignId)));
+        activeId = campaignId;
+
+        const base = findCampana(campaignId);
+        if (base) applyCampana(base);
+
+        if (loading) loading.style.display = 'inline-block';
+        try {
+            const res = await fetch(`/reportes/api/campana-detalle/${campaignId}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await res.json();
+            if (!data.ok) throw new Error(data.message || 'Error');
+            applyCampana({ ...(base || {}), ...data });
+        } catch (e) {
+            const tbody = document.getElementById('pdc-tbody');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No se pudo cargar el detalle PDC</td></tr>';
+            }
+        } finally {
+            if (loading) loading.style.display = 'none';
+        }
+    }
+
+    rows.forEach(row => {
+        row.addEventListener('click', () => loadCampana(row.dataset.campaignId));
+        row.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                loadCampana(row.dataset.campaignId);
+            }
+        });
+    });
+
+    if (rows.length) {
+        loadCampana(rows[0].dataset.campaignId);
+    }
+})();
+</script>
+{% endblock %}

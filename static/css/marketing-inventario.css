@@ -1,0 +1,65 @@
+.mk-inv-container {
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+.mk-inv-title {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.mk-inv-card {
+  border: 1px solid #d8e2ef;
+  border-radius: 12px;
+}
+
+.mk-inv-form {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.85rem;
+  align-items: end;
+}
+
+.mk-col-product {
+  grid-column: span 2;
+}
+
+.mk-inv-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 1200px) {
+  .mk-inv-form {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .mk-col-product {
+    grid-column: span 3;
+  }
+}
+
+@media (max-width: 768px) {
+  .mk-inv-title {
+    flex-direction: column;
+  }
+
+  .mk-inv-form {
+    grid-template-columns: 1fr;
+  }
+
+  .mk-col-product {
+    grid-column: auto;
+  }
+
+  .mk-inv-actions {
+    justify-content: stretch;
+  }
+
+  .mk-inv-actions .btn {
+    width: 100%;
+  }
+}

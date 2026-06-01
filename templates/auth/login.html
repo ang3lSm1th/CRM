@@ -1,0 +1,51 @@
+{% extends "base_login.html" %} 
+
+
+{% block content %}
+
+<div class="login-container animate-fade-in">
+  <div class="left">
+    <div class="overlay"></div>
+    <div class="form-card animate-scale-in" style="animation-delay: 0.2s">
+      <h2>Bienvenido Usuario</h2>
+      <p>Por favor ingrese sus datos</p>
+      <form method="POST" class="form">
+        
+        <div class="input-group">
+          <i class="fa fa-user"></i>
+          <input
+            type="text"
+            name="usuario"
+            placeholder="Ingrese su identificación"
+            required
+            autocomplete="username"
+            autofocus
+            class="transition-all"
+          />
+        </div>
+        <div class="input-group">
+          <i class="fa fa-lock"></i>
+          <input
+            type="password"
+            name="password"
+            placeholder="Ingrese su clave"
+            required
+            autocomplete="current-password"
+            class="transition-all"
+          />
+        </div>
+        <button type="submit" class="btn hover-lift">
+          <i class="fas fa-sign-in-alt"></i>
+          <span>Ingresar</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="right animate-slide-in-right" style="animation-delay: 0.3s">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="hover-scale" />
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/auth-login.js') }}" defer></script>
+{% endblock %}

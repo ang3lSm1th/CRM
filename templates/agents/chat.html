@@ -1,0 +1,617 @@
+{% extends 'base.html' %}
+
+{% block title %}Agente IA{% endblock %}
+
+{% block styles %}
+<style>
+    :root {
+        --agent-bg-1: #f7f4ef;
+        --agent-bg-2: #e9f1f2;
+        --agent-ink: #20303a;
+        --agent-accent: #0f766e;
+        --agent-user: #1f2937;
+        --agent-bot: #ffffff;
+        --agent-card: rgba(255, 255, 255, 0.75);
+        --sidebar-w: 270px;
+    }
+
+    .agent-layout {
+        display: grid;
+        grid-template-columns: var(--sidebar-w) 1fr;
+        gap: 0.75rem;
+        min-height: calc(100vh - 130px);
+    }
+
+    .agent-sidebar {
+        background: var(--agent-card);
+        border: 1px solid rgba(32, 48, 58, 0.1);
+        border-radius: 16px;
+        padding: 0.85rem 0.7rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+        min-height: 0;
+    }
+
+    .sidebar-new-btn {
+        border: none;
+        background: var(--agent-accent);
+        color: #fff;
+        border-radius: 10px;
+        padding: 0.55rem 0.8rem;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-align: left;
+    }
+
+    .sidebar-title {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #64748b;
+        letter-spacing: 0.7px;
+        padding: 0.15rem 0.25rem 0;
+    }
+
+    .session-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        overflow-y: auto;
+        min-height: 0;
+    }
+
+    .session-item {
+        border: 1px solid transparent;
+        border-radius: 9px;
+        background: transparent;
+        padding: 0.52rem 0.62rem;
+        text-align: left;
+        width: 100%;
+    }
+
+    .session-item:hover {
+        background: rgba(15, 118, 110, 0.08);
+        border-color: rgba(15, 118, 110, 0.2);
+    }
+
+    .session-item.active {
+        background: rgba(15, 118, 110, 0.13);
+        border-color: var(--agent-accent);
+    }
+
+    .session-preview {
+        font-size: 0.82rem;
+        color: var(--agent-ink);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .session-date {
+        font-size: 0.7rem;
+        color: #94a3b8;
+        margin-top: 0.15rem;
+    }
+
+    .sidebar-empty {
+        color: #94a3b8;
+        text-align: center;
+        padding: 1rem 0.4rem;
+        font-size: 0.8rem;
+    }
+
+    .agent-chat-wrap {
+        background:
+            radial-gradient(circle at 0% 0%, rgba(15, 118, 110, 0.13), transparent 40%),
+            linear-gradient(130deg, var(--agent-bg-1), var(--agent-bg-2));
+        border-radius: 16px;
+        padding: 0.85rem;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 0.7rem;
+        min-height: 0;
+    }
+
+    .agent-head {
+        background: var(--agent-card);
+        border: 1px solid rgba(32, 48, 58, 0.1);
+        border-radius: 14px;
+        padding: 0.8rem 1rem;
+        color: var(--agent-ink);
+    }
+
+    .agent-title {
+        margin: 0;
+        font-weight: 800;
+    }
+
+    .agent-examples {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-top: 0.6rem;
+    }
+
+    .agent-example-btn {
+        border: 1px solid rgba(32, 48, 58, 0.15);
+        border-radius: 999px;
+        background: #fff;
+        color: var(--agent-ink);
+        font-size: 0.8rem;
+        padding: 0.3rem 0.68rem;
+    }
+
+    .agent-head-actions {
+        margin-top: 0.55rem;
+    }
+
+    .agent-action-btn {
+        border: 1px solid rgba(194, 65, 12, 0.35);
+        color: #9a3412;
+        background: #fff;
+        border-radius: 9px;
+        padding: 0.3rem 0.65rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+    }
+
+    .agent-messages {
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+        padding: 0.45rem;
+        max-height: calc(100vh - 320px);
+    }
+
+    .msg {
+        max-width: min(80%, 760px);
+        border-radius: 14px;
+        padding: 0.7rem 0.9rem;
+        line-height: 1.45;
+        white-space: pre-wrap;
+    }
+
+    .msg.user {
+        align-self: flex-end;
+        background: var(--agent-user);
+        color: #fff;
+    }
+
+    .msg.bot {
+        align-self: flex-start;
+        background: var(--agent-bot);
+        color: var(--agent-ink);
+        border: 1px solid rgba(32, 48, 58, 0.12);
+    }
+
+    .msg-meta {
+        margin-top: 0.35rem;
+        font-size: 0.72rem;
+        opacity: 0.72;
+    }
+
+    .typing {
+        display: none;
+        background: #fff;
+        border: 1px dashed rgba(32, 48, 58, 0.2);
+        border-radius: 12px;
+        padding: 0.42rem 0.65rem;
+        color: #5f6c72;
+        font-size: 0.8rem;
+        align-self: flex-start;
+    }
+
+    .agent-input-box {
+        background: var(--agent-card);
+        border: 1px solid rgba(32, 48, 58, 0.1);
+        border-radius: 14px;
+        padding: 0.6rem;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.55rem;
+    }
+
+    #agent-input {
+        border-radius: 10px;
+        border: 1px solid rgba(32, 48, 58, 0.2);
+        padding: 0.65rem 0.75rem;
+        min-height: 44px;
+        max-height: 120px;
+        resize: none;
+    }
+
+    #send-btn {
+        border: none;
+        background: linear-gradient(120deg, var(--agent-accent), #0a5e58);
+        color: #fff;
+        border-radius: 10px;
+        padding: 0.65rem 1rem;
+        font-weight: 700;
+    }
+
+    .feedback-stars {
+        margin-top: 0.45rem;
+        display: flex;
+        gap: 0.2rem;
+        align-items: center;
+        color: #f59e0b;
+    }
+
+    .feedback-stars button {
+        background: none;
+        border: none;
+        color: inherit;
+        font-size: 0.95rem;
+        opacity: 0.5;
+    }
+
+    .feedback-stars button:hover,
+    .feedback-stars button.active {
+        opacity: 1;
+    }
+
+    @media (max-width: 900px) {
+        .agent-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .agent-sidebar {
+            display: none;
+        }
+
+        .agent-messages {
+            max-height: calc(100vh - 280px);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="agent-layout">
+    <aside class="agent-sidebar">
+        <button class="sidebar-new-btn" id="sidebar-new-btn" type="button">
+            <i class="bi bi-plus-lg"></i> Nuevo chat
+        </button>
+        <div class="sidebar-title">Historial</div>
+        <div class="session-list" id="session-list">
+            <div class="sidebar-empty">Sin conversaciones aun</div>
+        </div>
+    </aside>
+
+    <div class="agent-chat-wrap">
+        <div class="agent-head">
+            <h3 class="agent-title"><i class="bi bi-robot"></i> Chat Multiagente CRM</h3>
+            <div class="agent-examples">
+                <button class="agent-example-btn" data-q="cuantos leads tenemos">cuantos leads tenemos</button>
+                <button class="agent-example-btn" data-q="ventas del mes">ventas del mes</button>
+                <button class="agent-example-btn" data-q="leads cotizados">leads cotizados</button>
+                <button class="agent-example-btn" data-q="pipeline">pipeline de ventas</button>
+                <button class="agent-example-btn" data-q="top productos vendidos">top productos</button>
+            </div>
+            <div class="agent-head-actions">
+                <button id="clear-chat-btn" class="agent-action-btn" type="button">
+                    <i class="bi bi-trash"></i> Eliminar este chat
+                </button>
+            </div>
+        </div>
+
+        <div id="messages" class="agent-messages">
+            <div class="msg bot">Hola, soy tu asistente multiagente. Preguntame sobre leads, ventas y marketing.</div>
+            <div id="typing" class="typing">Escribiendo respuesta...</div>
+        </div>
+
+        <div class="agent-input-box">
+            <textarea id="agent-input" placeholder="Escribe tu pregunta..."></textarea>
+            <button id="send-btn" type="button"><i class="bi bi-send"></i> Enviar</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+    (() => {
+        const socket = io();
+        const messagesEl = document.getElementById('messages');
+        const typingEl = document.getElementById('typing');
+        const inputEl = document.getElementById('agent-input');
+        const sendBtn = document.getElementById('send-btn');
+        const clearBtn = document.getElementById('clear-chat-btn');
+        const sessionListEl = document.getElementById('session-list');
+        const sidebarNewBtn = document.getElementById('sidebar-new-btn');
+        const LS_SESSION_KEY = 'agent_selected_session_id';
+        const welcomeText = 'Hola, soy tu asistente multiagente. Preguntame sobre leads, ventas y marketing.';
+        let currentSessionId = null;
+        let historyLoadNonce = 0;
+        const sessionMsgCount = new Map();
+
+        function scrollBottom() {
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        function fmtDate(str) {
+            if (!str) return '';
+            const d = new Date(str);
+            if (isNaN(d)) return str.slice(0, 10);
+            return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+
+        function addMessage(role, text, meta = {}) {
+            const div = document.createElement('div');
+            div.className = `msg ${role}`;
+            div.textContent = text || '';
+
+            if (meta.agent || meta.intent) {
+                const m = document.createElement('div');
+                m.className = 'msg-meta';
+                m.textContent = `${meta.agent || 'agent'} · ${meta.intent || 'general'}`;
+                div.appendChild(m);
+            }
+
+            if (role === 'bot' && meta.memoryId) {
+                const stars = document.createElement('div');
+                stars.className = 'feedback-stars';
+                stars.innerHTML = '<span style="font-size:.74rem;color:#64748b;margin-right:.2rem">Te ayudo?</span>';
+                for (let i = 1; i <= 5; i++) {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.innerHTML = '★';
+                    b.addEventListener('click', async () => {
+                        [...stars.querySelectorAll('button')].forEach((x, idx) => x.classList.toggle('active', idx < i));
+                        await sendFeedback(meta.memoryId, i);
+                    });
+                    stars.appendChild(b);
+                }
+                div.appendChild(stars);
+            }
+
+            messagesEl.insertBefore(div, typingEl);
+            scrollBottom();
+        }
+
+        function renderOnlyWelcome() {
+            [...messagesEl.children].forEach((c) => {
+                if (c !== typingEl) c.remove();
+            });
+            const w = document.createElement('div');
+            w.className = 'msg bot';
+            w.textContent = welcomeText;
+            messagesEl.insertBefore(w, typingEl);
+            typingEl.style.display = 'none';
+            scrollBottom();
+        }
+
+        function markActiveSidebar(sid) {
+            sessionListEl.querySelectorAll('.session-item').forEach((el) => {
+                el.classList.toggle('active', el.dataset.sid === sid);
+            });
+        }
+
+        async function setCurrentSession(sessionId) {
+            currentSessionId = sessionId || null;
+            if (currentSessionId) {
+                sessionStorage.setItem(LS_SESSION_KEY, currentSessionId);
+            } else {
+                sessionStorage.removeItem(LS_SESSION_KEY);
+            }
+        }
+
+        async function sendFeedback(memoryId, stars) {
+            try {
+                await fetch('/agent/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ memory_id: memoryId, stars })
+                });
+            } catch (err) {
+                console.warn('Error de feedback', err);
+            }
+        }
+
+        async function ensureSession() {
+            try {
+                const res = await fetch('/agent/session');
+                const data = await res.json();
+                const stored = sessionStorage.getItem(LS_SESSION_KEY);
+                if (stored) {
+                    await setCurrentSession(stored);
+                } else if (data.ok && data.session_id) {
+                    await setCurrentSession(data.session_id);
+                }
+            } catch (err) {
+                console.warn('No se pudo obtener sesion', err);
+            }
+        }
+
+        function renderHistoryItems(items) {
+            renderOnlyWelcome();
+            items.forEach((item) => {
+                addMessage(item.role === 'user' ? 'user' : 'bot', item.content, {
+                    agent: item.agent_used,
+                    intent: item.intent,
+                    memoryId: item.role === 'assistant' ? item.id : null
+                });
+            });
+        }
+
+        async function loadHistory(sid) {
+            sid = sid || currentSessionId;
+            const nonce = ++historyLoadNonce;
+            const expectedCount = sessionMsgCount.get(sid) || 0;
+            try {
+                const res = await fetch(`/agent/history?limit=80&session_id=${encodeURIComponent(sid || '')}`, {
+                    cache: 'no-store'
+                });
+                const data = await res.json();
+                if (nonce !== historyLoadNonce) return;
+                if (!data.ok || !Array.isArray(data.items)) {
+                    addMessage('bot', data.error || 'No se pudo cargar el historial de este chat.');
+                    return;
+                }
+
+                // Fallback de raiz: si sidebar dice que hay mensajes pero la consulta por session viene vacia,
+                // reconsultar todo y filtrar en cliente para evitar inconsistencias temporales.
+                let items = data.items || [];
+                if (items.length === 0 && expectedCount > 0 && sid) {
+                    const resAll = await fetch('/agent/history?limit=200&all=1', { cache: 'no-store' });
+                    const allData = await resAll.json();
+                    if (nonce !== historyLoadNonce) return;
+                    if (allData.ok && Array.isArray(allData.items)) {
+                        items = allData.items.filter((x) => x.session_id === sid);
+                    }
+                }
+
+                await setCurrentSession(data.session_id || sid || currentSessionId);
+                renderHistoryItems(items);
+
+                if (items.length === 0) {
+                    addMessage('bot', 'Este chat aun no tiene mensajes guardados.');
+                }
+            } catch (err) {
+                console.warn('No se pudo cargar historial', err);
+                addMessage('bot', 'Error de red al cargar historial.');
+            }
+        }
+
+        async function loadSessionList() {
+            try {
+                const res = await fetch('/agent/sessions');
+                const data = await res.json();
+                if (!data.ok || !Array.isArray(data.sessions) || data.sessions.length === 0) {
+                    sessionListEl.innerHTML = '<div class="sidebar-empty">Sin conversaciones aun</div>';
+                    return;
+                }
+                sessionListEl.innerHTML = '';
+                data.sessions.forEach((s) => {
+                    sessionMsgCount.set(s.session_id, Number(s.total_msgs || 0));
+                    const btn = document.createElement('button');
+                    btn.className = 'session-item' + (s.session_id === currentSessionId ? ' active' : '');
+                    btn.dataset.sid = s.session_id;
+                    const preview = s.preview ? (s.preview.length > 42 ? s.preview.slice(0, 42) + '...' : s.preview) : 'Conversacion';
+                    btn.innerHTML = `<div class="session-preview">${preview}</div><div class="session-date">${fmtDate(s.last_at)} · ${s.total_msgs} msgs</div>`;
+                    btn.addEventListener('click', async () => {
+                        await setCurrentSession(s.session_id);
+                        markActiveSidebar(currentSessionId);
+                        await loadHistory(currentSessionId);
+                    });
+                    sessionListEl.appendChild(btn);
+                });
+            } catch (err) {
+                console.warn('No se pudo cargar sesiones', err);
+            }
+        }
+
+        async function startNewChat() {
+            try {
+                const res = await fetch('/agent/session/new', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+                if (data.ok && data.session_id) {
+                    await setCurrentSession(data.session_id);
+                    renderOnlyWelcome();
+                    await loadSessionList();
+                    markActiveSidebar(currentSessionId);
+                }
+            } catch (err) {
+                console.warn('No se pudo iniciar nuevo chat', err);
+            }
+        }
+
+        async function clearCurrentChat() {
+            if (!window.confirm('Se eliminara el historial del chat actual. Continuar?')) return;
+            try {
+                const res = await fetch('/agent/history', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: currentSessionId })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    await setCurrentSession(data.session_id || currentSessionId);
+                    renderOnlyWelcome();
+                    await loadSessionList();
+                    markActiveSidebar(currentSessionId);
+                }
+            } catch (err) {
+                console.warn('No se pudo eliminar chat', err);
+            }
+        }
+
+        function sendCurrentMessage() {
+            const text = (inputEl.value || '').trim();
+            if (!text) return;
+
+            addMessage('user', text);
+            typingEl.style.display = 'block';
+            scrollBottom();
+
+            socket.emit('user_message', {
+                message: text,
+                session_id: currentSessionId
+            });
+
+            inputEl.value = '';
+        }
+
+        sendBtn.addEventListener('click', sendCurrentMessage);
+        inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendCurrentMessage();
+            }
+        });
+
+        document.querySelectorAll('.agent-example-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                inputEl.value = btn.getAttribute('data-q') || '';
+                sendCurrentMessage();
+            });
+        });
+
+        sidebarNewBtn.addEventListener('click', startNewChat);
+        clearBtn.addEventListener('click', clearCurrentChat);
+
+        socket.on('agent_typing', () => {
+            typingEl.style.display = 'block';
+            scrollBottom();
+        });
+
+        socket.on('agent_response', async (payload) => {
+            typingEl.style.display = 'none';
+            if (!payload || !payload.ok) {
+                addMessage('bot', (payload && payload.error) || 'No pude responder en este momento.');
+                return;
+            }
+
+            // Si llega respuesta de otra sesion (por cambio de pestaña/chat), no pisar vista actual.
+            if (payload.session_id && currentSessionId && payload.session_id !== currentSessionId) {
+                await loadSessionList();
+                markActiveSidebar(currentSessionId);
+                return;
+            }
+
+            await setCurrentSession(payload.session_id || currentSessionId);
+            addMessage('bot', payload.answer || '', {
+                agent: payload.agent,
+                intent: payload.intent,
+                memoryId: payload.memory_id
+            });
+
+            await loadSessionList();
+            markActiveSidebar(currentSessionId);
+        });
+
+        (async () => {
+            await ensureSession();
+            await loadHistory();
+            await loadSessionList();
+            markActiveSidebar(currentSessionId);
+        })();
+    })();
+</script>
+{% endblock %}

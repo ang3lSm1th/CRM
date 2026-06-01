@@ -1,0 +1,315 @@
+/**
+ * ======================================================
+ * ESTILOS DEL MÓDULO DE NOTIFICACIONES
+ * ======================================================
+ * Diseño moderno y elegante para el sistema de notificaciones
+ */
+
+/* ===== CONTENEDOR PRINCIPAL ===== */
+.notif-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+/* ===== BOTÓN DE NOTIFICACIONES ===== */
+.notif-dropdown .nav-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.notif-dropdown .nav-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.05);
+}
+
+.notif-dropdown .nav-link i {
+  font-size: 18px;
+  transition: transform 0.3s ease;
+}
+
+.notif-dropdown.open .nav-link i {
+  transform: rotate(15deg);
+  color: #3b82f6;
+}
+
+/* ===== BADGE DE CONTADOR ===== */
+.notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  animation: pulse-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.6);
+  }
+}
+
+/* ===== MENÚ DROPDOWN ===== */
+.notif-menu {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 8px;
+  min-width: 320px;
+  max-width: 380px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15),
+              0 0 0 1px rgba(0, 0, 0, 0.05);
+  padding: 12px 0;
+  z-index: 1000;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.notif-dropdown.open .notif-menu {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ===== ENCABEZADOS ===== */
+.notif-menu .small.text-muted {
+  padding: 4px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748b;
+}
+
+/* ===== ITEMS DE NOTIFICACIÓN ===== */
+.notif-items-block {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: 8px;
+}
+
+/* Scrollbar personalizado */
+.notif-items-block::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notif-items-block::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.notif-items-block::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.notif-items-block::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ===== ITEMS INDIVIDUALES ===== */
+.notif-menu .dropdown-item {
+  padding: 10px 16px;
+  color: #1e293b;
+  text-decoration: none;
+  display: block;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow: hidden;
+}
+
+.notif-menu .dropdown-item:hover {
+  background: linear-gradient(90deg, #eff6ff 0%, #f0f9ff 100%);
+  border-left-color: #3b82f6;
+  padding-left: 20px;
+}
+
+.notif-menu .dropdown-item strong {
+  display: block;
+  color: #0f172a;
+  font-weight: 600;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.notif-menu .dropdown-item .small {
+  color: #64748b;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notif-menu .dropdown-item .small::before {
+  content: '📅';
+  font-size: 10px;
+}
+
+/* ===== ITEMS VACÍOS ===== */
+.notif-menu .dropdown-item.text-muted {
+  color: #94a3b8 !important;
+  font-style: italic;
+  text-align: center;
+  cursor: default;
+}
+
+.notif-menu .dropdown-item.text-muted:hover {
+  background: transparent;
+  border-left-color: transparent;
+  padding-left: 16px;
+}
+
+/* ===== SEPARADORES ===== */
+.notif-menu > div[style*="border-top"] {
+  border-color: #e2e8f0 !important;
+  margin: 8px 0 !important;
+}
+
+/* ===== ENLACES "VER TODOS" ===== */
+.notif-menu a[href*="/leads/"] {
+  color: #3b82f6;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.notif-menu a[href*="/leads/"]:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+/* ===== CONTADOR DE ITEMS ADICIONALES ===== */
+.notif-menu .dropdown-item.text-center {
+  padding: 8px 16px;
+}
+
+.notif-menu .dropdown-item.text-center div:first-child {
+  color: #64748b;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+/* ===== ANIMACIÓN DE ENTRADA ===== */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.notif-dropdown.open .notif-menu .dropdown-item {
+  animation: slideDown 0.3s ease forwards;
+}
+
+.notif-dropdown.open .notif-menu .dropdown-item:nth-child(1) {
+  animation-delay: 0.05s;
+}
+
+.notif-dropdown.open .notif-menu .dropdown-item:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.notif-dropdown.open .notif-menu .dropdown-item:nth-child(3) {
+  animation-delay: 0.15s;
+}
+
+/* ===== INDICADOR DE CARGA ===== */
+.notif-menu .dropdown-item:has(text*="Cargando") {
+  text-align: center;
+  padding: 20px 16px;
+  color: #94a3b8;
+}
+
+.notif-menu .dropdown-item:has(text*="Cargando")::before {
+  content: '⏳';
+  display: block;
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .notif-menu {
+    right: -10px;
+    min-width: 280px;
+    max-width: 320px;
+  }
+  
+  .notif-items-block {
+    max-height: 150px;
+  }
+}
+
+/* ===== TEMA OSCURO (SIDEBAR) ===== */
+.sidebar .notif-dropdown .nav-link {
+  color: #e2e8f0;
+}
+
+.sidebar .notif-dropdown .nav-link:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar .notif-dropdown.open .nav-link i {
+  color: #60a5fa;
+}
+
+/* ===== ACCESIBILIDAD ===== */
+.notif-dropdown .nav-link:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.notif-menu .dropdown-item:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
+}
+
+/* ===== ESTADOS ESPECIALES ===== */
+.notif-menu .dropdown-item.urgent {
+  border-left-color: #ef4444;
+  background: #fef2f2;
+}
+
+.notif-menu .dropdown-item.urgent:hover {
+  background: #fee2e2;
+}
+
+.notif-menu .dropdown-item.urgent strong::before {
+  content: '🔴 ';
+  font-size: 10px;
+}

@@ -1,0 +1,21 @@
+[Unit]
+Description=CRM Flask Gunicorn Service
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/crm_flask
+EnvironmentFile=/var/www/crm_flask/.env
+ExecStart=/var/www/crm_flask/.venv/bin/gunicorn -c /var/www/crm_flask/gunicorn.conf.py wsgi:app
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=30
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

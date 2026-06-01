@@ -1,0 +1,79 @@
+.mk-card {
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.04);
+}
+.mk-meta {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+.mk-meta .item {
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px;
+}
+.mk-meta .item .k {
+  font-size: .78rem;
+  color: #6c757d;
+}
+.mk-meta .item .v {
+  font-weight: 700;
+  font-size: .95rem;
+}
+@media (max-width: 992px) {
+  .mk-meta { grid-template-columns: 1fr 1fr; }
+}
+.mk-table td, .mk-table th { vertical-align: middle; }
+
+.mk-candidates-wrapper {
+  max-height: 610px;   /* aprox 22 filas visibles */
+  overflow-y: auto;
+  overflow-x: auto;
+}
+.mk-candidates-wrapper::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+.mk-candidates-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+.mk-candidates-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.mk-candidates-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+/* El thead queda fijo al hacer scroll vertical */
+.mk-candidates-wrapper .sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.mk-linked-wrapper {
+  max-height: 610px;   /* aprox 22 filas visibles */
+  overflow-y: auto;
+  overflow-x: auto;
+}
+.mk-linked-wrapper::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+.mk-linked-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+.mk-linked-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.mk-linked-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+.mk-linked-wrapper .sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}

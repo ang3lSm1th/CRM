@@ -1,0 +1,120 @@
+/* ===== Página y tarjeta ===== */
+.register-page{
+  min-height: 82vh;
+  display:flex; align-items:center; justify-content:center;
+  padding: 24px 12px;
+  background: #ffffff;
+}
+
+.register-card.card{
+  width: 640px;                  
+  max-width: 94vw;
+  background: #0b1020;
+  color: #e9edf8;
+  border: none;
+  border-radius: 14px;
+  box-shadow: 0 22px 60px rgba(6,9,20,.28);
+  overflow: hidden;
+}
+
+/* ===== Header ===== */
+.register-card .card-header{
+  background: transparent;
+  border: none;
+  padding: 28px 40px 10px;  /* más padding */
+}
+.register-card .title{
+  margin: 0;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: .2px;
+}
+.register-card .subtitle{
+  margin: 6px 0 2px;
+  color: #9aa3b2;
+  font-size: 14px;
+}
+
+/* ===== Body / Footer ===== */
+.register-card .card-body{
+  padding: 32px 40px;   /* más aire en los costados y vertical */
+}
+.register-card .card-footer{
+  background: transparent;
+  border-top: 1px solid #0f1b37;
+  color: #9aa3b2;
+  padding: 20px 40px;   /* más aire en el footer */
+}
+.register-card .card-footer a{ color: #9fb3ff; text-decoration: none; }
+.register-card .card-footer a:hover{ text-decoration: underline; }
+
+/* ===== Grid de formulario (labels alineados) ===== */
+.form-grid{
+  display:grid;
+  gap: 22px;            /* más separación entre filas */
+}
+.form-row{
+  display:grid;
+  grid-template-columns: 170px 1fr; 
+  gap: 12px 20px;       /* más espacio entre label y campo */
+  align-items:center;
+}
+@media (max-width: 560px){
+  .form-row{ grid-template-columns: 1fr; }
+}
+
+/* Labels */
+.register-card .form-label{
+  font-weight: 800;
+  color: #e9edf8;
+  margin: 0;
+}
+
+/* Campos input/select uniformes */
+.register-card .form-control,
+.register-card .form-select{
+  height: 52px;         /* más altos */
+  background: #121830 !important;
+  border: 1px solid #1a2136;
+  color: #e9edf8;
+  border-radius: 12px;
+  padding: 14px 18px;   /* más padding interno */
+  font-size: 14px;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.register-card .form-control::placeholder{ color: #7e8899; }
+
+/* Focus */
+.register-card .form-control:focus,
+.register-card .form-select:focus{
+  border-color: #4a60ff;
+  box-shadow: 0 0 0 4px rgba(64,82,255,.22);
+  outline: none;
+}
+
+/* Botón */
+.actions{ display:flex; justify-content:flex-start; padding-top: 4px; }
+.register-card .btn-primary{
+  background: linear-gradient(180deg, #5a6aff, #6e7aff);
+  border: none;
+  height: 48px;              /* más alto para acompañar inputs */
+  border-radius: 10px;
+  font-weight: 800;
+  padding: 0 18px;
+  letter-spacing: .2px;
+  box-shadow: 0 12px 28px rgba(91,108,255,.25);
+  transition: filter .15s ease, transform .04s ease;
+}
+.register-card .btn-primary:hover{ filter: brightness(1.05); }
+.register-card .btn-primary:active{ transform: translateY(1px); }
+
+/* Ajustes finos */
+.register-card .mb-3{ margin-bottom: .9rem !important; }
+.register-card .mb-4{ margin-bottom: 1.1rem !important; }
+
+/* Responsive */
+@media (max-width: 420px){
+  .register-card.card{ border-radius: 10px; }
+  .register-card .title{ font-size: 26px; }
+  .register-card .card-body{ padding: 20px; }
+}

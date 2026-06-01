@@ -1,0 +1,256 @@
+/**
+ * Design System Variables - CRM Orbes Agricola
+ * Modern CSS Variables for consistent theming
+ */
+
+:root {
+  /* Primary Colors */
+  --primary: #2563eb;
+  --primary-50: #eff6ff;
+  --primary-100: #dbeafe;
+  --primary-200: #bfdbfe;
+  --primary-300: #93c5fd;
+  --primary-400: #60a5fa;
+  --primary-500: #3b82f6;
+  --primary-600: #2563eb;
+  --primary-700: #1d4ed8;
+  --primary-800: #1e40af;
+  --primary-900: #1e3a8a;
+
+  /* Secondary Colors */
+  --secondary: #64748b;
+  --secondary-50: #f8fafc;
+  --secondary-100: #f1f5f9;
+  --secondary-200: #e2e8f0;
+  --secondary-300: #cbd5e1;
+  --secondary-400: #94a3b8;
+  --secondary-500: #64748b;
+  --secondary-600: #475569;
+  --secondary-700: #334155;
+  --secondary-800: #1e293b;
+  --secondary-900: #0f172a;
+
+  /* Success Colors */
+  --success: #16a34a;
+  --success-50: #f0fdf4;
+  --success-100: #dcfce7;
+  --success-500: #22c55e;
+  --success-600: #16a34a;
+  --success-700: #15803d;
+
+  /* Danger Colors */
+  --danger: #dc2626;
+  --danger-50: #fef2f2;
+  --danger-100: #fee2e2;
+  --danger-500: #ef4444;
+  --danger-600: #dc2626;
+  --danger-700: #b91c1c;
+
+  /* Warning Colors */
+  --warning: #f59e0b;
+  --warning-50: #fffbeb;
+  --warning-100: #fef3c7;
+  --warning-500: #f59e0b;
+  --warning-600: #d97706;
+  --warning-700: #b45309;
+
+  /* Info Colors */
+  --info: #0ea5e9;
+  --info-50: #f0f9ff;
+  --info-100: #e0f2fe;
+  --info-500: #0ea5e9;
+  --info-600: #0284c7;
+  --info-700: #0369a1;
+
+  /* Neutral Colors */
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+
+  /* Background Colors */
+  --bg-body: #f5f6fa;
+  --bg-surface: #ffffff;
+  --bg-sidebar: #cde1ff;
+  --bg-card: #ffffff;
+  --bg-hover: #f1f5f9;
+  --bg-active: #e0f2fe;
+
+  /* Text Colors */
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --text-inverse: #ffffff;
+  --text-link: #2563eb;
+
+  /* Border Colors */
+  --border-color: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --border-focus: #2563eb;
+  --border-light: #f1f5f9;
+
+  /* Shadow System */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-primary: 0 8px 16px -4px rgba(37, 99, 235, 0.2);
+  --shadow-success: 0 8px 16px -4px rgba(22, 163, 74, 0.2);
+  --shadow-danger: 0 8px 16px -4px rgba(220, 38, 38, 0.2);
+
+  /* Spacing System (8px base) */
+  --space-xs: 0.25rem;  /* 4px */
+  --space-sm: 0.5rem;   /* 8px */
+  --space-md: 1rem;     /* 16px */
+  --space-lg: 1.5rem;   /* 24px */
+  --space-xl: 2rem;     /* 32px */
+  --space-2xl: 3rem;    /* 48px */
+  --space-3xl: 4rem;    /* 64px */
+
+  /* Border Radius */
+  --radius-sm: 0.25rem;  /* 4px */
+  --radius-md: 0.5rem;   /* 8px */
+  --radius-lg: 0.75rem;  /* 12px */
+  --radius-xl: 1rem;     /* 16px */
+  --radius-2xl: 1.5rem;  /* 24px */
+  --radius-full: 9999px;
+
+  /* Typography */
+  --font-sans: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+  --font-mono: 'Courier New', monospace;
+
+  --font-size-xs: 0.75rem;    /* 12px */
+  --font-size-sm: 0.875rem;   /* 14px */
+  --font-size-base: 1rem;     /* 16px */
+  --font-size-lg: 1.125rem;   /* 18px */
+  --font-size-xl: 1.25rem;    /* 20px */
+  --font-size-2xl: 1.5rem;    /* 24px */
+  --font-size-3xl: 1.875rem;  /* 30px */
+  --font-size-4xl: 2.25rem;   /* 36px */
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: 500ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* Z-index scale */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+
+  /* Layout */
+  --sidebar-width: 250px;
+  --header-height: 64px;
+  --footer-height: 60px;
+
+  /* Effects */
+  --blur-sm: blur(4px);
+  --blur-md: blur(8px);
+  --blur-lg: blur(16px);
+
+  /* Focus Ring */
+  --ring-offset-width: 2px;
+  --ring-offset-color: #ffffff;
+  --ring-width: 3px;
+  --ring-color: rgba(37, 99, 235, 0.3);
+}
+
+/* Dark mode variables (optional for future implementation) */
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="dark"] {
+    --bg-body: #0f172a;
+    --bg-surface: #1e293b;
+    --bg-sidebar: #1e293b;
+    --bg-card: #334155;
+    --bg-hover: #475569;
+    --bg-active: #334155;
+
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+
+    --border-color: #475569;
+    --border-hover: #64748b;
+  }
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: var(--space-2xl);
+}
+
+/* Selection styling */
+::selection {
+  background-color: var(--primary-200);
+  color: var(--primary-900);
+}
+
+::-moz-selection {
+  background-color: var(--primary-200);
+  color: var(--primary-900);
+}
+
+/* Focus visible for accessibility */
+:focus-visible {
+  outline: var(--ring-width) solid var(--ring-color);
+  outline-offset: var(--ring-offset-width);
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Brand theme: Lovol (verde claro) */
+:root[data-brand="lovol"] {
+  --primary: #10B981;
+  --primary-50: #f0fdf4;
+  --primary-100: #dcfce7;
+  --primary-200: #bbf7d0;
+  --primary-300: #86efac;
+  --primary-400: #4ade80;
+  --primary-500: #22c55e;
+  --primary-600: #16a34a;
+  --primary-700: #15803d;
+  --primary-800: #166534;
+  --primary-900: #14532b;
+
+  --bg-sidebar: #def7ec;
+  --bg-active: #e6f9f0;
+  --bg-body: #f6fbf8;
+
+  --text-link: #10B981;
+  --border-focus: #10B981;
+  --ring-color: rgba(16,185,129,0.25);
+  --shadow-primary: 0 8px 16px -4px rgba(16,185,129,0.18);
+}

@@ -1,0 +1,182 @@
+/* Estilos para el módulo de reportes */
+
+/* Tarjetas de Resumen */
+.card-body h3 {
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+/* Tablas */
+.table-hover tbody tr:hover {
+    background-color: #f8f9fa;
+    cursor: pointer;
+}
+
+.table thead th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    letter-spacing: 0.05em;
+}
+
+/* Badges personalizados */
+.badge {
+    padding: 0.4em 0.65em;
+    font-weight: 600;
+}
+
+/* Tabs */
+.nav-tabs .nav-link {
+    color: #495057;
+    font-weight: 500;
+    border: none;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    border-bottom-color: #dee2e6;
+}
+
+.nav-tabs .nav-link.active {
+    color: #0d6efd;
+    border-bottom-color: #0d6efd;
+    background-color: transparent;
+}
+
+/* Alertas */
+.alert {
+    border-left: 4px solid;
+    border-radius: 0.5rem;
+}
+
+.alert-info {
+    border-left-color: #0dcaf0;
+    background-color: #cff4fc;
+}
+
+.alert-warning {
+    border-left-color: #ffc107;
+    background-color: #fff3cd;
+}
+
+/* Buscadores */
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Cards de líneas de producto */
+.card-header {
+    font-weight: 600;
+    border-bottom: 2px solid rgba(0,0,0,.125);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .card-body h3 {
+        font-size: 1.5rem;
+    }
+    
+    .table {
+        font-size: 0.875rem;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+    }
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Impresión */
+@media print {
+    .btn, 
+    .navbar, 
+    .sidebar,
+    .nav-tabs,
+    input[type="text"] {
+        display: none !important;
+    }
+    
+    .tab-pane {
+        display: block !important;
+        opacity: 1 !important;
+        page-break-inside: avoid;
+    }
+    
+    .card {
+        border: 1px solid #dee2e6;
+        page-break-inside: avoid;
+        margin-bottom: 1rem;
+    }
+    
+    .table {
+        page-break-inside: auto;
+    }
+    
+    .table tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+    
+    thead {
+        display: table-header-group;
+    }
+    
+    tfoot {
+        display: table-footer-group;
+    }
+}
+
+/* Mejoras visuales adicionales */
+.text-end strong {
+    font-weight: 700;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0,0,0,.02);
+}
+
+.table-dark {
+    background-color: #343a40;
+}
+
+/* Indicadores de rendimiento */
+.badge.bg-success {
+    background-color: #198754 !important;
+}
+
+.badge.bg-warning {
+    background-color: #ffc107 !important;
+    color: #000;
+}
+
+.badge.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+/* Tooltip styles (si decides agregarlo) */
+[title] {
+    cursor: help;
+}
