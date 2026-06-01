@@ -1,6 +1,13 @@
 [phases.setup]
 nixPkgs = ["python311", "gcc", "pkg-config"]
-aptPkgs = ["default-libmysqlclient-dev"]
+aptPkgs = ["build-essential", "python3-dev", "libmariadb-dev", "libmariadb-dev-compat"]
+
+[phases.install]
+cmds = [
+  "python -m venv --copies /opt/venv",
+  ". /opt/venv/bin/activate && pip install --upgrade pip setuptools wheel",
+  ". /opt/venv/bin/activate && MYSQLCLIENT_CFLAGS=\"$(pkg-config --cflags mariadb 2>/dev/null || pkg-config --cflags libmariadb 2>/dev/null || echo '')\" MYSQLCLIENT_LDFLAGS=\"$(pkg-config --libs mariadb 2>/dev/null || pkg-config --libs libmariadb 2>/dev/null || echo '')\" pip install -r requirements.txt"
+]
 
 [start]
 cmd = "python -m gunicorn -c gunicorn.conf.py wsgi:app"
