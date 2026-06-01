@@ -1,0 +1,6 @@
+[phases.setup]
+nixPkgs = ["python311", "gcc", "pkg-config"]
+aptPkgs = ["default-libmysqlclient-dev"]
+
+[start]
+cmd = "python -m gunicorn -c gunicorn.conf.py wsgi:app"
