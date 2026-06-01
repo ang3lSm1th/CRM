@@ -45,7 +45,8 @@
 .mk-campaigns-table-wrapper {
   max-width: 1500px;
   overflow-x: auto;
-  overflow-y: hidden;
+  max-height: 560px;
+  overflow-y: auto;
 }
 .mk-campaigns-table-wrapper::-webkit-scrollbar {
   height: 8px;
