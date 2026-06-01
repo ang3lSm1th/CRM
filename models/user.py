@@ -14,16 +14,37 @@ class User:
         self.negocio_nombre = negocio_nombre
 
     @staticmethod
-    def get_by_username(username: str):
+    def _has_negocios_table() -> bool:
         cur = mysql.connection.cursor(DictCursor)
-        cur.execute("""
+        try:
+            cur.execute("SHOW TABLES LIKE 'negocios'")
+            return cur.fetchone() is not None
+        finally:
+            cur.close()
+
+    @staticmethod
+    def _user_select_sql(where_clause: str) -> str:
+        if User._has_negocios_table():
+            return f"""
+                SELECT u.id, u.usuario, u.nombre, u.password, r.nombre AS id_rol,
+                       u.negocio_id, n.slug AS negocio_slug, n.nombre AS negocio_nombre
+                FROM usuarios u
+                JOIN roles r ON u.id_rol = r.id
+                LEFT JOIN negocios n ON u.negocio_id = n.id
+                {where_clause}
+            """
+        return f"""
             SELECT u.id, u.usuario, u.nombre, u.password, r.nombre AS id_rol,
-                   u.negocio_id, n.slug AS negocio_slug, n.nombre AS negocio_nombre
+                   u.negocio_id, NULL AS negocio_slug, NULL AS negocio_nombre
             FROM usuarios u
             JOIN roles r ON u.id_rol = r.id
-            LEFT JOIN negocios n ON u.negocio_id = n.id
-            WHERE u.usuario = %s
-        """, (username,))
+            {where_clause}
+        """
+
+    @staticmethod
+    def get_by_username(username: str):
+        cur = mysql.connection.cursor(DictCursor)
+        cur.execute(User._user_select_sql("WHERE u.usuario = %s"), (username,))
         row = cur.fetchone()
         cur.close()
         return User(**row) if row else None
@@ -31,14 +52,7 @@ class User:
     @staticmethod
     def get_by_id(user_id: int):
         cur = mysql.connection.cursor(DictCursor)
-        cur.execute("""
-            SELECT u.id, u.usuario, u.nombre, u.password, r.nombre AS id_rol,
-                   u.negocio_id, n.slug AS negocio_slug, n.nombre AS negocio_nombre
-            FROM usuarios u
-            JOIN roles r ON u.id_rol = r.id
-            LEFT JOIN negocios n ON u.negocio_id = n.id
-            WHERE u.id = %s
-        """, (user_id,))
+        cur.execute(User._user_select_sql("WHERE u.id = %s"), (user_id,))
         row = cur.fetchone()
         cur.close()
         return User(**row) if row else None
@@ -46,14 +60,7 @@ class User:
     @staticmethod
     def get_all():
         cur = mysql.connection.cursor(DictCursor)
-        cur.execute("""
-            SELECT u.id, u.usuario, u.nombre, u.password, r.nombre AS id_rol,
-                   u.negocio_id, n.slug AS negocio_slug, n.nombre AS negocio_nombre
-            FROM usuarios u
-            JOIN roles r ON u.id_rol = r.id
-            LEFT JOIN negocios n ON u.negocio_id = n.id
-            ORDER BY u.nombre
-        """)
+        cur.execute(User._user_select_sql("ORDER BY u.nombre"))
         rows = cur.fetchall()
         cur.close()
         return [User(**row) for row in rows]
@@ -61,14 +68,7 @@ class User:
     @staticmethod
     def get_by_role(role_name: str):
         cur = mysql.connection.cursor(DictCursor)
-        cur.execute("""
-            SELECT u.id, u.usuario, u.nombre, u.password, r.nombre AS id_rol,
-                   u.negocio_id, n.slug AS negocio_slug, n.nombre AS negocio_nombre
-            FROM usuarios u
-            JOIN roles r ON u.id_rol = r.id
-            LEFT JOIN negocios n ON u.negocio_id = n.id
-            WHERE r.nombre = %s
-        """, (role_name,))
+        cur.execute(User._user_select_sql("WHERE r.nombre = %s"), (role_name,))
         rows = cur.fetchall()
         cur.close()
         return [User(**row) for row in rows]
