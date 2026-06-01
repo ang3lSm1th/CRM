@@ -25,6 +25,18 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
+    app.logger.info(
+        "DB runtime config host=%s port=%s db=%s user=%s",
+        app.config.get("MYSQL_HOST"),
+        app.config.get("MYSQL_PORT"),
+        app.config.get("MYSQL_DB"),
+        app.config.get("MYSQL_USER"),
+    )
+    if str(app.config.get("MYSQL_HOST", "")).strip() in {"", "127.0.0.1", "localhost"}:
+        app.logger.error(
+            "MYSQL_HOST no esta configurado para entorno Docker/VPS; revisa variables de entorno del servicio backend"
+        )
+
     if app.config.get("TRUST_PROXY"):
         app.wsgi_app = ProxyFix(
             app.wsgi_app,
