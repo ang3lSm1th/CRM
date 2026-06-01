@@ -291,33 +291,6 @@
                 <div class="col-md-2"><strong>Clientes:</strong> <span id="v-pdc-total">—</span></div>
             </div>
 
-            <div class="pdc-section-title d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <span><i class="fas fa-users me-1"></i> Probabilidad de compra por cliente (instrumento pretest)</span>
-                <small class="text-muted" id="pdc-table-hint">Mostrando hasta 50 clientes</small>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-sm table-hover pdc-mini-table mb-0">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Cliente</th>
-                            <th>MTP</th>
-                            <th>MPC</th>
-                            <th>NCMTP</th>
-                            <th>PDC %</th>
-                        </tr>
-                    </thead>
-                    <tbody id="pdc-tbody">
-                        <tr><td colspan="6" class="text-center text-muted py-3">Clic en una campaña para cargar clientes</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="mt-2 text-end">
-                <a class="btn btn-sm btn-outline-success" id="link-pdc-full"
-                    href="{{ url_for('reportes.dashboard_recompra_clientes', quarter=redirect_quarter, year=year, top=50, from_page='analisis-reportes', return_month=month, return_year=year) }}">
-                    <i class="fas fa-external-link-alt me-1"></i> Panel completo 50 clientes
-                </a>
-            </div>
         </div>
     </div>
 
@@ -385,7 +358,6 @@
         document.getElementById('v-pdc-total').textContent =
             c.pdc_total_clientes ?? (c.pdc_clientes || []).length ?? '—';
 
-        const tbody = document.getElementById('pdc-tbody');
         const clientes = c.pdc_clientes || [];
         const total = c.pdc_total_clientes ?? clientes.length;
         const hint = document.getElementById('pdc-table-hint');
@@ -394,20 +366,23 @@
                 ? `Mostrando ${clientes.length} de ${total} clientes`
                 : `${total} clientes`;
         }
-        if (!clientes.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Cargando clientes…</td></tr>';
-            return;
+        const tbody = document.getElementById('pdc-tbody');
+        if (tbody) {
+            if (!clientes.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Cargando clientes…</td></tr>';
+                return;
+            }
+            tbody.innerHTML = clientes.map((cl, i) => `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td>${cl.cliente || '—'}</td>
+                    <td>${cl.mtp ?? '—'}</td>
+                    <td>${cl.mpc ?? '—'}</td>
+                    <td>${cl.ncmtp ?? 0}</td>
+                    <td><strong>${Number(cl.pdc || 0).toFixed(2)}%</strong></td>
+                </tr>
+            `).join('');
         }
-        tbody.innerHTML = clientes.map((cl, i) => `
-            <tr>
-                <td>${i + 1}</td>
-                <td>${cl.cliente || '—'}</td>
-                <td>${cl.mtp ?? '—'}</td>
-                <td>${cl.mpc ?? '—'}</td>
-                <td>${cl.ncmtp ?? 0}</td>
-                <td><strong>${Number(cl.pdc || 0).toFixed(2)}%</strong></td>
-            </tr>
-        `).join('');
     }
 
     const campanasLocal = JSON.parse(document.getElementById('campanas-json')?.textContent || '[]');
