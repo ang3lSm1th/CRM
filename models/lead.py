@@ -366,9 +366,25 @@ class Lead:
     # Actualizar por ID
     # ------------------------
     @staticmethod
+    def _nullable_int(value):
+        if value is None:
+            return None
+        text = str(value).strip()
+        if text == "":
+            return None
+        return int(text)
+
+    @staticmethod
     def update(data):
         cur = mysql.connection.cursor()
         try:
+            safe_data = dict(data)
+            safe_data["canal_id"] = Lead._nullable_int(safe_data.get("canal_id"))
+            safe_data["bien_servicio_id"] = Lead._nullable_int(
+                safe_data.get("bien_servicio_id")
+            )
+            safe_data["asignado_a"] = Lead._nullable_int(safe_data.get("asignado_a"))
+
             if Lead._leads_has_feria_column():
                 cur.execute(
                     """
@@ -389,7 +405,7 @@ class Lead:
                         feria_id=%(feria_id)s
                     WHERE id=%(id)s
                     """,
-                    data,
+                    safe_data,
                 )
             else:
                 cur.execute(
@@ -410,7 +426,7 @@ class Lead:
                         comentario=%(comentario)s
                     WHERE id=%(id)s
                     """,
-                    data,
+                    safe_data,
                 )
             mysql.connection.commit()
         except IntegrityError:
@@ -426,6 +442,10 @@ class Lead:
     def update_by_codigo(data):
         cur = mysql.connection.cursor()
         try:
+            canal_id = Lead._nullable_int(data.get("canal_id"))
+            bien_servicio_id = Lead._nullable_int(data.get("bien_servicio_id"))
+            asignado_a = Lead._nullable_int(data.get("asignado_a"))
+
             cur.execute(
                 """
                 UPDATE leads SET
@@ -456,9 +476,9 @@ class Lead:
                     data.get("departamento"),
                     data.get("provincia"),
                     data.get("distrito"),
-                    data.get("canal_id"),
-                    data.get("bien_servicio_id"),
-                    data.get("asignado_a"),
+                    canal_id,
+                    bien_servicio_id,
+                    asignado_a,
                     data.get("comentario"),
                     data.get("codigo"),
                 ),
