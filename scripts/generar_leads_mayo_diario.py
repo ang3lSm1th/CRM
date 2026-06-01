@@ -42,6 +42,21 @@ DAILY_PATTERNS = [
 CANALES = [1, 2, 3, 4, 5]
 BIENES = [1, 3, 4, 5, 7]
 
+MESES_ES = {
+    1: "enero",
+    2: "febrero",
+    3: "marzo",
+    4: "abril",
+    5: "mayo",
+    6: "junio",
+    7: "julio",
+    8: "agosto",
+    9: "septiembre",
+    10: "octubre",
+    11: "noviembre",
+    12: "diciembre",
+}
+
 
 def connect():
     return MySQLdb.connect(
@@ -120,7 +135,32 @@ def fetch_pools(cur):
     motivo_row = cur.fetchone()
     motivo_default = int(motivo_row["id"]) if motivo_row else 8
 
-    return clientes, asesores, campanas, motivo_default
+    cur.execute("SELECT id, nombre FROM bienes_servicios ORDER BY id")
+    bienes_rows = cur.fetchall() or []
+    bienes_map = {int(r["id"]): (r.get("nombre") or "producto agrícola").strip() for r in bienes_rows}
+
+    return clientes, asesores, campanas, motivo_default, bienes_map
+
+
+def comentario_humano_lead(day, bien_nombre):
+    mes = MESES_ES.get(day.month, "el mes")
+    producto = (bien_nombre or "producto agrícola").strip()
+    return f"Cliente interesado en {producto}. Contacto comercial realizado en {mes}; se continuará con asesoría personalizada."
+
+
+def comentario_humano_seguimiento(day, bien_nombre, proceso):
+    mes = MESES_ES.get(day.month, "el mes")
+    producto = (bien_nombre or "producto agrícola").strip()
+    acciones = {
+        "no iniciado": "pendiente de primer contacto comercial",
+        "seguimiento": "en seguimiento activo con el cliente",
+        "programado": "con reunión de demostración programada",
+        "cotizado": "con cotización enviada para evaluación",
+        "cerrado": "con venta cerrada exitosamente",
+        "cerrado no vendido": "cerrado sin venta en esta etapa",
+    }
+    accion = acciones.get(proceso, "en evaluación comercial")
+    return f"Gestión de {mes}: {producto}, {accion}."
 
 
 def pick_campana(campanas, day, bien_servicio_id):
@@ -211,7 +251,7 @@ def insert_lead_bundle(cur, payload, seq):
             cot,
             monto_val,
             moneda_val,
-            f"Lead demo mayo - {proceso}",
+            comentario_humano_seguimiento(day, payload.get("bien_nombre"), proceso),
             day,
         ),
     )
@@ -258,7 +298,7 @@ def main():
             print(f"Ya hay {existing} leads entre {start} y {end}. Use --force para continuar.")
             return 1
 
-        clientes, asesores, campanas, motivo_default = fetch_pools(cur)
+        clientes, asesores, campanas, motivo_default, bienes_map = fetch_pools(cur)
         if not clientes:
             print("No hay clientes en la BD.")
             return 1
@@ -294,7 +334,7 @@ def main():
                     dist = (c.get("distrito") or "")[:80]
                     stats["con_cliente"] += 1
                 else:
-                    nombre = f"Prospecto Mayo {seq}"
+                    nombre = f"Prospecto Agro {seq}"
                     ruc_dni = f"DEMO{day.strftime('%y%m%d')}{seq:04d}"
                     telefono = f"98{seq:08d}"[-9:]
                     email = f"prospecto{seq}@demo.local"
@@ -305,6 +345,7 @@ def main():
                 asignado = asesores[seq % len(asesores)]
                 canal_id = CANALES[seq % len(CANALES)]
                 bien_id = BIENES[seq % len(BIENES)]
+                bien_nombre = bienes_map.get(bien_id, "producto agrícola")
 
                 link_campana = seq % 4 == 0  # ~25% intentan campaña si hay periodo activo
                 campaign_id = pick_campana(campanas, day, bien_id) if link_campana else None
@@ -325,8 +366,9 @@ def main():
                     "direccion": direccion,
                     "email": email,
                     "bien_servicio_id": bien_id,
+                    "bien_nombre": bien_nombre,
                     "asignado_a": asignado,
-                    "comentario": "Generado script mayo diario",
+                    "comentario": comentario_humano_lead(day, bien_nombre),
                     "proceso": proceso,
                     "motivo_id": motivo_default,
                     "campaign_id": campaign_id,
