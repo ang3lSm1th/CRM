@@ -215,6 +215,20 @@ class AgentOrchestrator:
         self._traces.appendleft(event)
         try:
             socketio.emit("debug_trace", event)
+            socketio.emit(
+                "agent_socket_event",
+                {
+                    "event": "debug_trace",
+                    "direction": "orquestador → monitor",
+                    "timestamp": event["timestamp"],
+                    "step": step,
+                    "component": component,
+                    "action": action,
+                    "intent": intent,
+                    "selected_agent": selected_agent,
+                    "trace_id": trace_id,
+                },
+            )
         except Exception:
             pass
 
@@ -501,6 +515,19 @@ class AgentOrchestrator:
         self._communications.appendleft(event)
         try:
             socketio.emit("debug_route", event)
+            socketio.emit(
+                "agent_socket_event",
+                {
+                    "event": "debug_route",
+                    "direction": "broker → monitor",
+                    "timestamp": event["timestamp"],
+                    "intent": intent,
+                    "agent": agent,
+                    "trace_id": trace_id,
+                    "ok": bool(ok),
+                    "response_time_ms": int(elapsed_ms),
+                },
+            )
         except Exception:
             pass
 

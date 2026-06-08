@@ -12,7 +12,10 @@ monitor_bp = Blueprint("agent_monitor", __name__)
 @login_required
 @role_required("administrador")
 def monitor_home():
-    architecture_text = "Broker -> Orquestador(intent+reglas) -> Agente Especializado -> Herramienta -> BD CRM -> Respuesta"
+    architecture_text = (
+        "Socket.IO: user_message → broker → orquestador → agente → "
+        "debug_trace/debug_route (monitor) → agent_response"
+    )
     return render_template("agents/monitor.html", architecture_text=architecture_text)
 
 

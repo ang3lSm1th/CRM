@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, render_template, request, session
 from flask_socketio import emit
 import MySQLdb.cursors
+from datetime import datetime
 from uuid import uuid4
 
 from agents.broker.orchestrator import AgentOrchestrator
@@ -10,6 +11,21 @@ from utils.security import login_required, role_required
 
 agent_chat_bp = Blueprint("agent_chat", __name__)
 orchestrator = AgentOrchestrator()
+
+
+def _emit_socket_evidence(event_name, payload=None):
+    """Publica eventos Socket.IO para evidenciar comunicación en el monitor."""
+    try:
+        socketio.emit(
+            "agent_socket_event",
+            {
+                "event": event_name,
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                **(payload or {}),
+            },
+        )
+    except Exception:
+        pass
 
 
 def _extract_message_input(payload):
@@ -319,7 +335,18 @@ def socket_user_message(payload):
     )
     session_id = request_session_id or session.get("agent_session_id")
 
+    _emit_socket_evidence(
+        "user_message",
+        {
+            "direction": "cliente → servidor",
+            "session_id": session_id,
+            "question": str(incoming)[:200],
+        },
+    )
+
     emit("agent_typing", {"typing": True})
+    _emit_socket_evidence("agent_typing", {"direction": "servidor → cliente", "typing": True})
+
     try:
         result = orchestrator.process_message(
             usuario_id=usuario_id,
@@ -327,8 +354,11 @@ def socket_user_message(payload):
             session_id=session_id,
         )
     except Exception as exc:
-        emit(
-            "agent_response", {"ok": False, "error": f"Error interno del agente: {exc}"}
+        err_payload = {"ok": False, "error": f"Error interno del agente: {exc}"}
+        emit("agent_response", err_payload)
+        _emit_socket_evidence(
+            "agent_response",
+            {"direction": "servidor → cliente", "ok": False, "error": str(exc)[:200]},
         )
         return
 
@@ -337,3 +367,14 @@ def socket_user_message(payload):
         session["agent_session_id"] = result["session_id"]
 
     emit("agent_response", result)
+    _emit_socket_evidence(
+        "agent_response",
+        {
+            "direction": "servidor → cliente",
+            "ok": bool(result.get("ok")),
+            "intent": result.get("intent"),
+            "agent": result.get("agent"),
+            "trace_id": result.get("trace_id"),
+            "response_time_ms": result.get("response_time_ms"),
+        },
+    )

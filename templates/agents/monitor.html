@@ -94,9 +94,37 @@
         color: #991b1b;
     }
 
-    .pill-step {
-        background: #ede9fe;
-        color: #5b21b6;
+    .pill-socket {
+        background: #cffafe;
+        color: #0e7490;
+    }
+
+    .socket-flow {
+        background: #f8fafc;
+        border: 1px dashed #94a3b8;
+        border-radius: 10px;
+        padding: .75rem;
+        font-family: Consolas, monospace;
+        font-size: .78rem;
+        line-height: 1.55;
+        color: #334155;
+        margin-bottom: .75rem;
+    }
+
+    .socket-log {
+        max-height: 22vh;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        gap: .4rem;
+    }
+
+    .socket-log-item {
+        border-left: 3px solid #0891b2;
+        background: #ecfeff;
+        border-radius: 0 8px 8px 0;
+        padding: .4rem .55rem;
+        font-size: .78rem;
     }
 
     .mono {
@@ -129,6 +157,16 @@
 {% endblock %}
 
 {% block content %}
+<div class="monitor-card" style="margin-bottom:1rem;">
+    <h4 class="monitor-title">Flujo de comunicación vía Socket.IO</h4>
+    <div class="socket-flow">1) Chat UI — emit('user_message') ──► Servidor Flask-SocketIO
+2) Servidor — emit('agent_typing') ──► Chat UI (indicador "escribiendo")
+3) Broker/Orquestador — emit('debug_trace') ──► Monitor (pasos 1-6: recibir, clasificar, despachar, agente, respuesta)
+4) Broker — emit('debug_route') ──► Monitor (resumen: intent, agente, tiempo, confianza)
+5) Servidor — emit('agent_response') ──► Chat UI (respuesta final al usuario)</div>
+    <div class="socket-log" id="socket-log"></div>
+</div>
+
 <div class="monitor-grid">
     <div class="monitor-card">
         <h4 class="monitor-title">Comunicaciones en vivo</h4>
@@ -182,9 +220,43 @@
     (() => {
         const commList = document.getElementById('comm-list');
         const traceList = document.getElementById('trace-list');
+        const socketLog = document.getElementById('socket-log');
         const statsBody = document.querySelector('#stats-table tbody');
         const registryBody = document.querySelector('#registry-table tbody');
         const socket = io();
+        const socketEvents = [];
+
+        function pushSocketEvent(item) {
+            socketEvents.unshift(item);
+            renderSocketLog();
+        }
+
+        function renderSocketLog() {
+            if (!socketLog) return;
+            socketLog.innerHTML = '';
+            socketEvents.slice(0, 25).forEach((ev) => {
+                const div = document.createElement('div');
+                div.className = 'socket-log-item';
+                const detail = [
+                    ev.direction ? `dir: ${ev.direction}` : '',
+                    ev.intent ? `intent: ${ev.intent}` : '',
+                    ev.agent ? `agente: ${ev.agent}` : '',
+                    ev.component ? `comp: ${ev.component}` : '',
+                    ev.action ? `acción: ${ev.action}` : '',
+                    ev.step ? `step ${ev.step}` : '',
+                    ev.response_time_ms != null ? `${ev.response_time_ms} ms` : '',
+                    ev.trace_id ? `trace ${String(ev.trace_id).slice(0, 8)}…` : '',
+                ].filter(Boolean).join(' · ');
+                div.innerHTML = `
+          <div style="display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;">
+            <span class="pill pill-socket">${ev.event || 'evento'}</span>
+            <span class="mono" style="font-size:.72rem;color:#64748b;">${formatTime(ev.timestamp)}</span>
+          </div>
+          <div style="margin-top:.2rem;color:#0f172a;">${detail || ev.question || '-'}</div>
+        `;
+                socketLog.appendChild(div);
+            });
+        }
 
         function formatTime(isoText) {
             try { return new Date(isoText).toLocaleTimeString(); }
@@ -297,6 +369,7 @@
 
         socket.on('debug_route', (event) => {
             if (!event) return;
+            pushSocketEvent({ event: 'debug_route', direction: 'broker → monitor', ...event });
             const current = [];
             commList.querySelectorAll('.comm-item').forEach((item) => {
                 current.push({
@@ -313,8 +386,35 @@
             loadStats();
         });
 
-        socket.on('debug_trace', () => {
-            loadTraces();
+        socket.on('debug_trace', (event) => {
+            if (event) {
+                pushSocketEvent({
+                    event: 'debug_trace',
+                    direction: 'orquestador → monitor',
+                    ...event,
+                });
+                const div = document.createElement('div');
+                div.className = 'trace-item';
+                div.innerHTML = `
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;">
+          <span class="pill pill-step">step ${event.step || '-'}</span>
+          <span class="pill pill-agent">${event.component || '-'}</span>
+          <span class="pill ${event.ok ? 'pill-ok' : 'pill-err'}">${event.ok ? 'ok' : 'error'}</span>
+          <span class="mono" style="font-size:.74rem;color:#64748b;">${formatTime(event.timestamp)}</span>
+        </div>
+        <div style="margin-top:.2rem;"><strong>${event.action || '-'}</strong> · intent ${event.intent || '-'}</div>
+        <div style="margin-top:.2rem;">agente: ${event.selected_agent || '-'} · tool: ${event.tool || '-'}</div>
+        <div style="margin-top:.2rem;color:#334155;">${event.detail || ''}</div>
+      `;
+                traceList.prepend(div);
+                while (traceList.children.length > 60) traceList.removeChild(traceList.lastChild);
+            }
+            loadStats();
+        });
+
+        socket.on('agent_socket_event', (event) => {
+            if (!event || ['debug_trace', 'debug_route'].includes(event.event)) return;
+            pushSocketEvent(event);
         });
 
         loadComms();
