@@ -1,4 +1,7 @@
-"""Gerencia: KPIs ejecutivos, análisis predictivo y retroalimentación al scoring."""
+"""Gerencia: KPIs ejecutivos, análisis predictivo y retroalimentación al scoring.
+
+Fuera del flujo automático al crear lead. Dashboard: GET /lead_workflow/management/dashboard
+"""
 
 import json
 import os

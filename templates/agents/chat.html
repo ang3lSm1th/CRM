@@ -314,6 +314,7 @@
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
     (() => {
+        // ═══ SOCKET.IO · PASO 3/7 · CLIENTE CHAT: conexión WebSocket ═══
         const socket = io();
         const messagesEl = document.getElementById('messages');
         const typingEl = document.getElementById('typing');
@@ -550,10 +551,12 @@
             typingEl.style.display = 'block';
             scrollBottom();
 
+            // ═══ SOCKET.IO · INICIO comunicación usuario → servidor ═══
             socket.emit('user_message', {
                 message: text,
                 session_id: currentSessionId
             });
+            // ═══ Continúa en routes/agent_chat.py → socket_user_message() ═══
 
             inputEl.value = '';
         }
@@ -576,6 +579,7 @@
         sidebarNewBtn.addEventListener('click', startNewChat);
         clearBtn.addEventListener('click', clearCurrentChat);
 
+        // ═══ SOCKET.IO · PASO 6/7 · FIN: servidor responde al Chat UI ═══
         socket.on('agent_typing', () => {
             typingEl.style.display = 'block';
             scrollBottom();
@@ -605,6 +609,7 @@
             await loadSessionList();
             markActiveSidebar(currentSessionId);
         });
+        // ═══ FIN ciclo Socket.IO chat ═══
 
         (async () => {
             await ensureSession();

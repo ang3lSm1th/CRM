@@ -1,4 +1,7 @@
-"""Ejecución asíncrona del workflow (threading con contexto Flask)."""
+"""Ejecución asíncrona del workflow (threading con contexto Flask).
+
+WORKFLOW · PASO 0 → llama orchestrator.process_lead() tras crear lead o POST /process
+"""
 
 import logging
 import threading

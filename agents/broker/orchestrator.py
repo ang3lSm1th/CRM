@@ -213,6 +213,7 @@ class AgentOrchestrator:
             "detail": detail,
         }
         self._traces.appendleft(event)
+        # ═══ SOCKET.IO · PASO 5/7 · SALIDA hacia Monitor: trazas en vivo ═══
         try:
             socketio.emit("debug_trace", event)
             socketio.emit(
@@ -231,6 +232,7 @@ class AgentOrchestrator:
             )
         except Exception:
             pass
+        # ═══ FIN emit debug_trace ═══
 
     def get_recent_traces(self, limit=40):
         safe_limit = max(1, min(int(limit or 40), 300))
@@ -513,6 +515,7 @@ class AgentOrchestrator:
             "error": error,
         }
         self._communications.appendleft(event)
+        # ═══ SOCKET.IO · PASO 5/7 · SALIDA hacia Monitor: resumen ruta/agente ═══
         try:
             socketio.emit("debug_route", event)
             socketio.emit(
@@ -530,6 +533,7 @@ class AgentOrchestrator:
             )
         except Exception:
             pass
+        # ═══ FIN emit debug_route ═══
 
     def get_recent_communications(self, limit=20):
         safe_limit = max(1, min(int(limit or 20), 200))
@@ -568,6 +572,7 @@ class AgentOrchestrator:
             cur.close()
 
     def process_message(self, usuario_id, question, session_id=None):
+        """Procesamiento interno multiagente. NO usa Socket.IO entre agentes."""
         started_at = time.perf_counter()
         session_id = session_id or str(uuid4())
         trace_id = str(uuid4())

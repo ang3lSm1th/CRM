@@ -47,7 +47,9 @@ def create_app():
 
     mysql.init_app(app)
     bcrypt.init_app(app)
+    # ═══ SOCKET.IO · PASO 2/7 · Vincular Socket.IO a la app Flask ═══
     socketio.init_app(app)
+    # ═══ FIN PASO 2 ═══
 
     # Filtro personalizado para formatear números con comas decimales
     @app.template_filter("number_format")

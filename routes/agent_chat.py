@@ -14,7 +14,7 @@ orchestrator = AgentOrchestrator()
 
 
 def _emit_socket_evidence(event_name, payload=None):
-    """Publica eventos Socket.IO para evidenciar comunicación en el monitor."""
+    """Publica eventos Socket.IO para evidenciar comunicación en el monitor (paso 5b)."""
     try:
         socketio.emit(
             "agent_socket_event",
@@ -321,6 +321,25 @@ def agent_chat_sessions_list():
         cur.close()
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# SOCKET.IO · MAPA — SOLO CHAT IA (consultas al usuario)
+# ───────────────────────────────────────────────────────────────────────────────
+# NO confundir con el WORKFLOW DE LEADS (scoring → comercial → cierre).
+# Ese flujo multiagente se dispara al CREAR un lead → agents/lead_workflow/
+# y usa REST + MySQL (agent_interactions), NO Socket.IO.
+# ───────────────────────────────────────────────────────────────────────────────
+# PASO 1  extensions.py          → socketio = SocketIO(...)
+# PASO 2  app.py                  → socketio.init_app(app)
+# PASO 3  templates/agents/chat.html → socket.emit('user_message')  [INICIO chat]
+# PASO 4  AQUÍ (agent_chat.py)   → @socketio.on('user_message')    [ENTRADA chat]
+#         agents/broker/orchestrator.process_message()  ← broker chat, no workflow leads
+# PASO 5  broker/orchestrator.py → socketio.emit('debug_trace'|'debug_route') → monitor
+# PASO 6  AQUÍ (agent_chat.py)   → emit('agent_response')           [SALIDA chat]
+# PASO 7  templates/agents/monitor.html → socket.on(...)              [FIN monitor chat]
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+# ═══ SOCKET.IO · PASO 4/7 · ENTRADA: cliente emitió 'user_message' ═══
 @socketio.on("user_message")
 def socket_user_message(payload):
     usuario_id = session.get("user_id")
@@ -347,6 +366,7 @@ def socket_user_message(payload):
     emit("agent_typing", {"typing": True})
     _emit_socket_evidence("agent_typing", {"direction": "servidor → cliente", "typing": True})
 
+    # ── Entre PASO 4 y 6: procesamiento interno (sin Socket.IO entre agentes) ──
     try:
         result = orchestrator.process_message(
             usuario_id=usuario_id,
@@ -366,6 +386,7 @@ def socket_user_message(payload):
     if result.get("session_id") and not request_session_id:
         session["agent_session_id"] = result["session_id"]
 
+    # ═══ SOCKET.IO · PASO 6/7 · SALIDA: respuesta final al Chat UI ═══
     emit("agent_response", result)
     _emit_socket_evidence(
         "agent_response",
@@ -378,3 +399,4 @@ def socket_user_message(payload):
             "response_time_ms": result.get("response_time_ms"),
         },
     )
+    # ═══ FIN ciclo Socket.IO chat (vuelve a chat.html socket.on('agent_response')) ═══

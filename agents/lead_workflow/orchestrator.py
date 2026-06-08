@@ -1,6 +1,20 @@
 """
 Orquestador del workflow multiagente de leads (diagrama TO-BE).
 
+# ═══ WORKFLOW LEADS · MAPA DE COMUNICACIÓN MULTIAGENTE (MySQL, no Socket.IO) ═══
+# INICIO   routes/lead.py → trigger_workflow_for_new_lead() al crear lead
+#          routes/lead_workflow.py → POST /lead_workflow/process
+#
+# PASO 1   _run_scoring()        → lead_scoring.py (+ 4 sub-agentes de análisis)
+# PASO 2   _run_assignment()     → commercial_assistant.assign_advisor()
+# PASO 3   _run_commercial_contact() → commercial_assistant.contact() [máx. 2 intentos]
+# PASO 4   _run_recovery_contact()  → recovery_agent [si no responde]
+# PASO 5   _run_closing()        → closing_agent [si responde / venta]
+# FIN      nodo completed | dead | awaiting_response (espera webhook/manual)
+#
+# Cada paso registra en state_store.log_interaction() → tabla agent_interactions
+# ═══════════════════════════════════════════════════════════════════════════════
+
 Flujo:
   scoring (4 agentes) → assignment → commercial (2 intentos)
   → recovery (2 intentos) | closing | dead | completed
@@ -74,6 +88,7 @@ class LeadWorkflowOrchestrator:
         return step
 
     def _run_scoring(self, lead_row):
+        # ═══ WORKFLOW · PASO 1/5 · Scoring (4 sub-agentes) → ver lead_scoring.py ═══
         result = self.scoring.analyze(lead_row)
         self.store.log_interaction(
             lead_row["id"],
@@ -92,6 +107,7 @@ class LeadWorkflowOrchestrator:
         return self._wrap_step("scoring", result, state)
 
     def _run_assignment(self, lead_row, state):
+        # ═══ WORKFLOW · PASO 2/5 · Asignación de asesor → commercial_assistant.py ═══
         score_data = self._score_data_from_state(state)
         assignment = self.commercial.assign_advisor(lead_row, score_data)
         self.store.log_interaction(
@@ -109,6 +125,7 @@ class LeadWorkflowOrchestrator:
         return self._wrap_step("assignment", assignment, state)
 
     def _run_commercial_contact(self, lead_row, state, attempt=None):
+        # ═══ WORKFLOW · PASO 3/5 · Contacto comercial (1er/2do intento) ═══
         score_data = self._score_data_from_state(state)
         current_attempts = int(state.get("attempts") or 0)
         attempt = attempt or (current_attempts + 1)
@@ -145,6 +162,7 @@ class LeadWorkflowOrchestrator:
         )
 
     def _run_recovery_contact(self, lead_row, state):
+        # ═══ WORKFLOW · PASO 4/5 · Recuperación (si no hubo respuesta comercial) ═══
         data = state.get("data") or {}
         if isinstance(data, str):
             import json
@@ -193,6 +211,7 @@ class LeadWorkflowOrchestrator:
         )
 
     def _run_closing(self, lead_row, state, *, sale_won=True, monto=0, motivo_no_venta=None):
+        # ═══ WORKFLOW · PASO 5/5 · Cierre y registro venta/no venta → closing_agent.py ═══
         score_data = self._score_data_from_state(state)
         proposal = self.closing.prepare_proposal(lead_row, score_data)
         registration = self.closing.register_sale(
@@ -248,7 +267,11 @@ class LeadWorkflowOrchestrator:
         return result
 
     def process_lead(self, lead_id, *, auto_advance=True):
-        """Ejecuta el workflow desde el nodo actual hasta un punto de espera o fin."""
+        """
+        WORKFLOW MULTIAGENTE · NÚCLEO — aquí se encadenan los agentes de lead.
+        Comunicación: llamadas Python + registros en agent_interactions (MySQL).
+        NO usa Socket.IO (eso es solo el Chat IA en agents/broker/).
+        """
         try:
             return self._process_lead_impl(lead_id, auto_advance=auto_advance)
         except Exception as exc:
@@ -257,6 +280,7 @@ class LeadWorkflowOrchestrator:
 
     def _process_lead_impl(self, lead_id, *, auto_advance=True):
         """Ejecuta el workflow desde el nodo actual hasta un punto de espera o fin."""
+        # ═══ WORKFLOW LEADS · INICIO comunicación multiagente (este lead) ═══
         if not self.store.ensure_tables():
             return {
                 "ok": False,
@@ -282,15 +306,15 @@ class LeadWorkflowOrchestrator:
 
         while auto_advance:
             if node == "scoring":
-                step = self._run_scoring(lead_row)
+                step = self._run_scoring(lead_row)           # PASO 1
             elif node == "assignment":
-                step = self._run_assignment(lead_row, state)
+                step = self._run_assignment(lead_row, state)  # PASO 2
             elif node == "commercial":
-                step = self._run_commercial_contact(lead_row, state)
+                step = self._run_commercial_contact(lead_row, state)  # PASO 3
                 steps.append(step)
                 break
             elif node == "recovery":
-                step = self._run_recovery_contact(lead_row, state)
+                step = self._run_recovery_contact(lead_row, state)  # PASO 4
                 steps.append(step)
                 break
             elif node in ("closing", "completed", "dead"):
@@ -307,6 +331,7 @@ class LeadWorkflowOrchestrator:
             if node in ("dead", "completed"):
                 break
 
+        # ═══ WORKFLOW LEADS · FIN (retorna estado + interacciones registradas) ═══
         return {
             "ok": True,
             "lead_id": lead_id,

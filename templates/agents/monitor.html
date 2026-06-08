@@ -223,6 +223,7 @@
         const socketLog = document.getElementById('socket-log');
         const statsBody = document.querySelector('#stats-table tbody');
         const registryBody = document.querySelector('#registry-table tbody');
+        // ═══ SOCKET.IO · PASO 7/7 · CLIENTE MONITOR: recibe trazas en vivo ═══
         const socket = io();
         const socketEvents = [];
 
@@ -416,6 +417,7 @@
             if (!event || ['debug_trace', 'debug_route'].includes(event.event)) return;
             pushSocketEvent(event);
         });
+        // ═══ FIN PASO 7 · Cadena Socket.IO completa ═══
 
         loadComms();
         loadStats();

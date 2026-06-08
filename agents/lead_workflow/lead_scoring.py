@@ -1,4 +1,13 @@
-"""Recepción + scoring global: orquesta los 4 agentes de análisis del diagrama TO-BE."""
+"""Recepción + scoring global: orquesta los 4 agentes de análisis del diagrama TO-BE.
+
+WORKFLOW · PASO 1/5 — Invocado desde orchestrator._run_scoring()
+Sub-agentes (en analyze()):
+  1.1 cac_agent.py          → CAC / ROI
+  1.2 acquisition_agent.py → Tasa adquisición
+  1.3 prediccion_agente    → Probabilidad de compra (ML)
+  1.4 retención (interno)  → Riesgo abandono
+Salida → score global + prioridad → nodo assignment
+"""
 
 from agents.core.prediccion_agente import PrediccionCompraAgente
 from agents.core.retencion_agente import RetencionAbandonoAgente
@@ -106,10 +115,14 @@ class LeadScoringAgent:
 
     def analyze(self, lead_row):
         lead_id = lead_row.get("id")
+        # ── PASO 1.1: CAC ──
         cac = self.cac_agent.analyze(lead_row)
+        # ── PASO 1.2: Tasa adquisición ──
         acquisition = self.acquisition_agent.analyze(lead_row)
+        # ── PASO 1.4: Retención / abandono ──
         retention = self._retention_score_for_lead(lead_row)
 
+        # ── PASO 1.3: Probabilidad de compra (ML) ──
         predictions = self.prediccion_agent.predict_percentages_for_leads(
             [{"id": lead_id}]
         )

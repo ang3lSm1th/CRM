@@ -9,7 +9,12 @@ login_manager = LoginManager()
 login_manager.login_view = "auth.login"  # redirige al login si no está autenticado
 mysql = MySQL()
 bcrypt = Bcrypt()
+
+# ═══ SOCKET.IO · PASO 1/7 · INICIO (instancia global) ═══
+# Aquí nace el objeto `socketio`. Se conecta a Flask en app.py (paso 2).
+# Ver mapa completo en routes/agent_chat.py → socket_user_message()
 socketio = SocketIO(
     async_mode=os.getenv("SOCKETIO_ASYNC_MODE", "threading"),
     cors_allowed_origins=os.getenv("SOCKETIO_CORS_ALLOWED_ORIGINS", "*"),
 )
+# ═══ FIN PASO 1 ═══

@@ -1,4 +1,8 @@
-"""Agente 4 (recuperación): estrategias alternativas tras 2 intentos sin respuesta."""
+"""Agente 4 (recuperación): estrategias alternativas tras 2 intentos sin respuesta.
+
+WORKFLOW · PASO 4/5 — run_attempt() / mark_dead_lead()
+Invocado desde orchestrator._run_recovery_contact()
+"""
 
 from datetime import datetime, timedelta
 
@@ -19,6 +23,7 @@ class RecoveryAgent:
     )
 
     def run_attempt(self, lead_row, recovery_attempt):
+        # ═══ WORKFLOW · PASO 4/5 · Intento recuperación N (máx. 2) ═══
         strategy = self.STRATEGIES[(recovery_attempt - 1) % len(self.STRATEGIES)]
         nombre = (lead_row.get("nombre") or "cliente").strip()
         message = (
@@ -37,6 +42,7 @@ class RecoveryAgent:
         }
 
     def mark_dead_lead(self, lead_id):
+        # ═══ WORKFLOW · FIN alternativo · venta_muerta (sin respuesta) ═══
         return {
             "agent": self.AGENT_NAME,
             "ok": True,

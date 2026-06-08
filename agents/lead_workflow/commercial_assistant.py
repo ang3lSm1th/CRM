@@ -1,4 +1,8 @@
-"""Asesor comercial automatizado: 1er y 2do contacto según canal preferido."""
+"""Asesor comercial automatizado: 1er y 2do contacto según canal preferido.
+
+WORKFLOW · PASO 2/5 — assign_advisor()  (orchestrator._run_assignment)
+WORKFLOW · PASO 3/5 — contact()         (orchestrator._run_commercial_contact)
+"""
 
 from datetime import datetime, timedelta
 
@@ -37,6 +41,7 @@ class CommercialAssistantAgent:
         )
 
     def contact(self, lead_row, attempt, score_data):
+        # ═══ WORKFLOW · PASO 3/5 · Intento comercial N (máx. 2) ═══
         channel = self._pick_channel(lead_row)
         message = self._build_message(lead_row, attempt, score_data)
         next_followup = datetime.now() + timedelta(days=2 if attempt == 1 else 3)
@@ -53,7 +58,7 @@ class CommercialAssistantAgent:
         }
 
     def assign_advisor(self, lead_row, score_data):
-        """Asigna lead al asesor con menor carga activa (score alto → mejor asesor)."""
+        """WORKFLOW · PASO 2/5 · Asigna lead al asesor con menor carga activa."""
         cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
         try:
             cur.execute(

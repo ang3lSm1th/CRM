@@ -1,4 +1,7 @@
-"""Agente 2: Tasa de adquisición (lead → oportunidad) por canal y asesor."""
+"""Agente 2: Tasa de adquisición (lead → oportunidad) por canal y asesor.
+
+WORKFLOW · PASO 1.2 — Sub-agente de scoring (lead_scoring.analyze)
+"""
 
 import os
 

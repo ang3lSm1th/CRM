@@ -178,6 +178,10 @@ class LeadWorkflowStateStore:
         response_content=None,
         metadata=None,
     ):
+        """
+        WORKFLOW · Persistencia de comunicación orquestador ↔ agente.
+        Cada paso del flujo escribe aquí → tabla agent_interactions (evidencia).
+        """
         if not self._table_exists("agent_interactions"):
             return None
         content = _sanitize_db_text(content)

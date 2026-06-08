@@ -48,6 +48,28 @@ def _enrich_codigo(result, lead_row=None):
     return result
 
 
+def trigger_workflow_for_new_lead(app, lead_id, *, auto_advance=True):
+    """
+    WORKFLOW MULTIAGENTE · INICIO al crear un lead.
+    Comunicación entre agentes vía orquestador + tablas MySQL (no Socket.IO).
+    Ver agents/lead_workflow/orchestrator.py → process_lead()
+    """
+    run_workflow_async(app, int(lead_id), orchestrator, auto_advance=auto_advance)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# WORKFLOW LEADS · MAPA — COMUNICACIÓN MULTIAGENTE (al crear/process lead)
+# ───────────────────────────────────────────────────────────────────────────────
+# INICIO  routes/lead.py create_lead() → trigger_workflow_for_new_lead()
+#         o POST /lead_workflow/process
+# NÚCLEO  agents/lead_workflow/orchestrator.py → process_lead()
+#         scoring → assignment → commercial → recovery → closing (secuencial)
+# PERSIST agents/lead_workflow/state_store.py → lead_agent_state, agent_interactions
+# FIN     nodo completed | dead | awaiting_response (espera webhook/manual)
+# NO usa Socket.IO — ver Monitor en /lead_workflow/monitor y trace API
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
 @lead_workflow_bp.route("/process", methods=["POST"])
 @login_required
 @role_required(*WORKFLOW_ROLES)

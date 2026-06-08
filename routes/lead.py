@@ -21,6 +21,7 @@ from utils.security import (
 
 # 1. IMPORTAR LA EXCEPCIÓN LeadDuplicatedError (MODIFICADO)
 from models.lead import Lead, LeadDuplicatedError
+from routes.lead_workflow import trigger_workflow_for_new_lead
 from models.canal import Canal
 from models.bien_servicio import BienServicio
 from models.user import User
@@ -1130,9 +1131,17 @@ def create_lead():
         force_save = request.form.get("force_save") == "true"
 
         try:
-            Lead.create(
+            lead_id = Lead.create(
                 data, created_by_user_id=created_by_user_id, force_save=force_save
             )
+            # ═══ WORKFLOW LEADS · PASO 0 · INICIO al crear lead ═══
+            # Dispara orchestrator.process_lead() en background (ver lead_workflow.py)
+            try:
+                trigger_workflow_for_new_lead(
+                    current_app._get_current_object(), lead_id, auto_advance=True
+                )
+            except Exception:
+                pass
             flash(f"✅ Lead {codigo} creado correctamente.", "lead_created")
             return redirect(url_for("leads.create_lead"))
 

@@ -1,4 +1,7 @@
-"""Agente 1: Costo de Adquisición (CAC) por lead, campaña y canal."""
+"""Agente 1: Costo de Adquisición (CAC) por lead, campaña y canal.
+
+WORKFLOW · PASO 1.1 — Sub-agente de scoring (lead_scoring.analyze)
+"""
 
 import os
 

@@ -1,4 +1,8 @@
-"""Cierre y facturación: propuesta, objeciones y registro de venta/no venta."""
+"""Cierre y facturación: propuesta, objeciones y registro de venta/no venta.
+
+WORKFLOW · PASO 5/5 — prepare_proposal() + register_sale()
+Invocado desde orchestrator._run_closing() cuando el lead responde.
+"""
 
 import MySQLdb.cursors
 
@@ -9,6 +13,7 @@ class ClosingAgent:
     AGENT_NAME = "closing_agent"
 
     def prepare_proposal(self, lead_row, score_data):
+        # ═══ WORKFLOW · PASO 5/5 · Propuesta comercial ═══
         nombre = (lead_row.get("nombre") or "cliente").strip()
         score = score_data.get("global_score", 0)
         return {
@@ -24,6 +29,7 @@ class ClosingAgent:
         }
 
     def register_sale(self, lead_id, *, sale_won=True, monto=0, motivo_no_venta=None):
+        # ═══ WORKFLOW · FIN · Registro venta/no venta → nodo completed ═══
         cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
         try:
             if sale_won and self._table_exists("ventas_concretadas"):
