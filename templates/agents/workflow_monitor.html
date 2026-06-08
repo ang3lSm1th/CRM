@@ -46,6 +46,28 @@
     .pipe-agent { font-size: .6rem; color: #64748b; }
 
     .nav-tabs .nav-link { font-size: .85rem; }
+
+    .live-bar {
+        display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+        padding: .65rem 1rem; background: #f0fdf4; border: 1px solid #bbf7d0;
+        border-radius: 12px; margin-bottom: 1rem;
+    }
+    .live-bar.disconnected { background: #fef2f2; border-color: #fecaca; }
+    .live-dot {
+        width: 10px; height: 10px; border-radius: 50%; background: #22c55e;
+        box-shadow: 0 0 0 3px rgba(34,197,94,.25);
+    }
+    .live-bar.disconnected .live-dot { background: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,.2); }
+    .live-log {
+        max-height: 180px; overflow-y: auto; font-size: .78rem;
+        background: #0f172a; color: #e2e8f0; border-radius: 10px; padding: .65rem .85rem;
+    }
+    .live-log-item { padding: .35rem 0; border-bottom: 1px solid rgba(148,163,184,.15); }
+    .live-log-item:last-child { border-bottom: none; }
+    .pill-wf {
+        display: inline-block; padding: .1rem .45rem; border-radius: 999px;
+        font-size: .65rem; font-weight: 700; background: #dbeafe; color: #1d4ed8;
+    }
 </style>
 {% endblock %}
 
@@ -54,9 +76,23 @@
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
             <h1 class="h4 mb-1">Workflow Lead IA — Orquestador multiagente</h1>
-            <p class="text-muted mb-0 small">Recorrido del lead por cada agente, herramientas usadas y salida JSON en tiempo real.</p>
+            <p class="text-muted mb-0 small">Recorrido del lead por cada agente. Actualización en vivo vía Socket.IO + respaldo cada 5 s.</p>
         </div>
-        <button class="btn btn-outline-secondary btn-sm" id="btnRefresh">Actualizar</button>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-secondary" id="socketBadge">Conectando…</span>
+            <button class="btn btn-outline-secondary btn-sm" id="btnRefresh">Actualizar</button>
+        </div>
+    </div>
+
+    <div class="live-bar" id="liveBar">
+        <div class="live-dot"></div>
+        <strong class="small" id="liveStatus">Socket.IO — esperando conexión</strong>
+        <span class="text-muted small">Cree un lead o pulse «Iniciar workflow» en otra pestaña; los pasos aparecen aquí al instante.</span>
+    </div>
+
+    <div class="wf-card">
+        <h2 class="wf-title"><i class="fas fa-bolt me-1"></i> Eventos en vivo</h2>
+        <div class="live-log" id="liveLog"><div class="text-muted">Sin eventos aún.</div></div>
     </div>
 
     <div class="wf-card">
@@ -128,6 +164,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
 (function () {
     const codigoInput = document.getElementById('codigoInput');
@@ -139,6 +176,14 @@
     const leadHeader = document.getElementById('leadHeader');
     const workflowList = document.getElementById('workflowList');
     const interactionList = document.getElementById('interactionList');
+    const liveBar = document.getElementById('liveBar');
+    const liveStatus = document.getElementById('liveStatus');
+    const liveLog = document.getElementById('liveLog');
+    const socketBadge = document.getElementById('socketBadge');
+
+    const socket = typeof io !== 'undefined' ? io() : null;
+    const liveEvents = [];
+    let refreshTimer = null;
 
     function normalizeCodigo(raw) {
         return (raw || '').trim().toUpperCase();
@@ -153,6 +198,65 @@
     }
 
     let lastTrace = null;
+
+    function formatTime(isoText) {
+        try { return new Date(isoText).toLocaleTimeString(); }
+        catch (_) { return isoText || '-'; }
+    }
+
+    function setSocketConnected(connected) {
+        if (liveBar) liveBar.classList.toggle('disconnected', !connected);
+        if (liveStatus) {
+            liveStatus.textContent = connected
+                ? 'Socket.IO conectado — monitor en tiempo real activo'
+                : 'Socket.IO desconectado — solo polling de respaldo';
+        }
+        if (socketBadge) {
+            socketBadge.className = connected ? 'badge bg-success' : 'badge bg-danger';
+            socketBadge.textContent = connected ? 'En vivo' : 'Sin socket';
+        }
+    }
+
+    function pushLiveEvent(ev) {
+        liveEvents.unshift(ev);
+        if (liveEvents.length > 40) liveEvents.pop();
+        if (!liveLog) return;
+        liveLog.innerHTML = liveEvents.slice(0, 25).map(item => {
+            const detail = [
+                item.codigo ? item.codigo : '',
+                item.label || item.node || '',
+                item.agent ? `→ ${item.agent}` : '',
+                item.detail ? String(item.detail).slice(0, 120) : '',
+            ].filter(Boolean).join(' · ');
+            return `<div class="live-log-item">
+                <span class="pill-wf">${item.event || 'workflow'}</span>
+                <span class="text-muted ms-1">${formatTime(item.timestamp)}</span>
+                <div class="mt-1">${detail || '-'}</div>
+            </div>`;
+        }).join('') || '<div class="text-muted">Sin eventos aún.</div>';
+    }
+
+    function onWorkflowEvent(payload) {
+        pushLiveEvent(payload || {});
+        loadRecent();
+        const watched = getCodigo();
+        const evCodigo = normalizeCodigo(payload && payload.codigo);
+        if (watched && evCodigo && watched === evCodigo) {
+            loadTrace(evCodigo);
+        } else if (!watched && evCodigo) {
+            codigoInput.value = evCodigo;
+            loadTrace(evCodigo);
+        }
+    }
+
+    if (socket) {
+        socket.on('connect', () => setSocketConnected(true));
+        socket.on('disconnect', () => setSocketConnected(false));
+        socket.on('connect_error', () => setSocketConnected(false));
+        socket.on('workflow_event', onWorkflowEvent);
+    } else {
+        setSocketConnected(false);
+    }
 
     function prettyJson(obj) {
         return JSON.stringify(obj, null, 2);
@@ -354,7 +458,7 @@
 
     loadCatalog();
     loadRecent();
-    setInterval(loadRecent, 20000);
+    refreshTimer = setInterval(loadRecent, 5000);
 })();
 </script>
 {% endblock %}

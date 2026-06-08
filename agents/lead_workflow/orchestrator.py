@@ -39,6 +39,7 @@ from agents.lead_workflow.workflow_catalog import (
     get_node_catalog,
     get_workflow_catalog,
 )
+from agents.lead_workflow.socket_events import emit_workflow_event
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +88,35 @@ class LeadWorkflowOrchestrator:
         step.update(extra)
         return step
 
+    def _emit_workflow_step(self, lead_row, step, event="workflow_step"):
+        """Socket.IO → monitor /lead_workflow/monitor en tiempo real."""
+        if not lead_row or not step:
+            return
+        state = step.get("state") or {}
+        result = step.get("result") or {}
+        detail = (
+            result.get("message")
+            or result.get("recommendation")
+            or result.get("summary")
+            or result.get("reason")
+        )
+        emit_workflow_event(
+            event,
+            {
+                "lead_id": lead_row.get("id"),
+                "codigo": lead_row.get("codigo"),
+                "node": step.get("node"),
+                "label": step.get("label"),
+                "agent": step.get("agent"),
+                "current_node": state.get("current_node"),
+                "workflow_status": state.get("workflow_status"),
+                "score": state.get("score"),
+                "priority_label": state.get("priority_label"),
+                "awaiting_response": bool(step.get("awaiting_response")),
+                "detail": (str(detail)[:240] if detail else None),
+            },
+        )
+
     def _run_scoring(self, lead_row):
         # ═══ WORKFLOW · PASO 1/5 · Scoring (4 sub-agentes) → ver lead_scoring.py ═══
         result = self.scoring.analyze(lead_row)
@@ -104,7 +134,9 @@ class LeadWorkflowOrchestrator:
             recommendation=result["recommendation"],
             data={"agent_outputs": result["agent_outputs"], "scoring": result},
         )
-        return self._wrap_step("scoring", result, state)
+        step = self._wrap_step("scoring", result, state)
+        self._emit_workflow_step(lead_row, step)
+        return step
 
     def _run_assignment(self, lead_row, state):
         # ═══ WORKFLOW · PASO 2/5 · Asignación de asesor → commercial_assistant.py ═══
@@ -122,7 +154,9 @@ class LeadWorkflowOrchestrator:
             assigned_to=assignment.get("assigned_to"),
             data={"assignment": assignment},
         )
-        return self._wrap_step("assignment", assignment, state)
+        step = self._wrap_step("assignment", assignment, state)
+        self._emit_workflow_step(lead_row, step)
+        return step
 
     def _run_commercial_contact(self, lead_row, state, attempt=None):
         # ═══ WORKFLOW · PASO 3/5 · Contacto comercial (1er/2do intento) ═══
@@ -154,12 +188,14 @@ class LeadWorkflowOrchestrator:
             data={"last_contact": contact},
             workflow_status="active",
         )
-        return self._wrap_step(
+        step = self._wrap_step(
             "commercial",
             contact,
             state,
             awaiting_response=True,
         )
+        self._emit_workflow_step(lead_row, step)
+        return step
 
     def _run_recovery_contact(self, lead_row, state):
         # ═══ WORKFLOW · PASO 4/5 · Recuperación (si no hubo respuesta comercial) ═══
@@ -187,7 +223,9 @@ class LeadWorkflowOrchestrator:
                 workflow_status="dead",
                 data={"recovery_attempts": recovery_attempts, "dead": dead},
             )
-            return self._wrap_step("dead", dead, state)
+            step = self._wrap_step("dead", dead, state)
+            self._emit_workflow_step(lead_row, step, event="workflow_dead")
+            return step
 
         contact = self.recovery.run_attempt(lead_row, recovery_attempts)
         self.store.log_interaction(
@@ -203,12 +241,14 @@ class LeadWorkflowOrchestrator:
             next_action_date=contact.get("next_followup"),
             data={"recovery_attempts": recovery_attempts, "last_recovery": contact},
         )
-        return self._wrap_step(
+        step = self._wrap_step(
             "recovery",
             contact,
             state,
             awaiting_response=True,
         )
+        self._emit_workflow_step(lead_row, step)
+        return step
 
     def _run_closing(self, lead_row, state, *, sale_won=True, monto=0, motivo_no_venta=None):
         # ═══ WORKFLOW · PASO 5/5 · Cierre y registro venta/no venta → closing_agent.py ═══
@@ -235,7 +275,9 @@ class LeadWorkflowOrchestrator:
             data={"proposal": proposal, "registration": registration},
         )
         closing_result = {"proposal": proposal, "registration": registration}
-        return self._wrap_step("completed", closing_result, state)
+        step = self._wrap_step("completed", closing_result, state)
+        self._emit_workflow_step(lead_row, step, event="workflow_completed")
+        return step
 
     def ensure_workflow_started(self, lead_id, lead_row=None, *, auto_advance=True):
         """Crea estado inicial si el lead aún no tiene workflow."""
@@ -269,8 +311,8 @@ class LeadWorkflowOrchestrator:
     def process_lead(self, lead_id, *, auto_advance=True):
         """
         WORKFLOW MULTIAGENTE · NÚCLEO — aquí se encadenan los agentes de lead.
-        Comunicación: llamadas Python + registros en agent_interactions (MySQL).
-        NO usa Socket.IO (eso es solo el Chat IA en agents/broker/).
+        Comunicación entre agentes: Python + MySQL + eventos Socket.IO al monitor.
+        NO usa el mismo canal que el Chat IA (agents/broker/).
         """
         try:
             return self._process_lead_impl(lead_id, auto_advance=auto_advance)
@@ -293,6 +335,11 @@ class LeadWorkflowOrchestrator:
         lead_row = self.store.fetch_lead(lead_id)
         if not lead_row:
             return {"ok": False, "error": f"Lead no encontrado (id={lead_id})."}
+
+        emit_workflow_event(
+            "workflow_started",
+            {"lead_id": lead_id, "codigo": lead_row.get("codigo")},
+        )
 
         state = self.store.get_state(lead_id)
         if not state:
@@ -332,12 +379,24 @@ class LeadWorkflowOrchestrator:
                 break
 
         # ═══ WORKFLOW LEADS · FIN (retorna estado + interacciones registradas) ═══
+        final_state = self.store.get_state(lead_id)
+        emit_workflow_event(
+            "workflow_finished",
+            {
+                "lead_id": lead_id,
+                "codigo": lead_row.get("codigo"),
+                "current_node": (final_state or {}).get("current_node"),
+                "workflow_status": (final_state or {}).get("workflow_status"),
+                "score": (final_state or {}).get("score"),
+                "steps_count": len(steps),
+            },
+        )
         return {
             "ok": True,
             "lead_id": lead_id,
             "codigo": lead_row.get("codigo"),
             "steps": steps,
-            "state": self.store.get_state(lead_id),
+            "state": final_state,
             "interactions": self.store.get_interactions(lead_id, limit=10),
         }
 

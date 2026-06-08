@@ -51,7 +51,7 @@ def _enrich_codigo(result, lead_row=None):
 def trigger_workflow_for_new_lead(app, lead_id, *, auto_advance=True):
     """
     WORKFLOW MULTIAGENTE · INICIO al crear un lead.
-    Comunicación entre agentes vía orquestador + tablas MySQL (no Socket.IO).
+    Comunicación entre agentes vía orquestador + MySQL; eventos en vivo vía Socket.IO (workflow_event).
     Ver agents/lead_workflow/orchestrator.py → process_lead()
     """
     run_workflow_async(app, int(lead_id), orchestrator, auto_advance=auto_advance)
@@ -66,7 +66,7 @@ def trigger_workflow_for_new_lead(app, lead_id, *, auto_advance=True):
 #         scoring → assignment → commercial → recovery → closing (secuencial)
 # PERSIST agents/lead_workflow/state_store.py → lead_agent_state, agent_interactions
 # FIN     nodo completed | dead | awaiting_response (espera webhook/manual)
-# NO usa Socket.IO — ver Monitor en /lead_workflow/monitor y trace API
+# MONITOR /lead_workflow/monitor escucha workflow_event (Socket.IO) + API trace
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
