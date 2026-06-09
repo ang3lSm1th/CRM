@@ -8,6 +8,7 @@ from agents.lead_workflow.orchestrator import LeadWorkflowOrchestrator
 from agents.lead_workflow.state_store import LeadWorkflowStateStore
 from agents.lead_workflow.tasks import run_workflow_async
 from agents.lead_workflow.workflow_catalog import get_workflow_catalog
+from agents.lead_workflow.distributed.architecture import get_system_architecture
 from utils.security import login_required, role_required, ROLE_ADMIN, ROLE_GERENTE, ROLE_ASESOR
 
 lead_workflow_bp = Blueprint("lead_workflow", __name__, url_prefix="/lead_workflow")
@@ -232,6 +233,15 @@ def workflow_trace(codigo):
 def workflow_catalog_route():
     """Catálogo estático del grafo multiagente (nodos y herramientas)."""
     return jsonify({"ok": True, **get_workflow_catalog()})
+
+
+@lead_workflow_bp.route("/architecture", methods=["GET"])
+@login_required
+@role_required(*WORKFLOW_ROLES)
+def workflow_architecture():
+    """Topología distribuida del sistema (servicios, protocolos, health)."""
+    probe = request.args.get("probe", "0") in {"1", "true", "yes"}
+    return jsonify(get_system_architecture(probe=probe))
 
 
 @lead_workflow_bp.route("/management/dashboard", methods=["GET"])

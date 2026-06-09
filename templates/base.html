@@ -308,38 +308,20 @@
         </div>
         {% endif %}
 
-        {% if user_role != "marketing" %}
+        {% if user_role != "marketing" and user_role in ["administrador", "gerente", "asesor"] %}
         <div class="nav-section">
           <div class="nav-section-title">
-            <i class="bi bi-robot"></i>
-            <span>Inteligencia IA</span>
+            <i class="bi bi-diagram-3"></i>
+            <span>Workflow IA</span>
           </div>
           <ul>
-            <li>
-              <a href="{{ url_for('agent_chat.agent_chat_home') }}"
-                class="{{ 'active' if request.path == url_for('agent_chat.agent_chat_home') else '' }}">
-                <i class="bi bi-chat-square-dots"></i>
-                <span>Chat IA</span>
-              </a>
-            </li>
-            {% if user_role in ["administrador", "gerente", "asesor"] %}
             <li>
               <a href="{{ url_for('lead_workflow.workflow_monitor_home') }}"
                 class="{{ 'active' if request.path == url_for('lead_workflow.workflow_monitor_home') else '' }}">
                 <i class="bi bi-diagram-3"></i>
-                <span>Workflow Leads IA</span>
+                <span>Monitor Workflow Leads</span>
               </a>
             </li>
-            {% endif %}
-            {% if user_role == "administrador" %}
-            <li>
-              <a href="{{ url_for('agent_monitor.monitor_home') }}"
-                class="{{ 'active' if request.path == url_for('agent_monitor.monitor_home') else '' }}">
-                <i class="bi bi-activity"></i>
-                <span>Monitor IA</span>
-              </a>
-            </li>
-            {% endif %}
           </ul>
         </div>
         {% endif %}

@@ -1,7 +1,7 @@
 """
 Orquestador del workflow multiagente de leads (diagrama TO-BE).
 
-# ═══ WORKFLOW LEADS · MAPA DE COMUNICACIÓN MULTIAGENTE (MySQL, no Socket.IO) ═══
+# ═══ WORKFLOW LEADS · MAPA DE COMUNICACIÓN MULTIAGENTE ═══
 # INICIO   routes/lead.py → trigger_workflow_for_new_lead() al crear lead
 #          routes/lead_workflow.py → POST /lead_workflow/process
 #
@@ -19,11 +19,11 @@ Flujo:
   scoring (4 agentes) → assignment → commercial (2 intentos)
   → recovery (2 intentos) | closing | dead | completed
 
-Implementa un grafo de estados explícito (patrón LangGraph) sin dependencia externa,
-compatible con el broker existente en agents/broker/orchestrator.py.
+Implementa un grafo de estados explícito (patrón LangGraph) sin dependencia externa.
 """
 
 import logging
+import os
 from datetime import datetime
 
 from agents.lead_workflow.state_store import LeadWorkflowStateStore
@@ -40,6 +40,7 @@ from agents.lead_workflow.workflow_catalog import (
     get_workflow_catalog,
 )
 from agents.lead_workflow.socket_events import emit_workflow_event
+from agents.lead_workflow.distributed.agent_client import AgentServiceClient
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,12 @@ class LeadWorkflowOrchestrator:
         self.recovery = RecoveryAgent()
         self.closing = ClosingAgent()
         self.management = ManagementAgent()
+        self._distributed = os.getenv("WORKFLOW_DISTRIBUTED", "0").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+        self._agent_client = AgentServiceClient() if self._distributed else None
 
     def _score_data_from_state(self, state):
         data = state.get("data") or {}
@@ -119,7 +126,10 @@ class LeadWorkflowOrchestrator:
 
     def _run_scoring(self, lead_row):
         # ═══ WORKFLOW · PASO 1/5 · Scoring (4 sub-agentes) → ver lead_scoring.py ═══
-        result = self.scoring.analyze(lead_row)
+        if self._agent_client:
+            result = self._agent_client.scoring_analyze(lead_row["id"])
+        else:
+            result = self.scoring.analyze(lead_row)
         self.store.log_interaction(
             lead_row["id"],
             "lead_scoring",
@@ -141,7 +151,10 @@ class LeadWorkflowOrchestrator:
     def _run_assignment(self, lead_row, state):
         # ═══ WORKFLOW · PASO 2/5 · Asignación de asesor → commercial_assistant.py ═══
         score_data = self._score_data_from_state(state)
-        assignment = self.commercial.assign_advisor(lead_row, score_data)
+        if self._agent_client:
+            assignment = self._agent_client.commercial_assign(lead_row["id"], score_data)
+        else:
+            assignment = self.commercial.assign_advisor(lead_row, score_data)
         self.store.log_interaction(
             lead_row["id"],
             "commercial_assistant",
@@ -172,7 +185,10 @@ class LeadWorkflowOrchestrator:
             )
             return self._run_recovery_contact(lead_row, self.store.get_state(lead_row["id"]))
 
-        contact = self.commercial.contact(lead_row, attempt, score_data)
+        if self._agent_client:
+            contact = self._agent_client.commercial_contact(lead_row["id"], attempt, score_data)
+        else:
+            contact = self.commercial.contact(lead_row, attempt, score_data)
         self.store.log_interaction(
             lead_row["id"],
             "commercial_assistant",
@@ -210,7 +226,10 @@ class LeadWorkflowOrchestrator:
 
         recovery_attempts = int(data.get("recovery_attempts") or 0) + 1
         if recovery_attempts > self.RECOVERY_MAX:
-            dead = self.recovery.mark_dead_lead(lead_row["id"])
+            if self._agent_client:
+                dead = self._agent_client.recovery_mark_dead(lead_row["id"])
+            else:
+                dead = self.recovery.mark_dead_lead(lead_row["id"])
             self.store.log_interaction(
                 lead_row["id"],
                 "recovery_agent",
@@ -227,7 +246,10 @@ class LeadWorkflowOrchestrator:
             self._emit_workflow_step(lead_row, step, event="workflow_dead")
             return step
 
-        contact = self.recovery.run_attempt(lead_row, recovery_attempts)
+        if self._agent_client:
+            contact = self._agent_client.recovery_attempt(lead_row["id"], recovery_attempts)
+        else:
+            contact = self.recovery.run_attempt(lead_row, recovery_attempts)
         self.store.log_interaction(
             lead_row["id"],
             "recovery_agent",
@@ -253,13 +275,24 @@ class LeadWorkflowOrchestrator:
     def _run_closing(self, lead_row, state, *, sale_won=True, monto=0, motivo_no_venta=None):
         # ═══ WORKFLOW · PASO 5/5 · Cierre y registro venta/no venta → closing_agent.py ═══
         score_data = self._score_data_from_state(state)
-        proposal = self.closing.prepare_proposal(lead_row, score_data)
-        registration = self.closing.register_sale(
-            lead_row["id"],
-            sale_won=sale_won,
-            monto=monto,
-            motivo_no_venta=motivo_no_venta,
-        )
+        if self._agent_client:
+            closing_out = self._agent_client.closing_run(
+                lead_row["id"],
+                score_data,
+                sale_won=sale_won,
+                monto=monto,
+                motivo_no_venta=motivo_no_venta,
+            )
+            proposal = closing_out["proposal"]
+            registration = closing_out["registration"]
+        else:
+            proposal = self.closing.prepare_proposal(lead_row, score_data)
+            registration = self.closing.register_sale(
+                lead_row["id"],
+                sale_won=sale_won,
+                monto=monto,
+                motivo_no_venta=motivo_no_venta,
+            )
         self.store.log_interaction(
             lead_row["id"],
             "closing_agent",
@@ -312,7 +345,6 @@ class LeadWorkflowOrchestrator:
         """
         WORKFLOW MULTIAGENTE · NÚCLEO — aquí se encadenan los agentes de lead.
         Comunicación entre agentes: Python + MySQL + eventos Socket.IO al monitor.
-        NO usa el mismo canal que el Chat IA (agents/broker/).
         """
         try:
             return self._process_lead_impl(lead_id, auto_advance=auto_advance)

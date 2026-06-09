@@ -15,8 +15,6 @@ from routes.bienes_servicios import bienes_bp
 from routes.reportes import reportes_bp
 from routes.marketing import marketing_bp
 from routes.chat import chat_bp
-from routes.agent_chat import agent_chat_bp
-from routes.agent_monitor import monitor_bp
 from routes.lead_workflow import lead_workflow_bp
 from flask import request
 
@@ -47,9 +45,8 @@ def create_app():
 
     mysql.init_app(app)
     bcrypt.init_app(app)
-    # ═══ SOCKET.IO · PASO 2/7 · Vincular Socket.IO a la app Flask ═══
+    # Socket.IO: monitor workflow leads (workflow_event)
     socketio.init_app(app)
-    # ═══ FIN PASO 2 ═══
 
     # Filtro personalizado para formatear números con comas decimales
     @app.template_filter("number_format")
@@ -77,8 +74,6 @@ def create_app():
     app.register_blueprint(reportes_bp, url_prefix="/reportes")
     app.register_blueprint(marketing_bp, url_prefix="/marketing")
     app.register_blueprint(chat_bp, url_prefix="/chat")
-    app.register_blueprint(agent_chat_bp)
-    app.register_blueprint(monitor_bp)
     app.register_blueprint(lead_workflow_bp)
 
     @app.before_request
@@ -154,6 +149,10 @@ def create_app():
 
 # 👇 instancia a nivel de módulo para Gunicorn
 app = create_app()
+
+from celery_app import init_celery
+
+init_celery(app)
 
 # Config extra (cookies/seguridad) sobre la instancia
 app.config.update(

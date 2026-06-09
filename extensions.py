@@ -10,11 +10,10 @@ login_manager.login_view = "auth.login"  # redirige al login si no está autenti
 mysql = MySQL()
 bcrypt = Bcrypt()
 
-# ═══ SOCKET.IO · PASO 1/7 · INICIO (instancia global) ═══
-# Aquí nace el objeto `socketio`. Se conecta a Flask en app.py (paso 2).
-# Ver mapa completo en routes/agent_chat.py → socket_user_message()
+# Socket.IO global — monitor workflow (workflow_event); Redis si USE_CELERY
+_redis_url = os.getenv("REDIS_URL", "").strip() or None
 socketio = SocketIO(
     async_mode=os.getenv("SOCKETIO_ASYNC_MODE", "threading"),
     cors_allowed_origins=os.getenv("SOCKETIO_CORS_ALLOWED_ORIGINS", "*"),
+    message_queue=_redis_url,
 )
-# ═══ FIN PASO 1 ═══

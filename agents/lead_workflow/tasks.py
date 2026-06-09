@@ -1,10 +1,11 @@
-"""Ejecución asíncrona del workflow (threading con contexto Flask).
+"""Ejecución asíncrona del workflow.
 
-WORKFLOW · PASO 0 → llama orchestrator.process_lead() tras crear lead o POST /process
-Emite workflow_event vía Socket.IO para /lead_workflow/monitor en tiempo real.
+Modo distribuido (USE_CELERY=1 + REDIS_URL): encola tarea Celery en workflow-worker.
+Modo local: threading con contexto Flask.
 """
 
 import logging
+import os
 import threading
 
 from agents.lead_workflow.socket_events import emit_workflow_event
@@ -12,8 +13,26 @@ from agents.lead_workflow.socket_events import emit_workflow_event
 logger = logging.getLogger(__name__)
 
 
+def _use_celery():
+    if os.getenv("USE_CELERY", "0").strip().lower() not in {"1", "true", "yes"}:
+        return False
+    return bool(os.getenv("REDIS_URL", "").strip())
+
+
 def run_workflow_async(app, lead_id, orchestrator, *, auto_advance=True, callback=None):
-    """Ejecuta process_lead en background sin bloquear la petición HTTP."""
+    """Ejecuta process_lead sin bloquear la petición HTTP."""
+
+    if _use_celery():
+        from agents.lead_workflow.celery_tasks import process_lead_task
+
+        row = orchestrator.store.fetch_lead(lead_id)
+        codigo = (row or {}).get("codigo")
+        emit_workflow_event(
+            "workflow_queued",
+            {"lead_id": lead_id, "codigo": codigo, "transport": "celery"},
+        )
+        process_lead_task.delay(int(lead_id), auto_advance=auto_advance)
+        return None
 
     def _worker():
         with app.app_context():
@@ -22,7 +41,7 @@ def run_workflow_async(app, lead_id, orchestrator, *, auto_advance=True, callbac
                 codigo = (row or {}).get("codigo")
                 emit_workflow_event(
                     "workflow_async_started",
-                    {"lead_id": lead_id, "codigo": codigo},
+                    {"lead_id": lead_id, "codigo": codigo, "transport": "thread"},
                 )
                 result = orchestrator.process_lead(lead_id, auto_advance=auto_advance)
                 if callback:

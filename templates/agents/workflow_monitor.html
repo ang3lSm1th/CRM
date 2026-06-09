@@ -68,6 +68,12 @@
         display: inline-block; padding: .1rem .45rem; border-radius: 999px;
         font-size: .65rem; font-weight: 700; background: #dbeafe; color: #1d4ed8;
     }
+    .arch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .75rem; }
+    .arch-node {
+        border: 1px solid #e2e8f0; border-radius: 12px; padding: .75rem; background: #f8fafc;
+    }
+    .arch-node.active { border-color: #3b82f6; background: #eff6ff; }
+    .arch-node.disabled { opacity: .55; }
 </style>
 {% endblock %}
 
@@ -79,6 +85,7 @@
             <p class="text-muted mb-0 small">Recorrido del lead por cada agente. Actualización en vivo vía Socket.IO + respaldo cada 5 s.</p>
         </div>
         <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-secondary" id="archModeBadge">Arquitectura…</span>
             <span class="badge bg-secondary" id="socketBadge">Conectando…</span>
             <button class="btn btn-outline-secondary btn-sm" id="btnRefresh">Actualizar</button>
         </div>
@@ -114,6 +121,7 @@
         <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabJson">JSON orquestador</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabVisual">Vista pipeline</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabCatalog">Catálogo agentes</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabArch">Arquitectura distribuida</button></li>
     </ul>
 
     <div class="tab-content">
@@ -142,6 +150,21 @@
         <div class="tab-pane fade" id="tabCatalog">
             <div class="wf-card mb-0">
                 <div class="json-panel" id="jsonCatalog" style="max-height:600px;">{}</div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tabArch">
+            <div class="wf-card mb-2">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                    <h2 class="wf-title mb-0"><i class="fas fa-sitemap me-1"></i> Topología del sistema</h2>
+                    <button class="btn btn-outline-primary btn-sm" id="btnArchProbe">Verificar servicios</button>
+                </div>
+                <p class="small text-muted mb-2" id="archDescription">Cargando…</p>
+                <div class="arch-grid" id="archGrid"></div>
+            </div>
+            <div class="wf-card mb-0">
+                <h2 class="wf-title">Protocolos de comunicación</h2>
+                <div class="json-panel" id="jsonArchitecture" style="max-height:420px;">{}</div>
             </div>
         </div>
     </div>
@@ -180,6 +203,10 @@
     const liveStatus = document.getElementById('liveStatus');
     const liveLog = document.getElementById('liveLog');
     const socketBadge = document.getElementById('socketBadge');
+    const archModeBadge = document.getElementById('archModeBadge');
+    const archDescription = document.getElementById('archDescription');
+    const archGrid = document.getElementById('archGrid');
+    const jsonArchitecture = document.getElementById('jsonArchitecture');
 
     const socket = typeof io !== 'undefined' ? io() : null;
     const liveEvents = [];
@@ -456,7 +483,47 @@
         if (codigo) loadTrace(codigo);
     });
 
+    async function loadArchitecture(probe = false) {
+        const url = '/lead_workflow/architecture' + (probe ? '?probe=1' : '');
+        const res = await fetch(url);
+        const data = await res.json();
+        if (archModeBadge) {
+            const distributed = data.mode === 'distributed';
+            archModeBadge.className = distributed ? 'badge bg-primary' : 'badge bg-secondary';
+            archModeBadge.textContent = distributed ? 'Modo distribuido' : 'Modo monolito';
+        }
+        if (archDescription) archDescription.textContent = data.description || '';
+        if (archGrid) {
+            archGrid.innerHTML = (data.services || []).map(svc => {
+                const enabled = svc.enabled !== false;
+                const health = data.health && (data.health[svc.id] || data.health[svc.id.replace(/-/g, '_')]);
+                const healthOk = health && health.ok;
+                const healthBadge = probe && health
+                    ? `<span class="badge ${healthOk ? 'bg-success' : 'bg-danger'} ms-1">${healthOk ? 'OK' : 'FAIL'}</span>`
+                    : '';
+                return `<div class="arch-node ${enabled ? 'active' : 'disabled'}">
+                    <div class="fw-semibold small">${svc.name}${healthBadge}</div>
+                    <div class="text-muted" style="font-size:.72rem;">${svc.role || ''}</div>
+                    <div class="mt-1" style="font-size:.7rem;"><strong>Protocolo:</strong> ${svc.protocol || '-'}</div>
+                    <div style="font-size:.7rem;"><strong>Proceso:</strong> ${svc.process || svc.url || '-'}</div>
+                </div>`;
+            }).join('');
+        }
+        if (jsonArchitecture) {
+            setJson(jsonArchitecture, {
+                mode: data.mode,
+                env: data.env,
+                communication: data.communication,
+                agent_endpoints: data.agent_endpoints,
+                health: data.health || null,
+            });
+        }
+    }
+
+    document.getElementById('btnArchProbe').addEventListener('click', () => loadArchitecture(true));
+
     loadCatalog();
+    loadArchitecture(false);
     loadRecent();
     refreshTimer = setInterval(loadRecent, 5000);
 })();
