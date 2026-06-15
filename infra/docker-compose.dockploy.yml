@@ -1,7 +1,7 @@
 services:
   app:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
@@ -14,7 +14,7 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env.dockploy
+      - ../.env.dockploy
     environment:
       USE_CELERY: "1"
       WORKFLOW_DISTRIBUTED: "1"
@@ -22,7 +22,7 @@ services:
       AGENT_SERVICE_URL: http://agent-services:8001
       WEB_SERVICE_URL: http://app:8000
     volumes:
-      - ./backups:/app/backups
+      - ../backups:/app/backups
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
       interval: 30s
@@ -32,7 +32,7 @@ services:
 
   workflow-worker:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile
     restart: unless-stopped
     command: celery -A core.celery_app.celery worker --loglevel=info -Q workflow
@@ -44,7 +44,7 @@ services:
       agent-services:
         condition: service_healthy
     env_file:
-      - .env.dockploy
+      - ../.env.dockploy
     environment:
       USE_CELERY: "1"
       WORKFLOW_DISTRIBUTED: "1"
@@ -53,7 +53,7 @@ services:
 
   agent-services:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile
     restart: unless-stopped
     command: python -m gunicorn -b 0.0.0.0:8001 --workers 1 --timeout 120 entrypoints.agent_service:app
@@ -61,7 +61,7 @@ services:
       mysql:
         condition: service_healthy
     env_file:
-      - .env.dockploy
+      - ../.env.dockploy
     expose:
       - "8001"
     healthcheck:
@@ -85,13 +85,13 @@ services:
     restart: unless-stopped
     command: --default-authentication-plugin=mysql_native_password
     env_file:
-      - .env.dockploy
+      - ../.env.dockploy
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./db/schemas/Database.sql:/docker-entrypoint-initdb.d/01-main.sql:ro
-      - ./db/schemas/bd_tracores.sql:/docker-entrypoint-initdb.d/02-tractor.sql:ro
+      - ../db/schemas/Database.sql:/docker-entrypoint-initdb.d/01-main.sql:ro
+      - ../db/schemas/bd_tracores.sql:/docker-entrypoint-initdb.d/02-tractor.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
       interval: 10s

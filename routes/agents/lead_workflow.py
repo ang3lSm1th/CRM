@@ -258,7 +258,7 @@ def management_dashboard():
 @role_required(*WORKFLOW_ROLES)
 def analyze_lead_only(codigo):
     """Solo ejecuta los 4 agentes de análisis + score global, sin avanzar el workflow."""
-    from agents.lead_workflow.lead_scoring import LeadScoringAgent
+    from agents.lead_workflow.agents.lead_scoring import LeadScoringAgent
 
     lead_id, lead_row, err = _resolve_codigo(codigo)
     if err:

@@ -1,3 +1,4 @@
-from agents.lead_workflow.distributed.agent_server import create_agent_service_app
+"""Compatibilidad — punto de entrada del microservicio de agentes."""
+from entrypoints.agent_service import app
 
-app = create_agent_service_app()
+__all__ = ["app"]

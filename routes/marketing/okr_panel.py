@@ -7,8 +7,8 @@ from MySQLdb.cursors import DictCursor
 from extensions import mysql
 
 from services.marketing_ai import generate_marketing_okr_analyses
-from routes.marketing_roadmap import _build_roadmap_context
-from routes.marketing_shared import (
+from routes.marketing.roadmap import _build_roadmap_context
+from routes.marketing.shared import (
     ROLE_ADMIN,
     ROLE_GERENTE,
     ROLE_MARKETING,

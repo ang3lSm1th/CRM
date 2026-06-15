@@ -21,7 +21,7 @@ from utils.security import (
 
 # 1. IMPORTAR LA EXCEPCIÓN LeadDuplicatedError (MODIFICADO)
 from models.lead import Lead, LeadDuplicatedError
-from routes.lead_workflow import trigger_workflow_for_new_lead
+from routes.agents.lead_workflow import trigger_workflow_for_new_lead
 from models.canal import Canal
 from models.bien_servicio import BienServicio
 from models.user import User

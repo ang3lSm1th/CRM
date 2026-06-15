@@ -3,19 +3,19 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 load_dotenv()
 from flask import Flask, jsonify, redirect, url_for, session
-from config import Config
-from extensions import mysql, bcrypt, socketio
-from routes.auth_login import auth_bp
-from routes.dashboard import dashboard_bp
-from routes.lead import lead_bp
-from routes.auth_register import register_bp  # 👈 solo importamos register_bp
-from routes.auth_usuarios import usuarios_bp
-from routes.reporte_rapido import reporte_rapido_bp
-from routes.bienes_servicios import bienes_bp
-from routes.reportes import reportes_bp
+from core.config import Config
+from core.extensions import mysql, bcrypt, socketio
+from routes.auth.login import auth_bp
+from routes.crm.dashboard import dashboard_bp
+from routes.crm.lead import lead_bp
+from routes.auth.register import register_bp
+from routes.auth.usuarios import usuarios_bp
+from routes.crm.reporte_rapido import reporte_rapido_bp
+from routes.crm.bienes_servicios import bienes_bp
+from routes.crm.reportes import reportes_bp
 from routes.marketing import marketing_bp
-from routes.chat import chat_bp
-from routes.lead_workflow import lead_workflow_bp
+from routes.agents.chat import chat_bp
+from routes.agents.lead_workflow import lead_workflow_bp
 from flask import request
 
 
@@ -150,7 +150,7 @@ def create_app():
 # 👇 instancia a nivel de módulo para Gunicorn
 app = create_app()
 
-from celery_app import init_celery
+from core.celery_app import init_celery
 
 init_celery(app)
 

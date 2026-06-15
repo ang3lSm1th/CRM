@@ -4,10 +4,10 @@ import os
 
 from flask import Blueprint, jsonify, request
 
-from agents.lead_workflow.closing_agent import ClosingAgent
-from agents.lead_workflow.commercial_assistant import CommercialAssistantAgent
-from agents.lead_workflow.lead_scoring import LeadScoringAgent
-from agents.lead_workflow.recovery_agent import RecoveryAgent
+from agents.lead_workflow.agents.closing_agent import ClosingAgent
+from agents.lead_workflow.agents.commercial_assistant import CommercialAssistantAgent
+from agents.lead_workflow.agents.lead_scoring import LeadScoringAgent
+from agents.lead_workflow.agents.recovery_agent import RecoveryAgent
 from agents.lead_workflow.state_store import LeadWorkflowStateStore
 
 agent_services_bp = Blueprint("agent_services", __name__)
@@ -148,8 +148,8 @@ def closing_run():
 def create_agent_service_app():
     """App Flask mínima para el contenedor agent-services."""
     from flask import Flask
-    from config import Config
-    from extensions import mysql
+    from core.config import Config
+    from core.extensions import mysql
 
     app = Flask(__name__)
     app.config.from_object(Config)

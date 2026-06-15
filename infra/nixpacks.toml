@@ -10,4 +10,4 @@ cmds = [
 ]
 
 [start]
-cmd = "python -m gunicorn -c gunicorn.conf.py entrypoints.web_wsgi:app"
+cmd = "python -m gunicorn -c gunicorn.conf.py wsgi:app"

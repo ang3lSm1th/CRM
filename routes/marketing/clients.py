@@ -1,4 +1,4 @@
-from routes.marketing_shared import (
+from routes.marketing.shared import (
     DEPARTAMENTOS,
     DictCursor,
     ROLE_ADMIN,

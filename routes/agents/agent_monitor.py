@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, render_template
 import MySQLdb.cursors
 
 from extensions import mysql
-from routes.agent_chat import orchestrator
+from routes.agents.agent_chat import orchestrator
 from utils.security import login_required, role_required
 
 monitor_bp = Blueprint("agent_monitor", __name__)

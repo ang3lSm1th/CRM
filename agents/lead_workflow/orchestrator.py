@@ -27,11 +27,11 @@ import os
 from datetime import datetime
 
 from agents.lead_workflow.state_store import LeadWorkflowStateStore
-from agents.lead_workflow.lead_scoring import LeadScoringAgent
-from agents.lead_workflow.commercial_assistant import CommercialAssistantAgent
-from agents.lead_workflow.recovery_agent import RecoveryAgent
-from agents.lead_workflow.closing_agent import ClosingAgent
-from agents.lead_workflow.management_agent import ManagementAgent
+from agents.lead_workflow.agents.lead_scoring import LeadScoringAgent
+from agents.lead_workflow.agents.commercial_assistant import CommercialAssistantAgent
+from agents.lead_workflow.agents.recovery_agent import RecoveryAgent
+from agents.lead_workflow.agents.closing_agent import ClosingAgent
+from agents.lead_workflow.agents.management_agent import ManagementAgent
 from agents.lead_workflow.workflow_catalog import (
     AGENT_TO_NODE,
     NODE_INDEX,

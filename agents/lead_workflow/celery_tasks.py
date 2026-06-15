@@ -2,7 +2,7 @@
 
 import logging
 
-from celery_app import celery
+from core.celery_app import celery
 from agents.lead_workflow.socket_events import emit_workflow_event
 
 logger = logging.getLogger(__name__)

@@ -4,7 +4,7 @@ This file keeps the original import path routes.marketing stable while the
 implementation is split into focused modules.
 """
 
-from routes.marketing_shared import (
+from routes.marketing.shared import (
     CAMPAIGN_CHANNELS,
     CHANNEL_LEAD_NAME_FILTERS,
     DEPARTAMENTOS,
@@ -57,17 +57,17 @@ from routes.marketing_shared import (
     url_for,
 )
 
-from routes.marketing_clients import marketing_clientes  # noqa: F401
-from routes.marketing_okr_panel import marketing_okr  # noqa: F401
-from routes.marketing_shared import marketing_lineas_producto_underscore_api  # noqa: F401
-from routes.marketing_whatsapp import (  # noqa: F401
+from routes.marketing.clients import marketing_clientes  # noqa: F401
+from routes.marketing.okr_panel import marketing_okr  # noqa: F401
+from routes.marketing.shared import marketing_lineas_producto_underscore_api  # noqa: F401
+from routes.marketing.whatsapp import (  # noqa: F401
     marketing_api_config,
     marketing_upload_image,
 )
 
 # Import side effects register routes on the shared blueprint.
-from routes import marketing_campana  # noqa: F401
-from routes import marketing_feria  # noqa: F401
-from routes import marketing_inventario  # noqa: F401
-from routes import marketing_roadmap  # noqa: F401
+from routes.marketing import campana  # noqa: F401
+from routes.marketing import feria  # noqa: F401
+from routes.marketing import inventario  # noqa: F401
+from routes.marketing import roadmap  # noqa: F401
 
