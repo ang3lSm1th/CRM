@@ -1,1 +1,1 @@
-"""Blueprints de chat y agentes IA."""
+"""Blueprints del workflow de análisis IA (sin chat)."""

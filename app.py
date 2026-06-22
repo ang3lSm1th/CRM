@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 from werkzeug.middleware.proxy_fix import ProxyFix
+import os
 
 load_dotenv()
 from flask import Flask, jsonify, redirect, url_for, session
@@ -14,7 +15,6 @@ from routes.crm.reporte_rapido import reporte_rapido_bp
 from routes.crm.bienes_servicios import bienes_bp
 from routes.crm.reportes import reportes_bp
 from routes.marketing import marketing_bp
-from routes.agents.chat import chat_bp
 from routes.agents.lead_workflow import lead_workflow_bp
 from flask import request
 
@@ -30,7 +30,10 @@ def create_app():
         app.config.get("MYSQL_DB"),
         app.config.get("MYSQL_USER"),
     )
-    if str(app.config.get("MYSQL_HOST", "")).strip() in {"", "127.0.0.1", "localhost"}:
+    if (
+        os.getenv("FLASK_ENV", "").strip().lower() != "development"
+        and str(app.config.get("MYSQL_HOST", "")).strip() in {"", "127.0.0.1", "localhost"}
+    ):
         app.logger.error(
             "MYSQL_HOST no esta configurado para entorno Docker/VPS; revisa variables de entorno del servicio backend"
         )
@@ -73,7 +76,6 @@ def create_app():
     app.register_blueprint(reporte_rapido_bp, url_prefix="/leads")
     app.register_blueprint(reportes_bp, url_prefix="/reportes")
     app.register_blueprint(marketing_bp, url_prefix="/marketing")
-    app.register_blueprint(chat_bp, url_prefix="/chat")
     app.register_blueprint(lead_workflow_bp)
 
     @app.before_request
@@ -165,4 +167,10 @@ app.config.update(
 
 # Solo para correr LOCALMENTE (no en Render)
 if __name__ == "__main__":
-    socketio.run(app, host="127.0.0.1", port=8000, debug=True)
+    socketio.run(
+        app,
+        host="127.0.0.1",
+        port=int(os.getenv("PORT", "8000")),
+        debug=True,
+        allow_unsafe_werkzeug=True,
+    )

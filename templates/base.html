@@ -27,7 +27,6 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}" />
   {% block styles %}{% endblock %}
 </head>
 
@@ -312,14 +311,14 @@
         <div class="nav-section">
           <div class="nav-section-title">
             <i class="bi bi-diagram-3"></i>
-            <span>Workflow IA</span>
+            <span>Análisis IA</span>
           </div>
           <ul>
             <li>
               <a href="{{ url_for('lead_workflow.workflow_monitor_home') }}"
                 class="{{ 'active' if request.path == url_for('lead_workflow.workflow_monitor_home') else '' }}">
                 <i class="bi bi-diagram-3"></i>
-                <span>Monitor Workflow Leads</span>
+                <span>Monitor de Análisis</span>
               </a>
             </li>
           </ul>
@@ -505,9 +504,6 @@
 
   <!-- Modern UI Utilities -->
   <script src="{{ url_for('static', filename='js/modern-ui.js') }}"></script>
-
-  <!-- Chat interno del sistema -->
-  <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 
   <script>
     document.addEventListener('click', function (event) {

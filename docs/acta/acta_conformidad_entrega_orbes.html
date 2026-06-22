@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Acta de Conformidad de Entrega — Orbes Agrícola S.A.C.</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 2cm 2.2cm;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 12pt;
+      line-height: 1.55;
+      color: #111;
+      max-width: 18cm;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 1.2cm 0 1.5cm;
+      background: #fff;
+    }
+
+    .header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 10px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #1a5f2a;
+    }
+
+    .header img.logo {
+      width: 240px;
+      max-width: 55%;
+      height: auto;
+    }
+
+    .header-meta {
+      text-align: right;
+      font-size: 10.5pt;
+      line-height: 1.4;
+    }
+
+    .header-meta strong {
+      display: block;
+      font-size: 12pt;
+      text-transform: uppercase;
+    }
+
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin: 28px 0 26px;
+      letter-spacing: 0.6px;
+    }
+
+    p {
+      text-align: justify;
+      margin: 0 0 14px;
+    }
+
+    .fecha {
+      margin-top: 32px;
+      text-align: left;
+    }
+
+    .signatures-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding-top: 24px;
+    }
+
+    .signatures-students {
+      display: flex;
+      justify-content: center;
+      gap: 120px;
+      margin-bottom: 48px;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .sig-block {
+      flex: 0 0 320px;
+      text-align: center;
+    }
+
+    .sig-line {
+      border-top: 1px solid #000;
+      margin: 0 auto 18px;
+      width: 100%;
+      min-height: 110px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 6px;
+    }
+
+    .sig-line img {
+      max-height: 100px;
+      max-width: 100%;
+      object-fit: contain;
+    }
+
+    .sig-label {
+      font-size: 11pt;
+      line-height: 1.6;
+    }
+
+    .sig-representative {
+      margin-top: 48px;
+      max-width: 320px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: center;
+    }
+
+    .sig-representative img.sello {
+      max-width: 280px;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .sig-representative .line {
+      border-top: 1px solid #000;
+      margin-top: 6px;
+      padding-top: 8px;
+      font-size: 11pt;
+      line-height: 1.45;
+      text-align: center;
+    }
+
+    .print-btn {
+      display: block;
+      margin: 0 auto 20px;
+      padding: 10px 24px;
+      font-size: 12pt;
+      cursor: pointer;
+      background: #1a5f2a;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+    }
+
+    @media print {
+      body { padding: 0; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <button class="print-btn no-print" onclick="window.print()">Imprimir / Guardar como PDF</button>
+
+  <header class="header">
+    <img class="logo" src="logo_orbes.png" alt="Orbes Agrícola S.A.C." />
+    <div class="header-meta">
+      <strong>Orbes Agrícola S.A.C.</strong>
+      R.U.C. N.° 20421367605<br />
+      Maquinarias y Riego Tecnificado<br />
+      Lima — Perú
+    </div>
+  </header>
+
+  <h1 class="title">Acta de Conformidad de Entrega</h1>
+
+  <p>
+    Yo, <strong>MAGALY PAREJA GUERRERO</strong>, en mi calidad de
+    <strong>Gerencia de Recursos Humanos</strong> de la empresa
+    <strong>ORBES AGRÍCOLA S.A.C.</strong>, con R.U.C. N.° <strong>20421367605</strong>,
+    ubicada en la ciudad de <strong>Lima</strong>, mediante el presente documento dejo constancia
+    y doy conformidad a la culminación satisfactoria del proyecto
+    <em>«Arquitectura de inteligencia artificial distribuida para el análisis comercial
+    y gestión automatizada de leads en Orbes Agrícola S.A.C. — 2025-2026»</em>,
+    desarrollado en nuestra institución por los señores
+    <strong>JUZCAMAYTA SÁNCHEZ, ANGEL SMITH</strong>, identificado con DNI N.° <strong>77347183</strong>,
+    y <strong>ACCOSTUPA TTITO, DIEGO REMIGIO</strong>, identificado con DNI N.° <strong>75068757</strong>,
+    respectivamente, estudiantes de la Carrera Profesional de <strong>Ingeniería de Sistemas</strong>.
+  </p>
+
+  <p>
+    El proyecto fue ejecutado en el periodo comprendido entre <strong>noviembre de 2025</strong>
+    y <strong>junio de 2026</strong>, cumpliendo con las actividades, objetivos y requerimientos
+    establecidos, demostrando responsabilidad, compromiso, profesionalismo y capacidad técnica
+    durante todo el desarrollo del sistema CRM con arquitectura distribuida, agentes de análisis
+    de leads (scoring, CAC, adquisición, probabilidad de compra y retención), worker Celery
+    y microservicio de agentes de inteligencia artificial.
+  </p>
+
+  <p>
+    Asimismo, manifiesto que los participantes realizaron sus labores de manera satisfactoria,
+    contribuyendo al fortalecimiento y mejora de los procesos comerciales y de seguimiento
+    de clientes dentro de la organización.
+  </p>
+
+  <p>
+    Por tal motivo, expreso mi conformidad con la finalización del proyecto y extiendo el
+    presente documento para los fines que los interesados consideren convenientes.
+  </p>
+
+  <p class="fecha">Lima, <strong>3 de julio de 2026</strong>.</p>
+
+  <div class="signatures-wrap">
+  <div class="signatures-students">
+    <div class="sig-block">
+      <div class="sig-line">
+        <img src="firma_angel.png" alt="Firma Angel Smith Juzcamayta Sánchez" />
+      </div>
+      <div class="sig-label">
+        Estudiante:<br />
+        <strong>Juzcamayta Sánchez, Angel Smith</strong><br />
+        DNI: 77347183
+      </div>
+    </div>
+    <div class="sig-block">
+      <div class="sig-line">
+        <img src="firma_diego_sig.png" alt="Firma Accostupa Ttito, Diego Remigio" />
+      </div>
+      <div class="sig-label">
+        Estudiante:<br />
+        <strong>Accostupa Ttito, Diego Remigio</strong><br />
+        DNI: 75068757
+      </div>
+    </div>
+  </div>
+
+  <div class="sig-representative">
+    <img class="sello" src="sello_rrhh.png" alt="Sello y firma Orbes Agrícola — RRHH" />
+    <div class="line">
+      <strong>Magaly Pareja Guerrero</strong><br />
+      Gerencia de Recursos Humanos<br />
+      Orbes Agrícola S.A.C. — R.U.C. 20421367605<br />
+      Firma y sello del Representante Legal
+    </div>
+  </div>
+  </div>
+
+</body>
+</html>

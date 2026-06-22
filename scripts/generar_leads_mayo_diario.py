@@ -40,7 +40,7 @@ DAILY_PATTERNS = [
 ]
 
 CANALES = [1, 2, 3, 4, 5]
-BIENES = [1, 3, 4, 5, 7]
+BIENES = [1, 2, 3, 4, 5, 7, 14]
 
 MESES_ES = {
     1: "enero",
@@ -107,7 +107,32 @@ def fetch_pools(cur):
         ORDER BY id
         """
     )
-    clientes = cur.fetchall() or []
+    clientes = list(cur.fetchall() or [])
+
+    # Reciclar también clientes que ya aparecen en leads recientes
+    cur.execute(
+        """
+        SELECT nombre, ruc_dni, telefono, email, contacto,
+               direccion, departamento, provincia, distrito
+        FROM (
+            SELECT nombre, ruc_dni, telefono, email, contacto,
+                   direccion, departamento, provincia, distrito
+            FROM leads
+            WHERE ruc_dni IS NOT NULL AND TRIM(ruc_dni) <> ''
+              AND fecha >= DATE_SUB(CURDATE(), INTERVAL 120 DAY)
+            GROUP BY ruc_dni, nombre, telefono, email, contacto,
+                     direccion, departamento, provincia, distrito
+            ORDER BY MAX(id) DESC
+            LIMIT 400
+        ) recientes
+        """
+    )
+    seen = {(c.get("ruc_dni") or "").strip() for c in clientes}
+    for row in cur.fetchall() or []:
+        key = (row.get("ruc_dni") or "").strip()
+        if key and key not in seen:
+            clientes.append(row)
+            seen.add(key)
 
     cur.execute(
         """
@@ -187,8 +212,8 @@ def insert_lead_bundle(cur, payload, seq):
         INSERT INTO leads
         (codigo, fecha, telefono, ruc_dni, nombre, canal_id, contacto,
          departamento, provincia, distrito, direccion, email,
-         bien_servicio_id, asignado_a, comentario, feria_id)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NULL)
+         bien_servicio_id, asignado_a, comentario, feria_id, negocio_id)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NULL,%s)
         """,
         (
             payload["codigo"],
@@ -206,6 +231,7 @@ def insert_lead_bundle(cur, payload, seq):
             payload["bien_servicio_id"],
             payload["asignado_a"],
             payload["comentario"],
+            ORBES_NEGOCIO_ID,
         ),
     )
     lead_id = cur.lastrowid
@@ -303,6 +329,7 @@ def main():
             print("No hay clientes en la BD.")
             return 1
 
+        random.shuffle(clientes)
         codigo_counter = {"n": None}
         seq = 0
         stats = {"total": 0, "con_cliente": 0, "nuevo_sin_campana": 0, "con_campana": 0}
@@ -343,8 +370,8 @@ def main():
                     stats["nuevo_sin_campana"] += 1
 
                 asignado = asesores[seq % len(asesores)]
-                canal_id = CANALES[seq % len(CANALES)]
-                bien_id = BIENES[seq % len(BIENES)]
+                canal_id = random.choice(CANALES)
+                bien_id = random.choice(BIENES)
                 bien_nombre = bienes_map.get(bien_id, "producto agrícola")
 
                 link_campana = seq % 4 == 0  # ~25% intentan campaña si hay periodo activo
