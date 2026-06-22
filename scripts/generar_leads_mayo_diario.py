@@ -301,6 +301,11 @@ def main():
     parser.add_argument("--to", dest="date_to", default=date.today().isoformat())
     parser.add_argument("--seed", type=int, default=20260501, help="Semilla random")
     parser.add_argument("--force", action="store_true", help="Generar aunque ya existan leads en el rango")
+    parser.add_argument(
+        "--fill",
+        action="store_true",
+        help="Solo completar días con menos leads de lo habitual (sin duplicar)",
+    )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
@@ -320,8 +325,8 @@ def main():
             (start, end),
         )
         existing = int(cur.fetchone()["n"])
-        if existing and not args.force:
-            print(f"Ya hay {existing} leads entre {start} y {end}. Use --force para continuar.")
+        if existing and not args.force and not args.fill:
+            print(f"Ya hay {existing} leads entre {start} y {end}. Use --force o --fill.")
             return 1
 
         clientes, asesores, campanas, motivo_default, bienes_map = fetch_pools(cur)
@@ -332,42 +337,39 @@ def main():
         random.shuffle(clientes)
         codigo_counter = {"n": None}
         seq = 0
-        stats = {"total": 0, "con_cliente": 0, "nuevo_sin_campana": 0, "con_campana": 0}
+        stats = {"total": 0, "con_cliente": 0, "con_campana": 0}
         by_day = {}
         by_proceso = {k: 0 for k in PROCESO}
 
         cliente_idx = 0
         for day in daterange(start, end):
             n_day = leads_per_day(day)
+            if args.fill:
+                cur.execute("SELECT COUNT(*) AS n FROM leads WHERE fecha = %s", (day,))
+                n_day = max(0, n_day - int(cur.fetchone()["n"]))
+                if n_day == 0:
+                    continue
+
             pattern = DAILY_PATTERNS[day.toordinal() % len(DAILY_PATTERNS)]
             procesos = build_proceso_queue(pattern, n_day)
             by_day[day.isoformat()] = n_day
 
             for proceso in procesos:
                 seq += 1
-                use_existing = seq % 10 != 0  # ~90% clientes existentes, 10% contactos nuevos
-
-                if use_existing:
-                    c = clientes[cliente_idx % len(clientes)]
-                    cliente_idx += 1
-                    nombre = (c.get("nombre") or "Cliente").strip()[:120]
-                    ruc_dni = (c.get("ruc_dni") or "").strip()[:20]
-                    telefono = (c.get("telefono") or f"9{seq:08d}")[:20]
-                    email = (c.get("email") or "")[:120]
-                    contacto = (c.get("contacto") or nombre)[:120]
-                    direccion = (c.get("direccion") or "")[:200]
-                    depto = (c.get("departamento") or "")[:80]
-                    prov = (c.get("provincia") or "")[:80]
-                    dist = (c.get("distrito") or "")[:80]
-                    stats["con_cliente"] += 1
-                else:
-                    nombre = f"Prospecto Agro {seq}"
-                    ruc_dni = f"DEMO{day.strftime('%y%m%d')}{seq:04d}"
-                    telefono = f"98{seq:08d}"[-9:]
-                    email = f"prospecto{seq}@demo.local"
-                    contacto = nombre
-                    direccion = depto = prov = dist = ""
-                    stats["nuevo_sin_campana"] += 1
+                c = clientes[cliente_idx % len(clientes)]
+                cliente_idx += 1
+                nombre = (c.get("nombre") or "Cliente").strip()[:120]
+                ruc_dni = (c.get("ruc_dni") or "").strip()[:20]
+                if not ruc_dni:
+                    continue
+                telefono = (c.get("telefono") or f"9{seq:08d}")[:20]
+                email = (c.get("email") or "")[:120]
+                contacto = (c.get("contacto") or nombre)[:120]
+                direccion = (c.get("direccion") or "")[:200]
+                depto = (c.get("departamento") or "")[:80]
+                prov = (c.get("provincia") or "")[:80]
+                dist = (c.get("distrito") or "")[:80]
+                stats["con_cliente"] += 1
 
                 asignado = asesores[seq % len(asesores)]
                 canal_id = random.choice(CANALES)
@@ -418,8 +420,7 @@ def main():
 
         print(f"Rango: {start} a {end}")
         print(f"Leads generados: {stats['total']}")
-        print(f"  Con cliente existente: {stats['con_cliente']}")
-        print(f"  Contactos nuevos (sin campaña): {stats['nuevo_sin_campana']}")
+        print(f"  Con cliente real: {stats['con_cliente']}")
         print(f"  Vinculados a campaña activa: {stats['con_campana']}")
         print("Por proceso:")
         for name, pid in PROCESO.items():
