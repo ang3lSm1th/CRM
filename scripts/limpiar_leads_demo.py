@@ -19,6 +19,21 @@ DEMO_WHERE = """
     OR email LIKE '%%@demo.local'
 """
 
+# Orden: tablas hijas antes que leads (ventas_concretadas bloquea el DELETE)
+CHILD_TABLES = (
+    "ventas_concretadas",
+    "marketing_campaign_leads",
+    "lead_tractor_guardados",
+    "notificaciones_venta",
+    "lead_agent_state",
+    "agent_interactions",
+    "agent_predictions",
+    "lead_cambios",
+    "leads_fecha_backup_demo",
+    "leads_fecha_backup_cerrado_demo",
+    "seguimientos",
+)
+
 
 def connect():
     return MySQLdb.connect(
@@ -29,6 +44,22 @@ def connect():
         port=int(os.getenv("MYSQL_PORT", "3307")),
         charset="utf8mb4",
     )
+
+
+def _delete_children(cur, ids):
+    placeholders = ",".join(["%s"] * len(ids))
+    deleted = {}
+    for table in CHILD_TABLES:
+        try:
+            cur.execute(
+                f"DELETE FROM {table} WHERE lead_id IN ({placeholders})",
+                ids,
+            )
+            if cur.rowcount:
+                deleted[table] = cur.rowcount
+        except MySQLdb.ProgrammingError:
+            pass
+    return deleted
 
 
 def main():
@@ -58,20 +89,11 @@ def main():
         ids = [int(r["id"]) for r in rows]
         placeholders = ",".join(["%s"] * len(ids))
 
-        for table, col in (
-            ("marketing_campaign_leads", "lead_id"),
-            ("lead_agent_state", "lead_id"),
-            ("agent_interactions", "lead_id"),
-            ("lead_cambios", "lead_id"),
-            ("seguimientos", "lead_id"),
-        ):
-            try:
-                cur.execute(
-                    f"DELETE FROM {table} WHERE {col} IN ({placeholders})",
-                    ids,
-                )
-            except MySQLdb.OperationalError:
-                pass
+        removed = _delete_children(cur, ids)
+        if removed:
+            print("Registros hijos eliminados:")
+            for table, count in removed.items():
+                print(f"  {table}: {count}")
 
         cur.execute(f"DELETE FROM leads WHERE id IN ({placeholders})", ids)
         conn.commit()
