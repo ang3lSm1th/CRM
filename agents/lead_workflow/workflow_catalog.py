@@ -20,42 +20,41 @@ NODE_INDEX = {
 
 SCORING_SUB_AGENTS = [
     {
-        "agent": "cac_agent",
-        "label": "Agente CAC",
+        "agent": "costo_adquisicion_agent",
+        "label": "Costo de adquisición",
         "tools": [
             "SQL: marketing_campaigns.inversion",
             "SQL: ventas_concretadas",
             "SQL: leads + canal_id",
-            "Calc: CAC canal / ROI score",
+            "Calc: CALC = DGA / NLC",
         ],
     },
     {
-        "agent": "acquisition_rate_agent",
-        "label": "Agente Tasa Adquisición",
+        "agent": "tasa_adquisicion_agent",
+        "label": "Tasa de adquisición",
         "tools": [
             "SQL: leads por canal",
             "SQL: seguimientos (embudo)",
             "SQL: ventas_concretadas por canal",
-            "Calc: tasa_canal, tasa_asesor",
+            "Calc: TDA = (NLC / NLO) × 100",
         ],
     },
     {
-        "agent": "purchase_probability_agent",
-        "label": "Agente Probabilidad Compra",
+        "agent": "tasa_retencion_agent",
+        "label": "Tasa de retención",
         "tools": [
-            "ML: modelo_compra.pkl (scikit-learn)",
-            "SQL: seguimientos + proceso",
-            "SQL: ventas_concretadas históricas",
-            "Calc: score 0-100 + motivos",
-        ],
-    },
-    {
-        "agent": "retention_agent",
-        "label": "Agente Retención / Abandono",
-        "tools": [
-            "SQL: días último seguimiento",
             "SQL: compras históricas lead",
-            "Calc: retention_score + riesgo_abandono",
+            "SQL: días último seguimiento",
+            "Calc: TDR score por lead",
+        ],
+    },
+    {
+        "agent": "tasa_abandono_agent",
+        "label": "Tasa de abandono",
+        "tools": [
+            "Calc: TDA = 100 − TDR",
+            "SQL: inactividad del lead",
+            "Calc: riesgo_abandono + acciones",
         ],
     },
 ]
@@ -152,10 +151,10 @@ def get_workflow_catalog():
         "pattern": "StateGraph (scoring → assignment → commercial ⇄ recovery → closing | dead | completed)",
         "pipeline": PIPELINE,
         "scoring_weights": {
-            "cac": 0.20,
-            "acquisition": 0.20,
-            "purchase_probability": 0.35,
-            "retention": 0.25,
+            "costo_adquisicion": 0.30,
+            "tasa_adquisicion": 0.30,
+            "tasa_retencion": 0.20,
+            "tasa_abandono": 0.20,
         },
     }
 
@@ -164,15 +163,10 @@ def enrich_scoring_step(scoring_result):
     """Mapea salidas de scoring a sub-agentes con score y detalle."""
     outputs = scoring_result.get("agent_outputs") or {}
     mapping = [
-        ("cac_agent", "cac", "roi_score", "cac_canal"),
-        ("acquisition_rate_agent", "acquisition", "acquisition_score", "tasa_canal"),
-        (
-            "purchase_probability_agent",
-            "purchase_probability",
-            "purchase_score",
-            "probabilidad_compra",
-        ),
-        ("retention_agent", "retention", "retention_score", "riesgo_abandono"),
+        ("costo_adquisicion_agent", "costo_adquisicion", "roi_score", "costo_adquisicion"),
+        ("tasa_adquisicion_agent", "tasa_adquisicion", "acquisition_score", "tasa_adquisicion"),
+        ("tasa_retencion_agent", "tasa_retencion", "retention_score", "tasa_retencion"),
+        ("tasa_abandono_agent", "tasa_abandono", "abandonment_score", "tasa_abandono"),
     ]
     enriched = []
     sub_by_agent = {s["agent"]: s for s in SCORING_SUB_AGENTS}

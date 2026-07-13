@@ -1,4 +1,4 @@
-"""Agente 2: Tasa de adquisición (lead → oportunidad) por canal y asesor.
+"""Agente: Tasa de adquisición (TDA = NLC / NLO × 100).
 
 WORKFLOW · PASO 1.2 — Sub-agente de scoring (lead_scoring.analyze)
 """
@@ -10,8 +10,8 @@ import MySQLdb.cursors
 from extensions import mysql
 
 
-class AcquisitionRateAgent:
-    AGENT_NAME = "acquisition_rate_agent"
+class TasaAdquisicionAgent:
+    AGENT_NAME = "tasa_adquisicion_agent"
 
     def __init__(self):
         self.negocio_id = int(os.getenv("ORBES_NEGOCIO_ID", "1"))
@@ -131,6 +131,7 @@ class AcquisitionRateAgent:
             "ok": True,
             "lead_id": lead_id,
             "canal": canal_nombre,
+            "tasa_adquisicion": tasa_canal,
             "tasa_conversion_canal": tasa_canal,
             "tasa_contacto_canal": tasa_contacto,
             "tasa_conversion_asesor": tasa_asesor,

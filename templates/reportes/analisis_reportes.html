@@ -117,39 +117,23 @@
         margin-top: 0.25rem;
     }
 
-    .kpi-live-card.accent-green .value { color: #00796b; }
-    .kpi-live-card.accent-purple .value { color: #6a1b9a; }
-    .kpi-live-card.accent-red .value { color: #c62828; }
+    .kpi-live-card.accent-green .value {
+        color: #00796b;
+    }
+
+    .kpi-live-card.accent-purple .value {
+        color: #6a1b9a;
+    }
+
+    .kpi-live-card.accent-red .value {
+        color: #c62828;
+    }
 
     .kpi-live-card.btn-card {
         display: flex;
         align-items: center;
         justify-content: center;
         min-height: 110px;
-    }
-
-    .pdc-mini-table th {
-        background: #e0f2f1;
-        color: #00796b;
-        font-size: 0.75rem;
-        text-align: center;
-    }
-
-    .pdc-mini-table td {
-        font-size: 0.8rem;
-        text-align: center;
-        vertical-align: middle;
-    }
-
-    .pdc-mini-table td:nth-child(2) {
-        text-align: left;
-    }
-
-    .pdc-section-title {
-        font-size: 0.9rem;
-        font-weight: 700;
-        color: #00796b;
-        margin: 1rem 0 0.5rem;
     }
 
     .empty-hint {
@@ -167,7 +151,7 @@
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
             <div>
                 <h2 class="mb-1 fw-bold"><i class="fas fa-chart-line me-2"></i>Análisis de Reportes</h2>
-                <p class="mb-0 opacity-75 small">Selecciona una campaña para ver sus 5 variables en tiempo real</p>
+                <p class="mb-0 opacity-75 small">Selecciona una campaña para ver sus 4 variables en tiempo real</p>
             </div>
             <div class="text-end">
                 <div class="opacity-75 small">Periodo</div>
@@ -183,8 +167,11 @@
                     <label class="form-label small mb-1">Mes</label>
                     <select name="month" id="month" class="form-select form-select-sm">
                         <option value="0" {% if month_all %}selected{% endif %}>Todo el año</option>
-                        {% for m, label in [(1,'Enero'),(2,'Febrero'),(3,'Marzo'),(4,'Abril'),(5,'Mayo'),(6,'Junio'),(7,'Julio'),(8,'Agosto'),(9,'Septiembre'),(10,'Octubre'),(11,'Noviembre'),(12,'Diciembre')] %}
-                        <option value="{{ m }}" {% if not month_all and month==m %}selected{% endif %}>{{ label }}</option>
+                        {% for m, label in
+                        [(1,'Enero'),(2,'Febrero'),(3,'Marzo'),(4,'Abril'),(5,'Mayo'),(6,'Junio'),(7,'Julio'),(8,'Agosto'),(9,'Septiembre'),(10,'Octubre'),(11,'Noviembre'),(12,'Diciembre')]
+                        %}
+                        <option value="{{ m }}" {% if not month_all and month==m %}selected{% endif %}>{{ label }}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -197,7 +184,8 @@
                     </select>
                 </div>
                 <div class="col-auto">
-                    <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter me-1"></i>Aplicar</button>
+                    <button type="submit" class="btn btn-sm btn-primary"><i
+                            class="fas fa-filter me-1"></i>Aplicar</button>
                 </div>
             </form>
         </div>
@@ -272,11 +260,6 @@
                 <div class="value" id="v-abandono">—</div>
                 <div class="label">Tasa abandono</div>
             </div>
-            <div class="kpi-live-card accent-green">
-                <div class="formula">PDC = (MTP/MPC)<sup>NCMTP</sup> × 100</div>
-                <div class="value" id="v-pdc">—</div>
-                <div class="label">PDC promedio campaña</div>
-            </div>
         </div>
 
         <div class="px-3 pb-3">
@@ -286,9 +269,6 @@
                 <div class="col-md-2"><strong>NLO:</strong> <span id="v-nlo">—</span></div>
                 <div class="col-md-2"><strong>NCCCACA:</strong> <span id="v-ncccaca">—</span></div>
                 <div class="col-md-2"><strong>NTCCCA:</strong> <span id="v-ntccca">—</span></div>
-                <div class="col-md-2"><strong>MTP:</strong> <span id="v-mtp">—</span></div>
-                <div class="col-md-2"><strong>MPC:</strong> <span id="v-mpc">—</span></div>
-                <div class="col-md-2"><strong>Clientes:</strong> <span id="v-pdc-total">—</span></div>
             </div>
 
         </div>
@@ -310,126 +290,78 @@
 
 {% block scripts %}
 <script>
-(function () {
-    const meses = {1:'Enero',2:'Febrero',3:'Marzo',4:'Abril',5:'Mayo',6:'Junio',7:'Julio',8:'Agosto',9:'Septiembre',10:'Octubre',11:'Noviembre',12:'Diciembre'};
-    const selMonth = document.getElementById('month');
-    const selYear = document.getElementById('year');
-    const disp = document.getElementById('periodo-display');
+    (function () {
+        const meses = { 1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril', 5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto', 9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre' };
+        const selMonth = document.getElementById('month');
+        const selYear = document.getElementById('year');
+        const disp = document.getElementById('periodo-display');
+        const defaultMonth = Number('{{ month }}');
 
-    function getPeriodLabel() {
-        const m = Number(selMonth?.value ?? {{ month }});
-        const y = selYear?.value || '{{ year }}';
-        if (m === 0) return `Año ${y} (todo)`;
-        return `${meses[m] || 'Mes'} ${y}`;
-    }
-    if (disp) disp.textContent = getPeriodLabel();
-
-    selMonth?.addEventListener('change', () => { if (disp) disp.textContent = getPeriodLabel(); });
-    selYear?.addEventListener('change', () => { if (disp) disp.textContent = getPeriodLabel(); });
-
-    const rows = document.querySelectorAll('.campana-row');
-    const loading = document.getElementById('live-loading');
-    let activeId = null;
-
-    function fmtMoney(v) { return `S/ ${Number(v || 0).toFixed(2)}`; }
-    function fmtPct(v) { return `${Number(v || 0).toFixed(2)}%`; }
-
-    function applyCampana(c) {
-        document.getElementById('live-campana-nombre').textContent = c.nombre || 'Campaña';
-        document.getElementById('live-campana-periodo').textContent =
-            c.periodo_inicio && c.periodo_fin
-                ? `${c.periodo_inicio} → ${c.periodo_fin}`
-                : '';
-
-        document.getElementById('v-calc').textContent = fmtMoney(c.calc);
-        document.getElementById('v-tda').textContent = fmtPct(c.tda_acq);
-        document.getElementById('v-tdr').textContent = fmtPct(c.tdr);
-        document.getElementById('v-abandono').textContent = fmtPct(c.tda_ret);
-        document.getElementById('v-dga').textContent = fmtMoney(c.dga);
-        document.getElementById('v-nlc').textContent = c.nlc ?? '—';
-        document.getElementById('v-nlo').textContent = c.nlo ?? '—';
-        document.getElementById('v-ncccaca').textContent = c.ncccaca ?? '—';
-        document.getElementById('v-ntccca').textContent = c.ntccca ?? '—';
-        document.getElementById('v-pdc').textContent = fmtPct(c.pdc_promedio);
-
-        const firstCl = (c.pdc_clientes || [])[0];
-        document.getElementById('v-mtp').textContent = firstCl?.mtp ?? '—';
-        document.getElementById('v-mpc').textContent = firstCl?.mpc ?? '—';
-        document.getElementById('v-pdc-total').textContent =
-            c.pdc_total_clientes ?? (c.pdc_clientes || []).length ?? '—';
-
-        const clientes = c.pdc_clientes || [];
-        const total = c.pdc_total_clientes ?? clientes.length;
-        const hint = document.getElementById('pdc-table-hint');
-        if (hint) {
-            hint.textContent = total > clientes.length
-                ? `Mostrando ${clientes.length} de ${total} clientes`
-                : `${total} clientes`;
+        function getPeriodLabel() {
+            const m = Number(selMonth?.value || defaultMonth);
+            const y = selYear?.value || '{{ year }}';
+            if (m === 0) return `Año ${y} (todo)`;
+            return `${meses[m] || 'Mes'} ${y}`;
         }
-        const tbody = document.getElementById('pdc-tbody');
-        if (tbody) {
-            if (!clientes.length) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Cargando clientes…</td></tr>';
-                return;
-            }
-            tbody.innerHTML = clientes.map((cl, i) => `
-                <tr>
-                    <td>${i + 1}</td>
-                    <td>${cl.cliente || '—'}</td>
-                    <td>${cl.mtp ?? '—'}</td>
-                    <td>${cl.mpc ?? '—'}</td>
-                    <td>${cl.ncmtp ?? 0}</td>
-                    <td><strong>${Number(cl.pdc || 0).toFixed(2)}%</strong></td>
-                </tr>
-            `).join('');
+        if (disp) disp.textContent = getPeriodLabel();
+
+        selMonth?.addEventListener('change', () => { if (disp) disp.textContent = getPeriodLabel(); });
+        selYear?.addEventListener('change', () => { if (disp) disp.textContent = getPeriodLabel(); });
+
+        const rows = document.querySelectorAll('.campana-row');
+        const loading = document.getElementById('live-loading');
+        let activeId = null;
+
+        function fmtMoney(v) { return `S/ ${Number(v || 0).toFixed(2)}`; }
+        function fmtPct(v) { return `${Number(v || 0).toFixed(2)}%`; }
+
+        function applyCampana(c) {
+            document.getElementById('live-campana-nombre').textContent = c.nombre || 'Campaña';
+            document.getElementById('live-campana-periodo').textContent =
+                c.periodo_inicio && c.periodo_fin
+                    ? `${c.periodo_inicio} → ${c.periodo_fin}`
+                    : '';
+
+            document.getElementById('v-calc').textContent = fmtMoney(c.calc);
+            document.getElementById('v-tda').textContent = fmtPct(c.tda_acq);
+            document.getElementById('v-tdr').textContent = fmtPct(c.tdr);
+            document.getElementById('v-abandono').textContent = fmtPct(c.tda_ret);
+            document.getElementById('v-dga').textContent = fmtMoney(c.dga);
+            document.getElementById('v-nlc').textContent = c.nlc ?? '—';
+            document.getElementById('v-nlo').textContent = c.nlo ?? '—';
+            document.getElementById('v-ncccaca').textContent = c.ncccaca ?? '—';
+            document.getElementById('v-ntccca').textContent = c.ntccca ?? '—';
         }
-    }
 
-    const campanasLocal = JSON.parse(document.getElementById('campanas-json')?.textContent || '[]');
+        const campanasLocal = JSON.parse(document.getElementById('campanas-json')?.textContent || '[]');
 
-    function findCampana(campaignId) {
-        return campanasLocal.find(r => Number(r.campaign_id) === Number(campaignId));
-    }
+        function findCampana(campaignId) {
+            return campanasLocal.find(r => Number(r.campaign_id) === Number(campaignId));
+        }
 
-    async function loadCampana(campaignId) {
-        if (!campaignId) return;
-        rows.forEach(r => r.classList.toggle('active', Number(r.dataset.campaignId) === Number(campaignId)));
-        activeId = campaignId;
+        async function loadCampana(campaignId) {
+            if (!campaignId) return;
+            rows.forEach(r => r.classList.toggle('active', Number(r.dataset.campaignId) === Number(campaignId)));
+            activeId = campaignId;
 
-        const base = findCampana(campaignId);
-        if (base) applyCampana(base);
-
-        if (loading) loading.style.display = 'inline-block';
-        try {
-            const res = await fetch(`/reportes/api/campana-detalle/${campaignId}`, {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            });
-            const data = await res.json();
-            if (!data.ok) throw new Error(data.message || 'Error');
-            applyCampana({ ...(base || {}), ...data });
-        } catch (e) {
-            const tbody = document.getElementById('pdc-tbody');
-            if (tbody) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No se pudo cargar el detalle PDC</td></tr>';
-            }
-        } finally {
+            const base = findCampana(campaignId);
+            if (base) applyCampana(base);
             if (loading) loading.style.display = 'none';
         }
-    }
 
-    rows.forEach(row => {
-        row.addEventListener('click', () => loadCampana(row.dataset.campaignId));
-        row.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                loadCampana(row.dataset.campaignId);
-            }
+        rows.forEach(row => {
+            row.addEventListener('click', () => loadCampana(row.dataset.campaignId));
+            row.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    loadCampana(row.dataset.campaignId);
+                }
+            });
         });
-    });
 
-    if (rows.length) {
-        loadCampana(rows[0].dataset.campaignId);
-    }
-})();
+        if (rows.length) {
+            loadCampana(rows[0].dataset.campaignId);
+        }
+    })();
 </script>
 {% endblock %}

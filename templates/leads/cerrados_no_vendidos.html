@@ -151,7 +151,6 @@
                 <th>Email</th>
                 <th>Comentario</th>
                 <th>Asignado a</th>
-                <th>Prediccion Compra</th>
             </tr>
         </thead>
         <tbody>
@@ -189,7 +188,6 @@
                 <td class="cell comentario" title="{{ l.comentario or '' }}">{{ (l.comentario or '')|truncate(40, True)
                     }}</td>
                 <td class="cell">{{ l.asignado_a or '' }}</td>
-                <td>{% include "leads/_prediction_cell.html" %}</td>
             </tr>
             {% else %}
             <tr>

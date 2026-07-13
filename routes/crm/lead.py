@@ -47,11 +47,9 @@ import requests
 import json
 import ast
 from services.tractor_state_agent import TractorStateAgent
-from agents.core.prediccion_agente import PrediccionCompraAgente
 
 # Blueprint principal de leads (namespace 'leads')
 lead_bp = Blueprint("leads", __name__)
-prediccion_agente = PrediccionCompraAgente()
 
 
 @lead_bp.before_request
@@ -911,8 +909,6 @@ def _list_leads_by_status(list_func, template_name):
 
     # Cargar los nombres de geolocalización
     departamentos_map, provincias_map, distritos_map = _get_geoloc_maps(leads)
-    lead_predictions = prediccion_agente.predict_percentages_for_leads(leads)
-
     return render_template(
         template_name,
         leads=leads,
@@ -928,7 +924,6 @@ def _list_leads_by_status(list_func, template_name):
         departamentos_map=departamentos_map,
         provincias_map=provincias_map,
         distritos_map=distritos_map,
-        lead_predictions=lead_predictions,
         show_all=show_all,
     )
 
@@ -1016,7 +1011,6 @@ def list_leads():
 
     # ========= OPCIÓN 2: solo cargar ids necesarios =========
     departamentos_map, provincias_map, distritos_map = _get_geoloc_maps(leads)
-    lead_predictions = prediccion_agente.predict_percentages_for_leads(leads)
     # =======================================================
 
     return render_template(
@@ -1034,7 +1028,6 @@ def list_leads():
         departamentos_map=departamentos_map,
         provincias_map=provincias_map,
         distritos_map=distritos_map,
-        lead_predictions=lead_predictions,
         logged_user_name=session.get("nombre", ""),
         logged_user_username=session.get("username", ""),
     )

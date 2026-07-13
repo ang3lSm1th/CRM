@@ -95,8 +95,6 @@ _DOMAIN_VOCAB = {
     "abandono",
     "inactividad",
     "riesgo",
-    "prediccion",
-    "probabilidad",
     "compra",
     "maquinaria",
     "tractor",

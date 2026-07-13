@@ -150,13 +150,6 @@
               </a>
             </li>
             <li>
-              <a href="{{ url_for('reportes.dashboard_recompra_clientes') }}"
-                class="{{ 'active' if request.path == url_for('reportes.dashboard_recompra_clientes') else '' }}">
-                <i class="bi bi-activity"></i>
-                <span>Probabilidad de Compra</span>
-              </a>
-            </li>
-            <li>
               <a href="{{ url_for('reporte_rapido.reporte_rapido') }}">
                 <i class="bi bi-file-earmark-bar-graph"></i>
                 <span>Resumen de Reporte</span>
@@ -217,13 +210,6 @@
                 <span>Análisis de Reportes</span>
               </a>
             </li>
-            <li>
-              <a href="{{ url_for('reportes.dashboard_recompra_clientes') }}"
-                class="{{ 'active' if request.path == url_for('reportes.dashboard_recompra_clientes') else '' }}">
-                <i class="bi bi-activity"></i>
-                <span>Probabilidad de Compra</span>
-              </a>
-            </li>
             {% if user_role == "administrador" %}
             <li>
               <a href="{{ url_for('marketing.marketing_api_config') }}">
@@ -274,13 +260,6 @@
                 <span>Análisis de Reportes</span>
               </a>
             </li>
-            <li>
-              <a href="{{ url_for('reportes.dashboard_recompra_clientes') }}"
-                class="{{ 'active' if request.path == url_for('reportes.dashboard_recompra_clientes') else '' }}">
-                <i class="bi bi-activity"></i>
-                <span>Probabilidad de Compra</span>
-              </a>
-            </li>
           </ul>
         </div>
         {% else %}
@@ -294,13 +273,6 @@
               <a href="{{ url_for('reporte_rapido.reporte_rapido') }}">
                 <i class="bi bi-file-earmark-bar-graph"></i>
                 <span>Resumen de Reporte</span>
-              </a>
-            </li>
-            <li>
-              <a href="{{ url_for('reportes.dashboard_recompra_clientes') }}"
-                class="{{ 'active' if request.path == url_for('reportes.dashboard_recompra_clientes') else '' }}">
-                <i class="bi bi-activity"></i>
-                <span>Probabilidad de Compra</span>
               </a>
             </li>
           </ul>

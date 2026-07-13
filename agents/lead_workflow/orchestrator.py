@@ -1,26 +1,3 @@
-"""
-Orquestador del workflow multiagente de leads (diagrama TO-BE).
-
-# ═══ WORKFLOW LEADS · MAPA DE COMUNICACIÓN MULTIAGENTE ═══
-# INICIO   routes/lead.py → trigger_workflow_for_new_lead() al crear lead
-#          routes/lead_workflow.py → POST /lead_workflow/process
-#
-# PASO 1   _run_scoring()        → lead_scoring.py (+ 4 sub-agentes de análisis)
-# PASO 2   _run_assignment()     → commercial_assistant.assign_advisor()
-# PASO 3   _run_commercial_contact() → commercial_assistant.contact() [máx. 2 intentos]
-# PASO 4   _run_recovery_contact()  → recovery_agent [si no responde]
-# PASO 5   _run_closing()        → closing_agent [si responde / venta]
-# FIN      nodo completed | dead | awaiting_response (espera webhook/manual)
-#
-# Cada paso registra en state_store.log_interaction() → tabla agent_interactions
-# ═══════════════════════════════════════════════════════════════════════════════
-
-Flujo:
-  scoring (4 agentes) → assignment → commercial (2 intentos)
-  → recovery (2 intentos) | closing | dead | completed
-
-Implementa un grafo de estados explícito (patrón LangGraph) sin dependencia externa.
-"""
 
 import logging
 import os

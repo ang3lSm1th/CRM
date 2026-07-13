@@ -1,4 +1,4 @@
-"""Agente 1: Costo de Adquisición (CAC) por lead, campaña y canal.
+"""Agente: Costo de adquisición (CALC = DGA / NLC).
 
 WORKFLOW · PASO 1.1 — Sub-agente de scoring (lead_scoring.analyze)
 """
@@ -10,8 +10,8 @@ import MySQLdb.cursors
 from extensions import mysql
 
 
-class CACAgent:
-    AGENT_NAME = "cac_agent"
+class CostoAdquisicionAgent:
+    AGENT_NAME = "costo_adquisicion_agent"
 
     def __init__(self):
         self.negocio_id = int(os.getenv("ORBES_NEGOCIO_ID", "1"))
@@ -139,6 +139,7 @@ class CACAgent:
             "agent": self.AGENT_NAME,
             "ok": True,
             "lead_id": lead_id,
+            "costo_adquisicion": cac_canal,
             "cac_canal": cac_canal,
             "cac_campana": cac_campana,
             "inversion_referencia": inversion_total,

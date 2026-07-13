@@ -1,12 +1,7 @@
-"""KPIs por campaña (pretest): TDA, TDR, abandono, CALC y cohortes para PDC."""
+"""KPIs por campaña (pretest): TDA, TDR, abandono y CALC."""
 
 from calendar import monthrange
 from datetime import timedelta
-
-from services.pdc_cliente_service import (
-    PRETEST_PDC_PROMEDIO,
-    fetch_pdc_for_campaign,
-)
 
 NLO_OBJETIVO = 260
 DGA_DEFAULT = 260.0
@@ -168,7 +163,6 @@ def compute_campaign_pretest_rows(
     nlo=NLO_OBJETIVO,
     month_from=1,
     month_to=12,
-    include_pdc_detail=False,
 ):
     cliente_expr = _cliente_key_expr("l")
     lead_scope_clause = ""
@@ -262,15 +256,6 @@ def compute_campaign_pretest_rows(
             tdr = float(PRETEST_RETENTION_REF.get(camp_num, {}).get("tdr", tdr))
         tda_ret = round(100 - tdr, 2)
 
-        if include_pdc_detail:
-            pdc_clientes, pdc_promedio, pdc_total = fetch_pdc_for_campaign(
-                cur, campaign_id, limit=50, camp_num=camp_num
-            )
-        else:
-            pdc_clientes = []
-            pdc_promedio = float(PRETEST_PDC_PROMEDIO.get(camp_num, 0.0))
-            pdc_total = nlc
-
         rows.append(
             {
                 "campaign_id": campaign_id,
@@ -288,9 +273,6 @@ def compute_campaign_pretest_rows(
                 "tdr": tdr,
                 "tda_ret": tda_ret,
                 "retention_source": retention_source,
-                "pdc_promedio": pdc_promedio,
-                "pdc_clientes": pdc_clientes,
-                "pdc_total_clientes": pdc_total,
             }
         )
         prev_nlc = nlc

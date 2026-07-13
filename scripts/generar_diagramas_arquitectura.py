@@ -291,12 +291,129 @@ def diagrama_estructura_carpetas():
     return path
 
 
+def diagrama_comunicacion_agentes_con_orquestador():
+    fig, ax = plt.subplots(figsize=(8, 12))
+    ax.set_xlim(0, 8)
+    ax.set_ylim(0, 12)
+    ax.axis("off")
+    ax.set_title("Comunicacion Entre Agentes Con Orquestador", fontsize=15, fontweight="bold", pad=14, color=C_TEXT)
+
+    # Flujo principal vertical
+    _box(ax, 2.2, 10.7, 3.6, 0.9, "Usuarios", C_CLIENT, fontsize=10, bold_title="")
+    _box(ax, 2.2, 9.3, 3.6, 0.9, "Frontend Web", C_WEB, fontsize=10, bold_title="")
+    _box(ax, 2.2, 7.9, 3.6, 0.9, "Backend API", C_WORKER, fontsize=10, bold_title="")
+    _box(ax, 2.2, 6.5, 3.6, 0.9, "Orquestador Multiagente", "#E8EAF6", fontsize=9.5, bold_title="")
+
+    # Contenedor de sistema multiagente
+    container = FancyBboxPatch(
+        (0.7, 3.2), 6.6, 2.8,
+        boxstyle="round,pad=0.03,rounding_size=0.08",
+        linewidth=1.4, edgecolor="#7E57C2", facecolor="#F3E5F5",
+        linestyle="dashed",
+    )
+    ax.add_patch(container)
+    ax.text(4.0, 5.85, "Sistema Multiagente", ha="center", va="center",
+            fontsize=10.5, color="#5E35B1", fontweight="bold")
+
+    _box(ax, 1.0, 3.8, 1.35, 1.55, "Agente\nCAC", "#E3F2FD", fontsize=9)
+    _box(ax, 2.55, 3.8, 1.35, 1.55, "Agente\nAdquisicion", "#E8F5E9", fontsize=8.8)
+    _box(ax, 4.1, 3.8, 1.35, 1.55, "Agente\nRetencion", "#F3E5F5", fontsize=8.8)
+    _box(ax, 5.65, 3.8, 1.35, 1.55, "Agente\nAbandono", "#FFEBEE", fontsize=8.8)
+
+    _cylinder(ax, 2.6, 1.6, 2.8, 1.2, "Base de Datos CRM", "#E0F7FA")
+    _box(ax, 2.0, 0.35, 4.0, 0.9, "Dashboards y Reportes", C_CLIENT, fontsize=10)
+
+    # Flechas verticales
+    _arrow(ax, 4.0, 10.7, 4.0, 10.2)
+    _arrow(ax, 4.0, 9.3, 4.0, 8.8)
+    _arrow(ax, 4.0, 7.9, 4.0, 7.4)
+    _arrow(ax, 4.0, 6.5, 4.0, 6.0)
+
+    # Flechas del orquestador a agentes
+    _arrow(ax, 4.0, 6.0, 1.7, 5.35)
+    _arrow(ax, 4.0, 6.0, 3.2, 5.35)
+    _arrow(ax, 4.0, 6.0, 4.8, 5.35)
+    _arrow(ax, 4.0, 6.0, 6.3, 5.35)
+
+    _arrow(ax, 4.0, 3.2, 4.0, 2.8)
+    _arrow(ax, 4.0, 1.6, 4.0, 1.25)
+
+    fig.tight_layout()
+    path = OUT / "comunicacion_agentes_orquestador.png"
+    fig.savefig(path, dpi=200, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    return path
+
+
+def diagrama_tarjetas_agentes_corregido():
+    fig, ax = plt.subplots(figsize=(14, 4))
+    ax.set_xlim(0, 14)
+    ax.set_ylim(0, 4)
+    ax.axis("off")
+    ax.set_title("Funciones De Agentes CRM", fontsize=15, fontweight="bold", pad=12, color=C_TEXT)
+
+    cards = [
+        {
+            "x": 0.3,
+            "title": "Agente CAC",
+            "body": "Calcula el costo de\nadquisicion y evalua la\neficiencia por campana\ny canal.",
+            "face": "#E3F2FD",
+            "edge": "#1976D2",
+        },
+        {
+            "x": 3.7,
+            "title": "Agente Adquisicion",
+            "body": "Analiza la conversion\nde leads y mide la\nefectividad comercial\nde las campanas.",
+            "face": "#E8F5E9",
+            "edge": "#2E7D32",
+        },
+        {
+            "x": 7.1,
+            "title": "Agente Retencion",
+            "body": "Evalua permanencia y\nrecurrencia de clientes,\ny propone acciones\nde fidelizacion.",
+            "face": "#F3E5F5",
+            "edge": "#6A1B9A",
+        },
+        {
+            "x": 10.5,
+            "title": "Agente Abandono",
+            "body": "Detecta riesgo de\ndesercion (churn) y\nprioriza acciones\npreventivas.",
+            "face": "#FFEBEE",
+            "edge": "#C62828",
+        },
+    ]
+
+    for i, card in enumerate(cards):
+        patch = FancyBboxPatch(
+            (card["x"], 0.7), 3.0, 2.6,
+            boxstyle="round,pad=0.02,rounding_size=0.08",
+            linewidth=1.4, edgecolor=card["edge"], facecolor=card["face"],
+        )
+        ax.add_patch(patch)
+        ax.text(card["x"] + 1.5, 2.8, card["title"], ha="center", va="center",
+                fontsize=11, fontweight="bold", color=card["edge"])
+        ax.plot([card["x"] + 0.15, card["x"] + 2.85], [2.45, 2.45], color="#B0BEC5", linewidth=1)
+        ax.text(card["x"] + 1.5, 1.55, card["body"], ha="center", va="center",
+                fontsize=9, color=C_TEXT, linespacing=1.3)
+
+        if i < len(cards) - 1:
+            _arrow(ax, card["x"] + 3.0, 2.0, cards[i + 1]["x"], 2.0, style="<->")
+
+    fig.tight_layout()
+    path = OUT / "tarjetas_agentes_corregido.png"
+    fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    return path
+
+
 if __name__ == "__main__":
     paths = [
         diagrama_arquitectura_general(),
         diagrama_flujo_lead(),
         diagrama_mapa_servicios(),
         diagrama_estructura_carpetas(),
+        diagrama_comunicacion_agentes_con_orquestador(),
+        diagrama_tarjetas_agentes_corregido(),
     ]
     for p in paths:
         print(f"Generado: {p}")

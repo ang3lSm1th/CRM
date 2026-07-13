@@ -51,9 +51,36 @@ def _paragraph_height(draw, text, font, max_width, line_gap=8):
     return len(lines) * (font.size + line_gap) + 12
 
 
-def _draw_paragraph(draw, y, text, font, max_width, line_gap=8):
-    for line in _wrap(draw, text, font, max_width):
+def _draw_justified_line(draw, y, line, font, max_width):
+    words = line.split()
+    if len(words) <= 1:
         draw.text((MARGIN_X, y), line, fill="black", font=font)
+        return
+
+    text_width = draw.textlength(line, font=font)
+    gaps = len(words) - 1
+    extra = max_width - text_width
+
+    # Distribuye el espacio adicional en los espacios entre palabras.
+    base_extra = extra / gaps if gaps > 0 else 0
+    x = MARGIN_X
+    for i, word in enumerate(words):
+        draw.text((x, y), word, fill="black", font=font)
+        word_w = draw.textlength(word, font=font)
+        x += word_w
+        if i < gaps:
+            space_w = draw.textlength(" ", font=font)
+            x += space_w + base_extra
+
+
+def _draw_paragraph(draw, y, text, font, max_width, line_gap=8):
+    lines = _wrap(draw, text, font, max_width)
+    for i, line in enumerate(lines):
+        is_last_line = i == len(lines) - 1
+        if is_last_line:
+            draw.text((MARGIN_X, y), line, fill="black", font=font)
+        else:
+            _draw_justified_line(draw, y, line, font, max_width)
         y += font.size + line_gap
     return y + 12
 
@@ -91,9 +118,9 @@ PARAGRAPHS = [
         "Yo, MAGALY PAREJA GUERRERO, en mi calidad de Gerencia de Recursos Humanos "
         "de la empresa ORBES AGRÍCOLA S.A.C., con R.U.C. N.° 20421367605, ubicada en "
         "la ciudad de Lima, mediante el presente documento dejo constancia y doy conformidad "
-        "a la culminación satisfactoria del proyecto «Arquitectura de inteligencia artificial "
-        "distribuida para el análisis comercial y gestión automatizada de leads en Orbes "
-        "Agrícola S.A.C. — 2025-2026», desarrollado en nuestra institución por los señores "
+        "a la culminación satisfactoria del proyecto «Sistema multiagente para la gestión de "
+        "relaciones con el cliente en la empresa Comercializadora Agrícola Santa Anita 2026», "
+        "desarrollado en nuestra institución por los señores "
         "JUZCAMAYTA SÁNCHEZ, ANGEL SMITH, identificado con DNI N.° 77347183, y ACCOSTUPA TTITO, "
         "DIEGO REMIGIO, identificado con DNI N.° 75068757, respectivamente, estudiantes de la "
         "Carrera Profesional de Ingeniería de Sistemas."
@@ -103,7 +130,7 @@ PARAGRAPHS = [
         "junio de 2026, cumpliendo con las actividades, objetivos y requerimientos establecidos, "
         "demostrando responsabilidad, compromiso, profesionalismo y capacidad técnica durante "
         "todo el desarrollo del sistema CRM con arquitectura distribuida, agentes de análisis "
-        "de leads (scoring, CAC, adquisición, probabilidad de compra y retención), worker Celery "
+        "de leads (costo de adquisición, tasa de adquisición, tasa de retención y tasa de abandono), worker Celery "
         "y microservicio de agentes de inteligencia artificial."
     ),
     (
@@ -168,7 +195,7 @@ def main():
     for p in PARAGRAPHS:
         y = _draw_paragraph(draw, y, p, f_body, CONTENT_W)
 
-    fecha = "Lima, 3 de julio de 2026."
+    fecha = "Lima, 3 de junio de 2026."
     draw.text((MARGIN_X, y), fecha, fill="black", font=f_body)
     y += f_body.size + 36
 

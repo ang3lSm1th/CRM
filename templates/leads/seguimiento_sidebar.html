@@ -137,7 +137,6 @@
                 <th>Asignado a</th>
                 <th>Bien/Servicio</th>
                 <th>Comentario</th>
-                <th>Prediccion Compra</th>
             </tr>
         </thead>
         <tbody>
@@ -162,7 +161,6 @@
                         {{ ((l.comentario or '')|truncate(50, True, '...')) if l.comentario else 'N/A' }}
                     </span>
                 </td>
-                <td>{% include "leads/_prediction_cell.html" %}</td>
             </tr>
             {% else %}
             <tr>

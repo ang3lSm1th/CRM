@@ -10,9 +10,9 @@ from datetime import date
 import MySQLdb.cursors
 
 from extensions import mysql
-from agents.lead_workflow.analysis.cac_agent import CACAgent
-from agents.lead_workflow.analysis.acquisition_agent import AcquisitionRateAgent
-from agents.core.retencion_agente import RetencionAbandonoAgente
+from agents.lead_workflow.analysis.costo_adquisicion_agent import CostoAdquisicionAgent
+from agents.lead_workflow.analysis.tasa_retencion_agent import TasaRetencionAgent
+from agents.lead_workflow.analysis.tasa_abandono_agent import TasaAbandonoAgent
 
 
 class ManagementAgent:
@@ -20,8 +20,9 @@ class ManagementAgent:
 
     def __init__(self):
         self.negocio_id = int(os.getenv("ORBES_NEGOCIO_ID", "1"))
-        self.cac_agent = CACAgent()
-        self.retencion_agent = RetencionAbandonoAgente()
+        self.costo_adquisicion_agent = CostoAdquisicionAgent()
+        self.tasa_retencion_agent = TasaRetencionAgent()
+        self.tasa_abandono_agent = TasaAbandonoAgent()
 
     def _table_exists(self, table_name):
         cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
@@ -96,18 +97,18 @@ class ManagementAgent:
         finally:
             cur.close()
 
-        retencion = self.retencion_agent._tasa_retencion()
+        retencion = self.tasa_retencion_agent.tasa_retencion_negocio()
         if retencion.get("ok"):
             kpis["tasa_retencion"] = retencion["data"].get("tasa_retencion", 0)
             kpis["tasa_abandono"] = round(100 - float(kpis["tasa_retencion"]), 2)
 
-        riesgo = self.retencion_agent._leads_riesgo_abandono()
+        riesgo = self.tasa_abandono_agent.leads_riesgo_abandono()
         if riesgo.get("ok"):
             kpis["leads_riesgo_abandono"] = (riesgo.get("data") or [])[:10]
 
         sample_lead = {"id": 0, "canal_id": None, "canal_nombre": "general", "asignado_a": None}
-        cac_sample = self.cac_agent.analyze(sample_lead)
-        kpis["cac_promedio"] = cac_sample.get("cac_canal", 0)
+        cac_sample = self.costo_adquisicion_agent.analyze(sample_lead)
+        kpis["cac_promedio"] = cac_sample.get("costo_adquisicion", 0)
 
         kpis["retroalimentacion_scoring"] = self._scoring_feedback(kpis)
         self._persist_snapshot(kpis)

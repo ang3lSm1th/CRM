@@ -19,21 +19,9 @@ from utils.security import (
 )
 from datetime import date, datetime, timedelta
 import io
-import math
-from agents.core.prediccion_agente import PrediccionCompraAgente
 from services.campaign_kpi_service import compute_campaign_pretest_rows
-from services.pdc_cliente_service import (
-    compute_pdc_percentage,
-    batch_count_ncmtp_for_leads,
-    batch_detect_cliente_mtp,
-    count_ncmtp_for_client,
-    fetch_pdc_clientes,
-    fetch_pdc_for_campaign,
-    PRETEST_PDC_PROMEDIO,
-)
 
 reportes_bp = Blueprint("reportes", __name__)
-prediccion_agente = PrediccionCompraAgente()
 
 # Mapeo de IDs a nombres de departamentos del Perú
 DEPARTAMENTOS = {
@@ -146,61 +134,6 @@ def _resolve_negocio_id_by_brand(brand_slug):
         return None
     finally:
         cur.close()
-
-
-def _resolve_dashboard_period(selected_quarter, selected_year, today=None):
-    today = today or date.today()
-    start_month = ((selected_quarter - 1) * 3) + 1
-    date_from = date(selected_year, start_month, 1)
-    if selected_quarter == 4:
-        full_date_to = date(selected_year, 12, 31)
-    else:
-        full_date_to = date(selected_year, start_month + 3, 1) - timedelta(days=1)
-
-    # Para periodos en curso, el filtro efectivo no debe incluir fechas futuras.
-    if selected_year == today.year and selected_quarter == (
-        ((today.month - 1) // 3) + 1
-    ):
-        effective_date_to = min(full_date_to, today)
-    else:
-        effective_date_to = full_date_to
-
-    mpc = 3
-    if today < date_from:
-        mtp = 0
-    elif today >= full_date_to:
-        mtp = 3
-    else:
-        mtp = ((today.year - date_from.year) * 12) + (today.month - date_from.month) + 1
-        mtp = max(1, min(3, mtp))
-
-    return {
-        "date_from": date_from,
-        "full_date_to": full_date_to,
-        "effective_date_to": effective_date_to,
-        "mtp": mtp,
-        "mpc": mpc,
-    }
-
-
-def _quarter_month_numbers(selected_quarter):
-    start_month = ((selected_quarter - 1) * 3) + 1
-    return [start_month, start_month + 1, start_month + 2]
-
-
-def _cliente_key_expr(alias="l"):
-    return (
-        f"COALESCE("
-        f"NULLIF(TRIM({alias}.ruc_dni), ''), "
-        f"NULLIF(TRIM({alias}.telefono), ''), "
-        f"NULLIF(LOWER(TRIM({alias}.nombre)), ''), "
-        f"CONCAT('lead-', {alias}.id)"
-        f")"
-    )
-
-
-def _compute_pdc_percentage(mtp, mpc, ncmtp):
-    return compute_pdc_percentage(mtp, mpc, ncmtp)
 
 
 @reportes_bp.route("/reporte-asesores")
@@ -656,408 +589,6 @@ def _build_upsell_suggestions(goods):
     return suggestions[:3]
 
 
-@reportes_bp.route("/dashboard-recompra")
-@login_required
-@role_required(ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH, ROLE_MARKETING)
-def dashboard_recompra_clientes():
-    """
-    Dashboard ejecutivo: clientes con mayor probabilidad de compra,
-    motivos de la predicción y recomendaciones según bienes/servicios comprados.
-    """
-    today = date.today()
-    try:
-        selected_quarter = int(
-            request.args.get("quarter", ((today.month - 1) // 3) + 1)
-        )
-    except (TypeError, ValueError):
-        selected_quarter = ((today.month - 1) // 3) + 1
-
-    try:
-        selected_year = int(request.args.get("year", today.year))
-    except (TypeError, ValueError):
-        selected_year = today.year
-
-    if selected_quarter not in (1, 2, 3, 4):
-        selected_quarter = ((today.month - 1) // 3) + 1
-
-    if selected_year < 2000 or selected_year > 2100:
-        selected_year = today.year
-
-    period_info = _resolve_dashboard_period(
-        selected_quarter, selected_year, today=today
-    )
-    date_from = period_info["date_from"]
-    effective_date_to = period_info["effective_date_to"]
-    mtp = period_info["mtp"]
-    mpc = period_info["mpc"]
-
-    brand_slug = (request.cookies.get("brand") or "").strip().lower()
-    negocio_id = _resolve_negocio_id_by_brand(brand_slug) if brand_slug else None
-    has_lead_negocio = _column_exists("leads", "negocio_id")
-    has_lead_brand = _column_exists("leads", "brand")
-
-    has_seg_monto_venta = _column_exists("seguimientos", "monto_venta")
-    seg_monto_expr = (
-        "COALESCE(s.monto_venta, 0)" if has_seg_monto_venta else "COALESCE(s.monto, 0)"
-    )
-
-    lead_scope_clause = ""
-    lead_scope_params = []
-    if has_lead_negocio and negocio_id:
-        lead_scope_clause = " AND l.negocio_id = %s"
-        lead_scope_params.append(negocio_id)
-    elif has_lead_brand and brand_slug:
-        lead_scope_clause = " AND LOWER(l.brand) = %s"
-        lead_scope_params.append(brand_slug)
-
-    cur = mysql.connection.cursor(DictCursor)
-    try:
-        top_n = int(request.args.get("top", 50) or 50)
-    except (TypeError, ValueError):
-        top_n = 50
-    top_n = max(10, min(200, top_n))
-
-    rows = []
-    clientes_dashboard = []
-    try:
-        cur.execute(
-            f"""
-            SELECT
-                MAX(l.id) AS lead_id,
-                {_cliente_key_expr('l')} AS cliente_key,
-                MAX(COALESCE(NULLIF(TRIM(l.nombre), ''), 'Cliente sin nombre')) AS cliente_nombre,
-                MAX(NULLIF(TRIM(l.ruc_dni), '')) AS ruc_dni,
-                MAX(NULLIF(TRIM(l.telefono), '')) AS telefono,
-                COUNT(DISTINCT l.id) AS compras_cerradas,
-                COALESCE(SUM({seg_monto_expr}), 0) AS monto_total_cerrado,
-                GROUP_CONCAT(
-                    DISTINCT CASE
-                        WHEN COALESCE(bs.nombre, '') <> '' THEN bs.nombre
-                        ELSE NULL
-                    END
-                    ORDER BY bs.nombre SEPARATOR '||'
-                ) AS bienes_comprados
-            FROM leads l
-            LEFT JOIN bienes_servicios bs ON bs.id = l.bien_servicio_id
-            LEFT JOIN (
-                SELECT s1.*
-                FROM seguimientos s1
-                INNER JOIN (
-                    SELECT lead_id, MAX(id) AS max_id
-                    FROM seguimientos
-                    GROUP BY lead_id
-                ) last_s ON last_s.max_id = s1.id
-            ) s ON s.lead_id = l.id
-            LEFT JOIN proceso p ON p.id = s.proceso_id
-            WHERE LOWER(TRIM(COALESCE(p.nombre_proceso, ''))) = 'cerrado'
-              AND DATE(l.fecha) BETWEEN %s AND %s
-                            {lead_scope_clause}
-            GROUP BY
-                {_cliente_key_expr('l')}
-            ORDER BY compras_cerradas DESC, monto_total_cerrado DESC
-            LIMIT {top_n}
-            """,
-            [
-                date_from.strftime("%Y-%m-%d"),
-                effective_date_to.strftime("%Y-%m-%d"),
-                *lead_scope_params,
-            ],
-        )
-        rows = cur.fetchall() or []
-
-        lead_payload = [{"id": r.get("lead_id")} for r in rows if r.get("lead_id")]
-        predictions = prediccion_agente.predict_percentages_for_leads(lead_payload)
-
-        cliente_keys = [
-            r.get("cliente_key") or f"lead-{r.get('lead_id')}"
-            for r in rows
-        ]
-        mtp_map = batch_detect_cliente_mtp(
-            cur, cliente_keys, date_from, effective_date_to
-        )
-
-        lead_ids_by_mtp = {}
-        lead_mtp = {}
-        for r in rows:
-            lead_id = int(r.get("lead_id") or 0)
-            cliente_key = r.get("cliente_key") or f"lead-{lead_id}"
-            auto_mtp = mtp_map.get(cliente_key, 1)
-            lead_mtp[lead_id] = auto_mtp
-            lead_ids_by_mtp.setdefault(auto_mtp, []).append(lead_id)
-
-        ncmtp_map = {}
-        for auto_mtp, lead_ids in lead_ids_by_mtp.items():
-            ncmtp_map.update(
-                batch_count_ncmtp_for_leads(
-                    cur,
-                    lead_ids,
-                    date_from,
-                    effective_date_to,
-                    "l.fecha",
-                    selected_mtp=auto_mtp,
-                )
-            )
-
-        clientes_dashboard = []
-        for r in rows:
-            lead_id = int(r.get("lead_id") or 0)
-            pred = predictions.get(lead_id, {})
-            bienes = [
-                x.strip()
-                for x in (r.get("bienes_comprados") or "").split("||")
-                if x and x.strip()
-            ]
-            compras_cerradas = int(r.get("compras_cerradas") or 0)
-
-            cliente_key = r.get("cliente_key") or f"lead-{lead_id}"
-            auto_mtp = lead_mtp.get(lead_id, 1)
-            ncmtp_pdc = ncmtp_map.get(lead_id, 0)
-            pdc_porcentaje = compute_pdc_percentage(auto_mtp, mpc, ncmtp_pdc)
-
-            clientes_dashboard.append(
-                {
-                    "lead_id": lead_id,
-                    "cliente_key": cliente_key,
-                    "cliente_nombre": r.get("cliente_nombre") or "Cliente sin nombre",
-                    "ruc_dni": r.get("ruc_dni") or "-",
-                    "telefono": r.get("telefono") or "-",
-                    "compras_cerradas": compras_cerradas,
-                    "mtp": auto_mtp,
-                    "mpc": mpc,
-                    "ncmtp": ncmtp_pdc,
-                    "pdc_porcentaje": pdc_porcentaje,
-                    "monto_total_cerrado": float(r.get("monto_total_cerrado") or 0),
-                    "bienes_comprados": bienes,
-                    "prediccion_siguiente_compra": float(pred.get("porcentaje") or 15),
-                    "motivos": pred.get("motivos") or [],
-                    "recomendaciones_agente": pred.get("recomendaciones") or [],
-                    "recomendaciones_upsell": _build_upsell_suggestions(bienes),
-                }
-            )
-    finally:
-        cur.close()
-
-    clientes_dashboard.sort(
-        key=lambda x: (
-            x["pdc_porcentaje"],
-            x["compras_cerradas"],
-            x["monto_total_cerrado"],
-        ),
-        reverse=True,
-    )
-
-    return render_template(
-        "reportes/dashboard_recompra_clientes.html",
-        clientes=clientes_dashboard,
-        total_clientes=len(clientes_dashboard),
-        top_n=top_n,
-        mtp=mtp,
-        mpc=mpc,
-        quarter=selected_quarter,
-        year=selected_year,
-        current_year=today.year,
-        date_from=date_from.strftime("%Y-%m-%d"),
-        date_to=effective_date_to.strftime("%Y-%m-%d"),
-        full_date_to=period_info["full_date_to"].strftime("%Y-%m-%d"),
-        from_page=(request.args.get("from_page") or "").strip().lower(),
-        return_month=(request.args.get("return_month") or "").strip(),
-        return_month_from=(request.args.get("return_month_from") or "").strip(),
-        return_month_to=(request.args.get("return_month_to") or "").strip(),
-        return_year=(request.args.get("return_year") or "").strip(),
-        return_mtp=(request.args.get("return_mtp") or "").strip(),
-    )
-
-
-@reportes_bp.route("/api/cliente-compras/<int:lead_id>")
-@login_required
-def api_cliente_compras(lead_id):
-    """
-    API para obtener detalles de compras de un cliente por mes.
-    Retorna: {
-        "cliente_nombre": "...",
-        "compras_por_mes": [
-            {"mes": "Octubre", "mes_numero": 10, "numero_compras": 2, "total": 1000.00, "items": [...]},
-            ...
-        ]
-    }
-    """
-    cur = mysql.connection.cursor(DictCursor)
-    try:
-        today = date.today()
-        try:
-            selected_quarter = int(
-                request.args.get("quarter", ((today.month - 1) // 3) + 1)
-            )
-        except (TypeError, ValueError):
-            selected_quarter = ((today.month - 1) // 3) + 1
-        try:
-            selected_year = int(request.args.get("year", today.year))
-        except (TypeError, ValueError):
-            selected_year = today.year
-
-        period_info = _resolve_dashboard_period(
-            selected_quarter, selected_year, today=today
-        )
-        date_from = period_info["date_from"]
-        effective_date_to = period_info["effective_date_to"]
-        quarter_months = _quarter_month_numbers(selected_quarter)
-
-        brand_slug = (request.cookies.get("brand") or "").strip().lower()
-        negocio_id = _resolve_negocio_id_by_brand(brand_slug) if brand_slug else None
-        has_lead_negocio = _column_exists("leads", "negocio_id")
-        has_lead_brand = _column_exists("leads", "brand")
-
-        lead_scope_clause = ""
-        lead_scope_params = []
-        if has_lead_negocio and negocio_id:
-            lead_scope_clause = " AND l.negocio_id = %s"
-            lead_scope_params.append(negocio_id)
-        elif has_lead_brand and brand_slug:
-            lead_scope_clause = " AND LOWER(l.brand) = %s"
-            lead_scope_params.append(brand_slug)
-
-        has_seg_monto_venta = _column_exists("seguimientos", "monto_venta")
-        seg_monto_col = "s.monto_venta" if has_seg_monto_venta else "s.monto"
-        cliente_key_expr = _cliente_key_expr("l")
-
-        requested_cliente_key = (request.args.get("cliente_key") or "").strip().lower()
-
-        # Resolver cliente agrupado desde el lead si no vino explícito.
-        cur.execute(
-            f"""
-            SELECT
-                {cliente_key_expr} AS cliente_key,
-                COALESCE(NULLIF(TRIM(l.nombre), ''), 'Cliente sin nombre') AS cliente_nombre
-            FROM leads l
-            WHERE l.id = %s
-            LIMIT 1
-            """,
-            [lead_id],
-        )
-        row = cur.fetchone() or {}
-        cliente_key = (
-            requested_cliente_key
-            or (row.get("cliente_key") or f"lead-{lead_id}").strip().lower()
-        )
-        cliente_nombre = row.get("cliente_nombre") or "Cliente sin nombre"
-
-        # Obtener cada compra del cliente agrupado dentro del periodo filtrado.
-        cur.execute(
-            f"""
-            SELECT
-                MONTH(l.fecha) AS mes_numero,
-                DATE(l.fecha) AS fecha_compra,
-                COALESCE(l.codigo, CONCAT('LED-', l.id)) AS codigo,
-                COALESCE(bs.nombre, 'Sin bien/servicio') AS item,
-                COALESCE({seg_monto_col}, 0) AS monto,
-                l.id AS lead_compra_id
-            FROM seguimientos s
-            LEFT JOIN leads l ON l.id = s.lead_id
-            LEFT JOIN bienes_servicios bs ON bs.id = l.bien_servicio_id
-            LEFT JOIN proceso p ON p.id = s.proceso_id
-            INNER JOIN (
-                SELECT lead_id, MAX(id) AS max_id
-                FROM seguimientos
-                GROUP BY lead_id
-            ) last_s ON last_s.max_id = s.id
-            WHERE {cliente_key_expr} = %s
-                AND LOWER(TRIM(COALESCE(p.nombre_proceso, ''))) = 'cerrado'
-                AND DATE(l.fecha) BETWEEN %s AND %s
-                {lead_scope_clause}
-            ORDER BY l.fecha ASC, l.id ASC
-            """,
-            [
-                cliente_key,
-                date_from.strftime("%Y-%m-%d"),
-                effective_date_to.strftime("%Y-%m-%d"),
-                *lead_scope_params,
-            ],
-        )
-
-        month_names = {
-            1: "Enero",
-            2: "Febrero",
-            3: "Marzo",
-            4: "Abril",
-            5: "Mayo",
-            6: "Junio",
-            7: "Julio",
-            8: "Agosto",
-            9: "Septiembre",
-            10: "Octubre",
-            11: "Noviembre",
-            12: "Diciembre",
-        }
-        bucket_map = {
-            month_number: {
-                "mes": month_names.get(month_number, f"Mes {month_number}"),
-                "mes_numero": month_number,
-                "numero_compras": 0,
-                "total": 0.0,
-                "items": [],
-                "compras": [],
-            }
-            for month_number in quarter_months
-        }
-
-        for row in cur.fetchall() or []:
-            month_number = int(row.get("mes_numero") or 0)
-            if month_number not in bucket_map:
-                continue
-            monto = float(row.get("monto") or 0)
-            item = row.get("item") or "Sin bien/servicio"
-            compra = {
-                "lead_id": int(row.get("lead_compra_id") or 0),
-                "codigo": row.get("codigo") or "-",
-                "fecha": (
-                    row.get("fecha_compra").strftime("%Y-%m-%d")
-                    if row.get("fecha_compra")
-                    else "-"
-                ),
-                "item": item,
-                "monto": monto,
-            }
-            bucket = bucket_map[month_number]
-            bucket["numero_compras"] += 1
-            bucket["total"] += monto
-            if item not in bucket["items"]:
-                bucket["items"].append(item)
-            bucket["compras"].append(compra)
-
-        compras_por_mes = []
-        for month_number in quarter_months:
-            bucket = bucket_map[month_number]
-            compras_por_mes.append(
-                {
-                    "mes": bucket["mes"],
-                    "mes_numero": month_number,
-                    "numero_compras": bucket["numero_compras"],
-                    "total": round(bucket["total"], 2),
-                    "items": bucket["items"],
-                    "compras": bucket["compras"],
-                }
-            )
-
-        return jsonify(
-            {
-                "cliente_nombre": cliente_nombre,
-                "lead_id": lead_id,
-                "cliente_key": cliente_key,
-                "quarter": selected_quarter,
-                "quarter_months": quarter_months,
-                "date_from": date_from.strftime("%Y-%m-%d"),
-                "date_to": effective_date_to.strftime("%Y-%m-%d"),
-                "compras_por_mes": compras_por_mes,
-            }
-        )
-
-    except Exception as e:
-        print(f"Error en api_cliente_compras: {e}")
-        return jsonify({"error": str(e)}), 500
-    finally:
-        cur.close()
-
-
 @reportes_bp.route("/api/lineas-por-bien-servicio")
 @login_required
 @role_required(ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH)
@@ -1180,26 +711,6 @@ def _compute_analisis_kpi():
     if mpc < 1:
         mpc = 1
 
-    try:
-        selected_mtp = int(request.args.get("mtp", mpc))
-    except (TypeError, ValueError):
-        selected_mtp = mpc
-
-    if selected_mtp < 1:
-        selected_mtp = 1
-    if selected_mtp > mpc:
-        selected_mtp = mpc
-
-    if all_months:
-        elapsed_to = date_to
-    else:
-        next_month_index = selected_month + selected_mtp
-        elapsed_end_year = selected_year + ((next_month_index - 1) // 12)
-        elapsed_end_month = ((next_month_index - 1) % 12) + 1
-        elapsed_to = date(elapsed_end_year, elapsed_end_month, 1) - timedelta(days=1)
-        if elapsed_to > date_to:
-            elapsed_to = date_to
-
     brand_slug = (request.cookies.get("brand") or "").strip().lower()
     negocio_id = _resolve_negocio_id_by_brand(brand_slug) if brand_slug else None
     has_lead_negocio = _column_exists("leads", "negocio_id")
@@ -1208,33 +719,20 @@ def _compute_analisis_kpi():
     has_lead_telefono = _column_exists("leads", "telefono")
     has_seg_fecha_guardado = _column_exists("seguimientos", "fecha_guardado")
     has_seg_fecha = _column_exists("seguimientos", "fecha")
-    has_seg_monto_venta = _column_exists("seguimientos", "monto_venta")
-    has_seg_monto = _column_exists("seguimientos", "monto")
-
-    if has_seg_monto_venta:
-        seg_monto_expr = "s.monto_venta"
-    elif has_seg_monto:
-        seg_monto_expr = "s.monto"
-    else:
-        seg_monto_expr = "0"
 
     if has_seg_fecha_guardado and has_seg_fecha:
         seg_date_expr_s = "COALESCE(s.fecha_guardado, s.fecha, l.fecha)"
         seg_date_expr_s2 = "COALESCE(s2.fecha_guardado, s2.fecha, l2.fecha)"
-        seg_date_ncmtp = "COALESCE(s.fecha_guardado, s.fecha, l.fecha)"
     elif has_seg_fecha_guardado:
         seg_date_expr_s = "COALESCE(s.fecha_guardado, l.fecha)"
         seg_date_expr_s2 = "COALESCE(s2.fecha_guardado, l2.fecha)"
-        seg_date_ncmtp = "COALESCE(s.fecha_guardado, l.fecha)"
     elif has_seg_fecha:
         seg_date_expr_s = "COALESCE(s.fecha, l.fecha)"
         seg_date_expr_s2 = "COALESCE(s2.fecha, l2.fecha)"
-        seg_date_ncmtp = "COALESCE(s.fecha, l.fecha)"
     else:
         # Fallback defensivo para despliegues donde seguimientos no tiene columna de fecha.
         seg_date_expr_s = "l.fecha"
         seg_date_expr_s2 = "l2.fecha"
-        seg_date_ncmtp = "l.fecha"
 
     if has_lead_ruc_dni and has_lead_telefono:
         cliente_expr_l = "COALESCE(NULLIF(TRIM(l.ruc_dni), ''), NULLIF(TRIM(l.telefono), ''), NULLIF(LOWER(TRIM(l.nombre)), ''), CONCAT('lead-', l.id))"
@@ -1417,55 +915,6 @@ def _compute_analisis_kpi():
         # ── TDA adquisición = (NLC / NLO) * 100 ──────────────────
         kpi["tda_acq"] = (kpi["nlc"] / kpi["nlo"] * 100) if kpi["nlo"] else 0
 
-        # ── PDC: meses transcurridos / meses periodo completo ─────
-        mtp = selected_mtp
-        ncmtp_params = [
-            date_from.strftime("%Y-%m-%d"),
-            elapsed_to.strftime("%Y-%m-%d"),
-        ] + lead_scope_params
-        cur.execute(
-            f"""
-            SELECT COUNT(*) AS ncmtp
-            FROM (
-                SELECT {cliente_expr_l} AS cliente_key
-                FROM leads l
-                JOIN seguimientos s ON s.lead_id = l.id
-                JOIN proceso p ON p.id = s.proceso_id
-                WHERE LOWER(TRIM(COALESCE(p.nombre_proceso, ''))) = 'cerrado'
-                  AND DATE({seg_date_ncmtp}) BETWEEN %s AND %s{lead_scope_clause}
-                GROUP BY {cliente_expr_l}
-                HAVING COUNT(DISTINCT s.id) > 1
-            ) clientes_recurrentes
-        """,
-            ncmtp_params,
-        )
-        ncmtp = (cur.fetchone() or {}).get("ncmtp", 0) or 0
-        kpi["mtp"] = mtp
-        kpi["mpc"] = mpc
-        kpi["ncmtp"] = ncmtp
-        kpi["elapsed_to"] = elapsed_to.strftime("%Y-%m-%d")
-        base = (mtp / mpc) if mpc else 0
-        kpi["pdc"] = math.pow(base, ncmtp) * 100 if mpc else 0
-
-        # ── PDC por cliente (tabla instrumento Excel, hasta 50) ───
-        pdc_clientes = fetch_pdc_clientes(
-            cur,
-            date_from,
-            elapsed_to,
-            lead_scope_clause,
-            lead_scope_params,
-            seg_date_expr_s,
-            seg_monto_expr,
-            cliente_expr_l,
-            mtp,
-            mpc,
-            limit=50,
-        )
-        kpi["pdc_clientes"] = pdc_clientes
-        kpi["pdc_clientes_total"] = len(pdc_clientes)
-        kpi["mtp_display"] = mtp
-        kpi["mpc_display"] = mpc
-
         # ── KPIs por campaña semanal (pretest Campaña 14-26) ─────
         campanas_pretest = {"rows": [], "summary": {}}
         try:
@@ -1601,7 +1050,6 @@ def _compute_analisis_kpi():
         period_label=period_label,
         redirect_quarter=redirect_quarter,
         year=selected_year,
-        selected_mtp=selected_mtp,
         current_year=today.year,
         date_from=(date_from.strftime("%Y-%m-%d") if date_from else ""),
         date_to=(date_to.strftime("%Y-%m-%d") if date_to else ""),
@@ -1614,48 +1062,6 @@ def _compute_analisis_kpi():
 def analisis_reportes():
     ctx = _compute_analisis_kpi()
     return render_template("reportes/analisis_reportes.html", **ctx)
-
-
-@reportes_bp.route("/api/campana-detalle/<int:campaign_id>")
-@login_required
-@role_required(ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH, ROLE_MARKETING)
-def api_campana_detalle(campaign_id):
-    """Detalle PDC por cliente de una campaña (carga bajo demanda)."""
-    cur = mysql.connection.cursor(DictCursor)
-    try:
-        cur.execute(
-            """
-            SELECT id, nombre_campana
-            FROM marketing_campaigns
-            WHERE id = %s
-            LIMIT 1
-            """,
-            (campaign_id,),
-        )
-        camp = cur.fetchone()
-        if not camp:
-            return jsonify({"ok": False, "message": "Campaña no encontrada."}), 404
-
-        from services.pdc_cliente_service import _campaign_number
-
-        camp_num = _campaign_number(camp.get("nombre_campana"))
-        pdc_clientes, pdc_promedio, pdc_total = fetch_pdc_for_campaign(
-            cur,
-            campaign_id,
-            limit=50,
-            camp_num=camp_num,
-        )
-
-        return jsonify(
-            {
-                "ok": True,
-                "pdc_promedio": pdc_promedio,
-                "pdc_clientes": pdc_clientes,
-                "pdc_total_clientes": pdc_total,
-            }
-        )
-    finally:
-        cur.close()
 
 
 @reportes_bp.route("/analisis-reportes/pdf")
@@ -1832,11 +1238,6 @@ def analisis_reportes_pdf():
             f'{kpi["tda_acq"]:.1f}%',
             f'Avance vs meta NLO ({int(kpi["nlo"])})',
         ],
-        [
-            "PDC",
-            f'{kpi["pdc"]:.1f}%',
-            f'Prob. compra recurrente (MTP={kpi["mtp"]}, MPC={kpi["mpc"]})',
-        ],
         ["TDR", f'{kpi["tdr"]:.1f}%', "Retenci\u00f3n entre periodos consecutivos"],
         [
             "TDA retenci\u00f3n",
@@ -1895,7 +1296,7 @@ def analisis_reportes_pdf():
     story.append(Paragraph("Anexos", h2_s))
     story.append(
         Paragraph(
-            "F\u00f3rmulas: CALC=DGA/NLC; TDA adq=(NLC/NLO)\u00d7100; PDC=(MTP/MPC)^NCMTP\u00d7100; "
+            "F\u00f3rmulas: CALC=DGA/NLC; TDA adq=(NLC/NLO)\u00d7100; "
             "TDR=(NCCPAPA/NTCCPA)\u00d7100; TDA ret=100\u2212TDR.",
             small_s,
         )

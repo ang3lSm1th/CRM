@@ -160,7 +160,6 @@
         <th>Email</th>
         <th>Comentario</th>
         <th>Asignado a</th>
-        <th>Predicción Compra</th>
       </tr>
     </thead>
     <tbody>
@@ -198,11 +197,10 @@
         <td class="cell" title="{{ l.email or '' }}">{{ (l.email or '')|truncate(25, True) }}</td>
         <td class="cell comentario" title="{{ l.comentario or '' }}">{{ (l.comentario or '')|truncate(80, True) }}</td>
         <td>{{ l.asignado_a }}</td>
-        <td>{% include "leads/_prediction_cell.html" %}</td>
       </tr>
       {% else %}
       <tr>
-        <td colspan="19" class="no-data">No hay leads registrados.</td>
+        <td colspan="18" class="no-data">No hay leads registrados.</td>
       </tr>
       {% endfor %}
     </tbody>
