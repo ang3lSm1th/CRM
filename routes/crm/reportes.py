@@ -1064,6 +1064,137 @@ def analisis_reportes():
     return render_template("reportes/analisis_reportes.html", **ctx)
 
 
+@reportes_bp.route("/api/campana-leads/<int:campaign_id>")
+@login_required
+@role_required(ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH, ROLE_MARKETING)
+def api_campana_leads(campaign_id):
+    """Leads vinculados a una campaña + resumen KPI para el popup."""
+    cur = mysql.connection.cursor(DictCursor)
+    try:
+        if not _table_exists("marketing_campaigns"):
+            return jsonify({"ok": False, "message": "Campañas no disponibles."}), 404
+
+        cur.execute(
+            """
+            SELECT id, nombre_campana, periodo_inicio, periodo_fin,
+                   COALESCE(inversion, 0) AS inversion
+            FROM marketing_campaigns
+            WHERE id = %s
+            LIMIT 1
+            """,
+            (campaign_id,),
+        )
+        camp = cur.fetchone()
+        if not camp:
+            return jsonify({"ok": False, "message": "Campaña no encontrada."}), 404
+
+        has_codigo = _column_exists("leads", "codigo")
+        has_telefono = _column_exists("leads", "telefono")
+        has_ruc = _column_exists("leads", "ruc_dni")
+        has_bien = _table_exists("bienes_servicios") and _column_exists(
+            "leads", "bien_servicio_id"
+        )
+        has_canal = _table_exists("canales_recepcion") and _column_exists(
+            "leads", "canal_id"
+        )
+        has_proceso = _table_exists("proceso")
+
+        codigo_expr = (
+            "COALESCE(NULLIF(TRIM(l.codigo), ''), CONCAT('LED-', l.id))"
+            if has_codigo
+            else "CONCAT('LED-', l.id)"
+        )
+        telefono_expr = "COALESCE(l.telefono, '—')" if has_telefono else "'—'"
+        ruc_expr = "COALESCE(l.ruc_dni, '—')" if has_ruc else "'—'"
+        bien_join = (
+            "LEFT JOIN bienes_servicios bs ON bs.id = l.bien_servicio_id"
+            if has_bien
+            else ""
+        )
+        bien_expr = "COALESCE(bs.nombre, '—')" if has_bien else "'—'"
+        canal_join = (
+            "LEFT JOIN canales_recepcion cr ON cr.id = l.canal_id" if has_canal else ""
+        )
+        canal_expr = "COALESCE(cr.nombre, '—')" if has_canal else "'—'"
+
+        proceso_join = ""
+        proceso_expr = "'—'"
+        if has_proceso:
+            proceso_join = """
+                LEFT JOIN (
+                    SELECT s1.lead_id, s1.proceso_id
+                    FROM seguimientos s1
+                    INNER JOIN (
+                        SELECT lead_id, MAX(id) AS max_id
+                        FROM seguimientos
+                        GROUP BY lead_id
+                    ) last_s ON last_s.max_id = s1.id
+                ) s ON s.lead_id = l.id
+                LEFT JOIN proceso p ON p.id = s.proceso_id
+            """
+            proceso_expr = "COALESCE(p.nombre_proceso, 'Sin iniciar')"
+
+        leads = []
+        if _table_exists("marketing_campaign_leads"):
+            cur.execute(
+                f"""
+                SELECT
+                    l.id,
+                    {codigo_expr} AS codigo,
+                    COALESCE(NULLIF(TRIM(l.nombre), ''), 'Sin nombre') AS nombre,
+                    {telefono_expr} AS telefono,
+                    {ruc_expr} AS ruc_dni,
+                    DATE(l.fecha) AS fecha,
+                    {bien_expr} AS bien_servicio,
+                    {canal_expr} AS canal,
+                    {proceso_expr} AS proceso
+                FROM marketing_campaign_leads mcl
+                INNER JOIN leads l ON l.id = mcl.lead_id
+                {bien_join}
+                {canal_join}
+                {proceso_join}
+                WHERE mcl.campaign_id = %s
+                ORDER BY l.fecha DESC, l.id DESC
+                """,
+                (campaign_id,),
+            )
+            for row in cur.fetchall() or []:
+                fecha = row.get("fecha")
+                leads.append(
+                    {
+                        "id": int(row.get("id") or 0),
+                        "codigo": row.get("codigo") or f"LED-{row.get('id')}",
+                        "nombre": row.get("nombre") or "Sin nombre",
+                        "telefono": row.get("telefono") or "—",
+                        "ruc_dni": row.get("ruc_dni") or "—",
+                        "fecha": fecha.strftime("%Y-%m-%d") if fecha else "—",
+                        "bien_servicio": row.get("bien_servicio") or "—",
+                        "canal": row.get("canal") or "—",
+                        "proceso": row.get("proceso") or "—",
+                    }
+                )
+
+        return jsonify(
+            {
+                "ok": True,
+                "campaign": {
+                    "id": int(camp["id"]),
+                    "nombre": camp.get("nombre_campana") or f"Campaña {campaign_id}",
+                    "periodo_inicio": str(camp.get("periodo_inicio") or ""),
+                    "periodo_fin": str(camp.get("periodo_fin") or ""),
+                    "dga": float(camp.get("inversion") or 0),
+                },
+                "total_leads": len(leads),
+                "leads": leads,
+            }
+        )
+    except Exception as e:
+        print(f"Error api_campana_leads: {e}")
+        return jsonify({"ok": False, "message": str(e)}), 500
+    finally:
+        cur.close()
+
+
 @reportes_bp.route("/analisis-reportes/pdf")
 @login_required
 @role_required(ROLE_ADMIN, ROLE_GERENTE, ROLE_RRHH, ROLE_MARKETING)

@@ -141,6 +141,55 @@
         text-align: center;
         color: #888;
     }
+
+    .campana-modal .modal-header {
+        background: linear-gradient(135deg, #0b3ea8 0%, #1597ff 100%);
+        color: #fff;
+    }
+
+    .campana-modal .kpi-mini-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 0.65rem;
+        margin-bottom: 1rem;
+    }
+
+    .campana-modal .kpi-mini {
+        border: 1px solid #d5e5ff;
+        border-radius: 10px;
+        padding: 0.7rem;
+        text-align: center;
+        background: #f8fbff;
+    }
+
+    .campana-modal .kpi-mini .value {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #0b3ea8;
+    }
+
+    .campana-modal .kpi-mini .label {
+        font-size: 0.72rem;
+        color: #555;
+    }
+
+    .campana-modal .leads-table {
+        font-size: 0.82rem;
+    }
+
+    .campana-modal .leads-table thead th {
+        background: #edf3ff;
+        color: #0c3f93;
+        white-space: nowrap;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    .campana-modal .leads-wrap {
+        max-height: 55vh;
+        overflow: auto;
+    }
 </style>
 {% endblock %}
 
@@ -151,7 +200,7 @@
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
             <div>
                 <h2 class="mb-1 fw-bold"><i class="fas fa-chart-line me-2"></i>Análisis de Reportes</h2>
-                <p class="mb-0 opacity-75 small">Selecciona una campaña para ver sus 4 variables en tiempo real</p>
+                <p class="mb-0 opacity-75 small">Clic: ver KPIs · Doble clic: popup con leads de la campaña</p>
             </div>
             <div class="text-end">
                 <div class="opacity-75 small">Periodo</div>
@@ -194,7 +243,7 @@
     {% if kpi.campanas_pretest and kpi.campanas_pretest.rows %}
     <div class="pretest-panel mb-3">
         <div class="pretest-head">
-            <h5 class="mb-0 fw-bold"><i class="fas fa-mouse-pointer me-2"></i>Campañas Orbes — clic para detalle</h5>
+            <h5 class="mb-0 fw-bold"><i class="fas fa-mouse-pointer me-2"></i>Campañas Orbes — clic KPIs · doble clic leads</h5>
         </div>
         <div class="p-2 bg-white">
             <div class="table-responsive">
@@ -276,6 +325,71 @@
 
     <script type="application/json" id="campanas-json">{{ kpi.campanas_pretest.rows|tojson }}</script>
 
+    <div class="modal fade campana-modal" id="campanaLeadsModal" tabindex="-1" aria-labelledby="campanaLeadsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title mb-0" id="campanaLeadsModalLabel">Campaña</h5>
+                        <small class="opacity-75" id="modal-periodo"></small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="kpi-mini-grid" id="modal-kpi-grid">
+                        <div class="kpi-mini">
+                            <div class="label">CALC = DGA / NLC</div>
+                            <div class="value" id="m-calc">—</div>
+                            <div class="label">Costo adquisición</div>
+                        </div>
+                        <div class="kpi-mini">
+                            <div class="label">TDA = (NLC / NLO) × 100</div>
+                            <div class="value" id="m-tda">—</div>
+                            <div class="label">Tasa adquisición</div>
+                        </div>
+                        <div class="kpi-mini">
+                            <div class="label">TDR</div>
+                            <div class="value" id="m-tdr">—</div>
+                            <div class="label">Tasa retención</div>
+                        </div>
+                        <div class="kpi-mini">
+                            <div class="label">Abandono = 100 − TDR</div>
+                            <div class="value" id="m-abandono">—</div>
+                            <div class="label">Tasa abandono</div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong id="modal-leads-count">Leads</strong>
+                        <span class="badge bg-primary" id="modal-loading" style="display:none;">Cargando…</span>
+                    </div>
+                    <div class="leads-wrap table-responsive border rounded">
+                        <table class="table table-sm table-hover mb-0 leads-table">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Nombre</th>
+                                    <th>Teléfono</th>
+                                    <th>RUC/DNI</th>
+                                    <th>Fecha</th>
+                                    <th>Bien/Servicio</th>
+                                    <th>Canal</th>
+                                    <th>Proceso</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modal-leads-body">
+                                <tr><td colspan="8" class="text-center text-muted py-4">Doble clic en una campaña para ver sus leads.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {% else %}
     <div class="live-panel mb-4">
         <div class="empty-hint">
@@ -310,10 +424,21 @@
 
         const rows = document.querySelectorAll('.campana-row');
         const loading = document.getElementById('live-loading');
+        const modalEl = document.getElementById('campanaLeadsModal');
+        const modal = modalEl ? new bootstrap.Modal(modalEl) : null;
+        const modalLoading = document.getElementById('modal-loading');
         let activeId = null;
+        let clickTimer = null;
 
         function fmtMoney(v) { return `S/ ${Number(v || 0).toFixed(2)}`; }
         function fmtPct(v) { return `${Number(v || 0).toFixed(2)}%`; }
+        function escapeHtml(s) {
+            return String(s ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
 
         function applyCampana(c) {
             document.getElementById('live-campana-nombre').textContent = c.nombre || 'Campaña';
@@ -333,13 +458,45 @@
             document.getElementById('v-ntccca').textContent = c.ntccca ?? '—';
         }
 
+        function fillModalKpis(c) {
+            document.getElementById('campanaLeadsModalLabel').textContent = c.nombre || 'Campaña';
+            document.getElementById('modal-periodo').textContent =
+                c.periodo_inicio && c.periodo_fin
+                    ? `${c.periodo_inicio} → ${c.periodo_fin}`
+                    : '';
+            document.getElementById('m-calc').textContent = fmtMoney(c.calc);
+            document.getElementById('m-tda').textContent = fmtPct(c.tda_acq);
+            document.getElementById('m-tdr').textContent = fmtPct(c.tdr);
+            document.getElementById('m-abandono').textContent = fmtPct(c.tda_ret);
+        }
+
+        function renderLeads(leads) {
+            const tbody = document.getElementById('modal-leads-body');
+            if (!leads.length) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No hay leads vinculados a esta campaña.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = leads.map(l => `
+                <tr>
+                    <td>${escapeHtml(l.codigo)}</td>
+                    <td>${escapeHtml(l.nombre)}</td>
+                    <td>${escapeHtml(l.telefono)}</td>
+                    <td>${escapeHtml(l.ruc_dni)}</td>
+                    <td>${escapeHtml(l.fecha)}</td>
+                    <td>${escapeHtml(l.bien_servicio)}</td>
+                    <td>${escapeHtml(l.canal)}</td>
+                    <td>${escapeHtml(l.proceso)}</td>
+                </tr>
+            `).join('');
+        }
+
         const campanasLocal = JSON.parse(document.getElementById('campanas-json')?.textContent || '[]');
 
         function findCampana(campaignId) {
             return campanasLocal.find(r => Number(r.campaign_id) === Number(campaignId));
         }
 
-        async function loadCampana(campaignId) {
+        function loadCampana(campaignId) {
             if (!campaignId) return;
             rows.forEach(r => r.classList.toggle('active', Number(r.dataset.campaignId) === Number(campaignId)));
             activeId = campaignId;
@@ -349,8 +506,56 @@
             if (loading) loading.style.display = 'none';
         }
 
+        async function openLeadsPopup(campaignId) {
+            if (!campaignId || !modal) return;
+            const base = findCampana(campaignId);
+            if (base) {
+                loadCampana(campaignId);
+                fillModalKpis(base);
+            }
+
+            document.getElementById('modal-leads-count').textContent = 'Leads';
+            document.getElementById('modal-leads-body').innerHTML =
+                '<tr><td colspan="8" class="text-center text-muted py-4">Cargando leads…</td></tr>';
+            if (modalLoading) modalLoading.style.display = 'inline-block';
+            modal.show();
+
+            try {
+                const res = await fetch(`/reportes/api/campana-leads/${campaignId}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin',
+                });
+                const data = await res.json();
+                if (!data.ok) {
+                    document.getElementById('modal-leads-body').innerHTML =
+                        `<tr><td colspan="8" class="text-center text-danger py-4">${escapeHtml(data.message || 'Error al cargar leads')}</td></tr>`;
+                    return;
+                }
+                document.getElementById('modal-leads-count').textContent =
+                    `Leads (${data.total_leads || 0})`;
+                if (base) fillModalKpis(base);
+                renderLeads(data.leads || []);
+            } catch (err) {
+                document.getElementById('modal-leads-body').innerHTML =
+                    '<tr><td colspan="8" class="text-center text-danger py-4">No se pudo cargar el detalle.</td></tr>';
+            } finally {
+                if (modalLoading) modalLoading.style.display = 'none';
+            }
+        }
+
         rows.forEach(row => {
-            row.addEventListener('click', () => loadCampana(row.dataset.campaignId));
+            row.addEventListener('click', (e) => {
+                // Evita que el primer click del doble clic dispare solo el panel
+                // y luego el segundo; usamos un pequeño delay.
+                clearTimeout(clickTimer);
+                const id = row.dataset.campaignId;
+                clickTimer = setTimeout(() => loadCampana(id), 220);
+            });
+            row.addEventListener('dblclick', (e) => {
+                e.preventDefault();
+                clearTimeout(clickTimer);
+                openLeadsPopup(row.dataset.campaignId);
+            });
             row.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
