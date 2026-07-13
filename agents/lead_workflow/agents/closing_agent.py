@@ -2,30 +2,45 @@
 
 WORKFLOW · PASO 5/5 — prepare_proposal() + register_sale()
 Invocado desde orchestrator._run_closing() cuando el lead responde.
+La propuesta ahora se genera con CotizacionAgent (Cursor/OpenAI + scoring).
 """
 
 import MySQLdb.cursors
 
 from extensions import mysql
+from agents.lead_workflow.agents.cotizacion_agent import CotizacionAgent
 
 
 class ClosingAgent:
     AGENT_NAME = "closing_agent"
 
+    def __init__(self):
+        self.cotizacion_agent = CotizacionAgent()
+
     def prepare_proposal(self, lead_row, score_data):
-        # ═══ WORKFLOW · PASO 5/5 · Propuesta comercial ═══
+        # ═══ WORKFLOW · PASO 5/5 · Propuesta comercial personalizada ═══
+        quote = self.cotizacion_agent.generate(lead_row, score_data)
         nombre = (lead_row.get("nombre") or "cliente").strip()
         score = score_data.get("global_score", 0)
+        mensaje = quote.get("mensaje_comercial") or ""
+        summary = (
+            f"Cotización {quote.get('cotizacion_codigo')} para {nombre} "
+            f"(score {score}, provider={quote.get('provider')}). "
+            f"Monto S/ {quote.get('monto_total')}. "
+            f"{mensaje[:180]}"
+        )
         return {
             "agent": self.AGENT_NAME,
             "ok": True,
             "lead_id": lead_row.get("id"),
             "action": "proposal",
-            "summary": (
-                f"Propuesta comercial para {nombre} basada en score {score}. "
-                "Incluye cotización, condiciones de pago y plazo de validez 15 días."
-            ),
-            "next_steps": ["Enviar cotización", "Agendar cierre", "Registrar resultado"],
+            "summary": summary,
+            "cotizacion": quote,
+            "next_steps": [
+                "Revisar cotización generada",
+                "Enviar mensaje comercial al cliente",
+                "Registrar resultado en seguimiento",
+            ],
         }
 
     def register_sale(self, lead_id, *, sale_won=True, monto=0, motivo_no_venta=None):

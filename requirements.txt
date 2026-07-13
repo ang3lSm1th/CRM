@@ -38,6 +38,7 @@ Flask-SocketIO==5.6.1
 eventlet==0.41.0
 pydantic==2.12.5
 openai==2.24.0
+cursor-sdk
 joblib==1.5.3
 scikit-learn==1.8.0
 crewai

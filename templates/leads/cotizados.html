@@ -147,6 +147,7 @@
                 <th>RUC/DNI</th>
                 <th>Nombre</th>
                 <th>Cotización</th>
+                <th>Productos</th>
                 <th>Monto</th>
                 <th>Moneda</th>
                 <th>Canal</th>
@@ -176,6 +177,7 @@
                 <td class="cell">{{ l.ruc_dni or '' }}</td>
                 <td class="cell" title="{{ l.nombre or '' }}">{{ (l.nombre or '')|truncate(30, True) }}</td>
                 <td class="cell"><span class="fw-bold">{{ l.cotizacion or '' }}</span></td>
+                <td class="cell" title="{{ l.productos_cotizados or '' }}">{{ (l.productos_cotizados or '')|truncate(40, True) }}</td>
                 <td class="cell">{{ l.monto|number_format if l.monto is not none else '' }}</td>
                 <td class="cell">{{ l.moneda or '' }}</td>
                 <td class="cell">{{ l.canal or '' }}</td>
@@ -201,7 +203,7 @@
             </tr>
             {% else %}
             <tr>
-                <td colspan="19" class="no-data text-center text-muted">No hay leads cotizados.</td>
+                <td colspan="20" class="no-data text-center text-muted">No hay leads cotizados.</td>
             </tr>
             {% endfor %}
         </tbody>

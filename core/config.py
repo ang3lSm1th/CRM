@@ -59,6 +59,11 @@ class Config:
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
     AGENT_MODEL = os.getenv("AGENT_MODEL", "gpt-3.5-turbo")
     AGENT_MEMORY_SIZE = int(os.getenv("AGENT_MEMORY_SIZE", "10"))
+    CURSOR_API_KEY = os.getenv("CURSOR_API_KEY", "")
+    CURSOR_MODEL = os.getenv("CURSOR_MODEL", "composer-2.5")
+    QUOTE_LLM_PROVIDER = os.getenv("QUOTE_LLM_PROVIDER", "cursor")
+    CURSOR_AGENT_TIMEOUT = int(os.getenv("CURSOR_AGENT_TIMEOUT", "180"))
+    CURSOR_POLL_SECONDS = float(os.getenv("CURSOR_POLL_SECONDS", "2"))
     TRUST_PROXY = os.getenv("TRUST_PROXY", "1") == "1"
     PROXY_FIX_X_FOR = int(os.getenv("PROXY_FIX_X_FOR", "1"))
     PROXY_FIX_X_PROTO = int(os.getenv("PROXY_FIX_X_PROTO", "1"))

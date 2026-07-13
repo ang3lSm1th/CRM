@@ -909,6 +909,22 @@ def _list_leads_by_status(list_func, template_name):
 
     # Cargar los nombres de geolocalización
     departamentos_map, provincias_map, distritos_map = _get_geoloc_maps(leads)
+
+    # En Cotizados: adjuntar resumen de productos del inventario
+    if template_name == "leads/cotizados.html" and leads:
+        try:
+            from services.inventario_service import resumen_productos_por_leads
+
+            ids = [int(l.get("id") or l.get("lead_id") or 0) for l in leads]
+            ids = [i for i in ids if i]
+            resumen = resumen_productos_por_leads(ids)
+            for l in leads:
+                lid = int(l.get("id") or l.get("lead_id") or 0)
+                l["productos_cotizados"] = resumen.get(lid) or ""
+        except Exception:
+            for l in leads:
+                l["productos_cotizados"] = l.get("productos_cotizados") or ""
+
     return render_template(
         template_name,
         leads=leads,
@@ -1977,6 +1993,43 @@ def seguimiento_lead(codigo):
                     canal_contacto,
                 ),
             )
+            seguimiento_id = cur.lastrowid
+
+            # Guardar productos de inventario asociados a la cotización
+            try:
+                import json as _json
+
+                from services.inventario_service import (
+                    guardar_cotizacion_items,
+                    normalizar_items_desde_inventario,
+                    catalogo_para_lead,
+                )
+
+                raw_items = request.form.get("cotizacion_items_json") or "[]"
+                try:
+                    items_in = _json.loads(raw_items)
+                except Exception:
+                    items_in = []
+                if isinstance(items_in, list) and items_in:
+                    guardar_cotizacion_items(
+                        lead_id=lead_id,
+                        seguimiento_id=seguimiento_id,
+                        items=items_in,
+                    )
+                    # Si no vino monto, calcularlo desde inventario
+                    if monto is None:
+                        cat = catalogo_para_lead(lead.get("bien_servicio_id"))
+                        norms = normalizar_items_desde_inventario(items_in, cat, max_items=20)
+                        if norms:
+                            monto_calc = round(sum(float(i.get("total") or 0) for i in norms), 2)
+                            cur.execute(
+                                "UPDATE seguimientos SET monto=%s WHERE id=%s",
+                                (monto_calc, seguimiento_id),
+                            )
+            except Exception as exc_items:
+                current_app.logger.warning(
+                    "No se guardaron ítems de cotización lead=%s: %s", lead_id, exc_items
+                )
 
             # Verificar si es un cierre de venta para mostrar mensaje apropiado
             es_cierre_venta = (
@@ -2136,6 +2189,17 @@ def seguimiento_lead(codigo):
 
     lock_proceso = bool(ultimo and (ultimo.get("proceso_id") == cerrado_id))
 
+    inventario_productos = []
+    cotizacion_items_prev = []
+    try:
+        from services.inventario_service import catalogo_para_lead, items_por_lead
+
+        inventario_productos = catalogo_para_lead(lead.get("bien_servicio_id"))
+        cotizacion_items_prev = items_por_lead(lead_id)
+    except Exception:
+        inventario_productos = []
+        cotizacion_items_prev = []
+
     return render_template(
         "leads/seguimiento.html",
         lead=lead,
@@ -2157,10 +2221,24 @@ def seguimiento_lead(codigo):
         tractor_guardado=tractor_guardado,
         return_url=return_url,
         return_label=return_label,
+        inventario_productos=inventario_productos,
+        cotizacion_items_prev=cotizacion_items_prev,
     )
 
 
 # --- RUTAS DE LISTAS POR ESTADO CON PAGINACIÓN Y BÚSQUEDA (MODIFICADAS) ---
+
+
+@lead_bp.route("/api/inventario-productos", methods=["GET"])
+@login_required
+@role_required(ROLE_ADMIN, ROLE_GERENTE, ROLE_ASESOR)
+def api_inventario_productos():
+    """Catálogo de inventario para cotizaciones (todos los leads)."""
+    from services.inventario_service import catalogo_para_lead
+
+    bien_id = request.args.get("bien_servicio_id", type=int)
+    items = catalogo_para_lead(bien_id)
+    return jsonify({"ok": True, "items": items, "total": len(items)})
 
 
 @lead_bp.route("/sin-iniciar")

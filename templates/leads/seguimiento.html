@@ -159,29 +159,6 @@
             </div>
           </div>
 
-          <div id="sec-cotizacion" class="card p-3 mb-3" style="display:none;">
-            <h5 class="mb-3">💰 Cotización</h5>
-            <div class="mb-3 control-line">
-              <label class="form-label mb-0">Código</label>
-              <input type="text" name="cotizacion" id="cotizacion" class="form-control" maxlength="20" placeholder="Ej: ABC12345" value="{{ f_cot }}">
-            </div>
-            <div class="mb-3 control-line">
-              <label class="form-label mb-0">Monto</label>
-              <input type="number" name="monto" id="monto" class="form-control" min="0" step="0.01" placeholder="0.00" value="{{ f_monto }}">
-            </div>
-            <div class="mb-0 control-line">
-              <label class="form-label mb-0">Moneda</label>
-              <select id="moneda" name="moneda_id" class="form-select">
-                <option value="" disabled {{ 'selected' if not f_moneda }}>-- Seleccione una Moneda --</option>
-                {% for m in monedas %}
-                  {% set mid = (m.id if m.id is defined else m['id']) | string %}
-                  {% set mnombre = m.nombre_moneda if m.nombre_moneda is defined else m['nombre_moneda'] %}
-                  <option value="{{ mid }}" {{ 'selected' if f_moneda == mid else '' }}>{{ mnombre }}</option>
-                {% endfor %}
-              </select>
-            </div>
-          </div>
-
           <div id="sec-motivo" class="mb-3 control-line" style="display:none;">
             <label class="form-label mb-0">Motivo (No vendido)</label>
             <select id="motivo_no_venta_id" name="motivo_no_venta_id" class="form-select">
@@ -254,7 +231,95 @@
       </div>
     </div>
 
-    <div class="actions-right mb-3">
+    <!-- Recuadro independiente de cotización (ancho completo) -->
+    <div id="sec-cotizacion" class="card cotizacion-card mt-3" style="display:none;">
+      <div class="cotizacion-card__header">
+        <div>
+          <h5 class="mb-0">Cotización</h5>
+          <div class="text-muted small">Productos y montos desde inventario Orbes</div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <button type="button" id="btn-ia-cotizacion" class="btn btn-outline-primary btn-sm"
+            data-lead-id="{{ lead.id }}" data-codigo="{{ lead.codigo or '' }}">
+            <i class="bi bi-stars"></i> Generar cotización Orbes
+          </button>
+          <a id="btn-pdf-cotizacion" class="btn btn-success btn-sm disabled" href="#"
+            download="Cotizacion_Orbes.pdf" aria-disabled="true" style="pointer-events:none;opacity:.55;">
+            <i class="bi bi-file-earmark-pdf"></i> Descargar PDF
+          </a>
+        </div>
+      </div>
+
+      <div id="ia-cotizacion-status" class="small text-muted mb-2" style="display:none;"></div>
+      <div id="ia-cotizacion-preview" class="alert alert-light border small mb-3" style="display:none;"></div>
+
+      <div class="cotizacion-card__body">
+        <div class="cotizacion-products">
+          <label class="form-label fw-semibold mb-2">Productos del inventario</label>
+          <div class="cotizacion-add-row">
+            <select id="inv-producto-select" class="form-select">
+              <option value="">-- Seleccione un producto --</option>
+              {% for p in inventario_productos or [] %}
+              <option value="{{ p.codigo }}"
+                data-precio="{{ p.precio_unitario }}"
+                data-unidad="{{ p.unidad }}"
+                data-desc="{{ p.descripcion }}"
+                data-stock="{{ p.stock }}">
+                [{{ p.codigo }}] {{ p.descripcion }} — S/ {{ '%.2f'|format(p.precio_unitario|float) }} (stock {{ p.stock|int }})
+              </option>
+              {% endfor %}
+            </select>
+            <input type="number" id="inv-producto-cant" class="form-control" min="1" step="1" value="1" title="Cantidad">
+            <button type="button" id="btn-add-inv-producto" class="btn btn-primary">
+              <i class="bi bi-plus-lg"></i> Agregar
+            </button>
+          </div>
+
+          <div class="cotizacion-table-scroll mt-3">
+            <table class="table table-sm table-bordered align-middle mb-0" id="tabla-cotizacion-items">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Descripción</th>
+                  <th>UM</th>
+                  <th>Cant.</th>
+                  <th>P. Unit</th>
+                  <th>Total</th>
+                  <th style="width:42px;"></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <input type="hidden" name="cotizacion_items_json" id="cotizacion_items_json" value="[]">
+          <div class="small text-muted mt-2">Los precios salen del inventario. El monto se recalcula automáticamente.</div>
+        </div>
+
+        <div class="cotizacion-meta">
+          <div class="mb-3">
+            <label class="form-label mb-1">Código de cotización</label>
+            <input type="text" name="cotizacion" id="cotizacion" class="form-control" maxlength="20" placeholder="Ej: V260713001" value="{{ f_cot }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label mb-1">Monto total</label>
+            <input type="number" name="monto" id="monto" class="form-control" min="0" step="0.01" placeholder="0.00" value="{{ f_monto }}">
+          </div>
+          <div class="mb-0">
+            <label class="form-label mb-1">Moneda</label>
+            <select id="moneda" name="moneda_id" class="form-select">
+              <option value="" disabled {{ 'selected' if not f_moneda }}>-- Seleccione una Moneda --</option>
+              {% for m in monedas %}
+                {% set mid = (m.id if m.id is defined else m['id']) | string %}
+                {% set mnombre = m.nombre_moneda if m.nombre_moneda is defined else m['nombre_moneda'] %}
+                <option value="{{ mid }}" {{ 'selected' if f_moneda == mid else '' }}>{{ mnombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions-right mb-3 mt-3">
       <button type="submit" class="btn btn-success btn-sm">Guardar</button>
     </div>
 
@@ -396,13 +461,211 @@ document.addEventListener('DOMContentLoaded', function(){
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const cotizacionInput = document.getElementById('cotizacion');
-
-    // --- Limita cotizacionInput a solo números y máximo 10 caracteres ---
     if (cotizacionInput) {
         cotizacionInput.addEventListener('input', function() {
-            this.value = this.value.replace(/\D/g, '').slice(0, 10);
+            this.value = this.value.replace(/[^A-Za-z0-9\-]/g, '').slice(0, 20);
         });
     }
+
+    const btnIa = document.getElementById('btn-ia-cotizacion');
+    const btnPdf = document.getElementById('btn-pdf-cotizacion');
+    const statusEl = document.getElementById('ia-cotizacion-status');
+    const previewEl = document.getElementById('ia-cotizacion-preview');
+    const comentarioEl = document.getElementById('comentario');
+    const montoEl = document.getElementById('monto');
+    const monedaEl = document.getElementById('moneda');
+    const itemsJsonEl = document.getElementById('cotizacion_items_json');
+    const tbodyItems = document.querySelector('#tabla-cotizacion-items tbody');
+    const btnAddInv = document.getElementById('btn-add-inv-producto');
+    const selInv = document.getElementById('inv-producto-select');
+    const cantInv = document.getElementById('inv-producto-cant');
+
+    let cotizacionItems = {{ (cotizacion_items_prev or [])|tojson }};
+
+    function escapeHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function syncItemsUi() {
+        if (!tbodyItems) return;
+        tbodyItems.innerHTML = '';
+        let total = 0;
+        cotizacionItems.forEach(function (it, idx) {
+            const lineTotal = Number(it.total || 0);
+            total += lineTotal;
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+                `<td>${escapeHtml(it.codigo)}</td>` +
+                `<td>${escapeHtml(it.descripcion)}</td>` +
+                `<td>${escapeHtml(it.unidad || 'UND')}</td>` +
+                `<td>${escapeHtml(it.cantidad)}</td>` +
+                `<td>${Number(it.precio_unitario || 0).toFixed(2)}</td>` +
+                `<td>${lineTotal.toFixed(2)}</td>` +
+                `<td><button type="button" class="btn btn-sm btn-outline-danger" data-idx="${idx}">&times;</button></td>`;
+            tbodyItems.appendChild(tr);
+        });
+        tbodyItems.querySelectorAll('button[data-idx]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const i = Number(btn.getAttribute('data-idx'));
+                cotizacionItems.splice(i, 1);
+                syncItemsUi();
+            });
+        });
+        if (itemsJsonEl) itemsJsonEl.value = JSON.stringify(cotizacionItems);
+        if (montoEl) montoEl.value = total.toFixed(2);
+    }
+
+    function setItemsFromQuote(items) {
+        cotizacionItems = (items || []).map(function (it) {
+            return {
+                codigo: it.codigo,
+                descripcion: it.descripcion,
+                unidad: it.unidad || 'UND',
+                cantidad: it.cantidad || 1,
+                precio_unitario: Number(it.precio_unitario || 0),
+                total: Number(it.total || 0),
+            };
+        }).filter(function (it) { return !!it.codigo; });
+        syncItemsUi();
+    }
+
+    if (btnAddInv && selInv) {
+        btnAddInv.addEventListener('click', function () {
+            const opt = selInv.options[selInv.selectedIndex];
+            if (!opt || !opt.value) return;
+            const codigo = opt.value;
+            const precio = Number(opt.dataset.precio || 0);
+            const unidad = opt.dataset.unidad || 'UND';
+            const desc = opt.dataset.desc || opt.textContent || codigo;
+            let cant = Number((cantInv && cantInv.value) || 1);
+            if (!cant || cant < 1) cant = 1;
+            const stock = Number(opt.dataset.stock || 0);
+            if (stock > 0 && cant > stock) cant = stock;
+            const existing = cotizacionItems.find(function (x) { return x.codigo === codigo; });
+            if (existing) {
+                existing.cantidad = Number(existing.cantidad || 0) + cant;
+                existing.total = Number(existing.precio_unitario || 0) * Number(existing.cantidad || 0);
+            } else {
+                cotizacionItems.push({
+                    codigo: codigo,
+                    descripcion: desc,
+                    unidad: unidad,
+                    cantidad: cant,
+                    precio_unitario: precio,
+                    total: precio * cant,
+                });
+            }
+            syncItemsUi();
+        });
+    }
+
+    syncItemsUi();
+
+    function setPdfDownload(b64, filename) {
+        if (!btnPdf || !b64) return;
+        const name = filename || 'Cotizacion_Orbes.pdf';
+        btnPdf.href = 'data:application/pdf;base64,' + b64;
+        btnPdf.download = name;
+        btnPdf.classList.remove('disabled');
+        btnPdf.removeAttribute('aria-disabled');
+        btnPdf.style.pointerEvents = '';
+        btnPdf.style.opacity = '';
+    }
+
+    if (!btnIa) return;
+
+    btnIa.addEventListener('click', async function () {
+        const leadId = btnIa.dataset.leadId;
+        const codigo = btnIa.dataset.codigo || '';
+        btnIa.disabled = true;
+        if (statusEl) {
+            statusEl.style.display = 'block';
+            statusEl.className = 'small text-primary mb-2';
+            statusEl.textContent = 'Generando cotización con Cursor (puede tardar ~20–40 s)...';
+        }
+        if (previewEl) previewEl.style.display = 'none';
+
+        try {
+            const res = await fetch("{{ url_for('lead_workflow.generate_cotizacion') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ lead_id: Number(leadId), codigo: codigo }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.ok) {
+                throw new Error((data && data.error) || 'No se pudo generar la cotización');
+            }
+            const q = data.result || {};
+            if (cotizacionInput && q.cotizacion_codigo) {
+                cotizacionInput.value = String(q.cotizacion_codigo).slice(0, 20);
+            }
+            if (monedaEl) {
+                const opts = Array.from(monedaEl.options);
+                const pen = opts.find(o => /sol|pen|s\//i.test(o.textContent || ''));
+                if (pen) monedaEl.value = pen.value;
+            }
+            if (comentarioEl && q.mensaje_comercial) {
+                const current = (comentarioEl.value || '').trim();
+                const msg = String(q.mensaje_comercial).trim();
+                comentarioEl.value = current ? (current + '\n\n--- Cotización Orbes ---\n' + msg) : msg;
+            }
+
+            if (q.items && q.items.length) {
+                setItemsFromQuote(q.items);
+            } else if (montoEl && q.monto_total != null) {
+                montoEl.value = Number(q.monto_total).toFixed(2);
+            }
+
+            if (q.pdf_base64) {
+                setPdfDownload(q.pdf_base64, q.pdf_filename);
+            }
+
+            const items = (q.items || []).map(function (it) {
+                const code = it.codigo ? `[${escapeHtml(it.codigo)}] ` : '';
+                return `<li>${code}${escapeHtml(it.descripcion)} × ${escapeHtml(it.cantidad)} ${escapeHtml(it.unidad || '')} = S/ ${escapeHtml(it.total)}</li>`;
+            }).join('');
+            const providerLabel = q.used_fallback ? 'Respaldo' : 'Cursor';
+            if (previewEl) {
+                previewEl.style.display = 'block';
+                previewEl.innerHTML =
+                    `<strong>${escapeHtml(q.titulo || 'Cotización')}</strong>` +
+                    ` <span class="badge ${q.used_fallback ? 'bg-warning text-dark' : 'bg-secondary'}">${escapeHtml(providerLabel)}</span>` +
+                    (q.pdf_ready ? ' <span class="badge bg-success">PDF listo</span>' : '') +
+                    (q.aviso_usuario
+                        ? `<div class="alert alert-warning py-2 px-2 mt-2 mb-2 small">${escapeHtml(q.aviso_usuario)}</div>`
+                        : '') +
+                    `<div class="mt-1">${escapeHtml(q.mensaje_comercial || '')}</div>` +
+                    (items ? `<ul class="mb-0 mt-2">${items}</ul>` : '');
+            }
+            if (statusEl) {
+                if (q.used_fallback) {
+                    statusEl.className = 'small text-warning mb-2';
+                    statusEl.textContent = q.aviso_usuario
+                        || 'Cotización de respaldo generada. Revise montos antes de guardar.';
+                } else {
+                    statusEl.className = 'small text-success mb-2';
+                    statusEl.textContent = q.pdf_ready
+                        ? 'Listo. Productos del inventario cargados. Descarga el PDF y guarda en Cotizado.'
+                        : 'Cotización generada. Revise productos/monto y guarda.';
+                }
+            }
+        } catch (err) {
+            if (statusEl) {
+                statusEl.className = 'small text-danger mb-2';
+                statusEl.textContent = err.message || 'Error al generar cotización';
+            }
+        } finally {
+            btnIa.disabled = false;
+        }
+    });
 });
 </script>
 

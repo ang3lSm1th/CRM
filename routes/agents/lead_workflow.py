@@ -208,6 +208,100 @@ def workflow_recent():
     )
 
 
+@lead_workflow_bp.route("/cotizacion/generate", methods=["POST"])
+@login_required
+@role_required(*WORKFLOW_ROLES)
+def generate_cotizacion():
+    """
+    Genera cotización personalizada (LLM) + PDF formal Orbes con logo.
+    Body: { "codigo": "LED-1234" } o { "lead_id": 123 }
+    """
+    import base64
+
+    from flask import session
+
+    from agents.lead_workflow.agents.cotizacion_agent import CotizacionAgent
+    from services.cotizacion_pdf_service import build_cotizacion_pdf, cotizacion_pdf_filename
+
+    data = request.get_json(silent=True) or {}
+    lead_row = None
+    if data.get("codigo"):
+        lead_id, lead_row, err = _resolve_codigo(data.get("codigo"))
+        if err:
+            return jsonify({"ok": False, "error": err}), 400
+    else:
+        lead_id = data.get("lead_id")
+        if not lead_id:
+            return jsonify({"ok": False, "error": "codigo o lead_id es obligatorio"}), 400
+        lead_row = orchestrator.store.fetch_lead(int(lead_id))
+        if not lead_row:
+            return jsonify({"ok": False, "error": f"Lead no encontrado (id={lead_id})"}), 404
+        lead_id = int(lead_row["id"])
+
+    # Reusar score del estado del workflow si existe
+    score_data = {}
+    state = orchestrator.store.get_state(lead_id)
+    if state and isinstance(state.get("data"), dict):
+        data_state = state["data"]
+        if isinstance(data_state.get("scoring"), dict):
+            score_data = data_state["scoring"]
+        elif data_state.get("agent_outputs"):
+            score_data = {
+                "global_score": state.get("score"),
+                "priority_label": state.get("priority_label"),
+                "recommendation": (data_state.get("scoring") or {}).get("recommendation")
+                if isinstance(data_state.get("scoring"), dict)
+                else "",
+                "agent_outputs": data_state.get("agent_outputs"),
+            }
+
+    agent = CotizacionAgent()
+    result = agent.generate(lead_row, score_data)
+    result = _enrich_codigo(result, lead_row)
+
+    asesor_nombre = (
+        session.get("nombre")
+        or session.get("username")
+        or session.get("user_name")
+        or "Equipo Comercial Orbes"
+    )
+    pdf_b64 = None
+    pdf_filename = None
+    try:
+        pdf_bytes = build_cotizacion_pdf(
+            lead=dict(lead_row or {}),
+            quote=result,
+            asesor_nombre=str(asesor_nombre),
+        )
+        pdf_filename = cotizacion_pdf_filename(dict(lead_row or {}), result)
+        pdf_b64 = base64.b64encode(pdf_bytes).decode("ascii")
+        result["pdf_filename"] = pdf_filename
+        result["pdf_base64"] = pdf_b64
+        result["pdf_ready"] = True
+    except Exception as exc:
+        current_app.logger.exception("PDF cotización falló lead=%s: %s", lead_id, exc)
+        result["pdf_ready"] = False
+        result["pdf_error"] = str(exc)
+
+    try:
+        orchestrator.store.log_interaction(
+            lead_id,
+            "cotizacion_agent",
+            interaction_type="cotizacion",
+            content=result.get("mensaje_comercial") or result.get("titulo"),
+            metadata={
+                "cotizacion_codigo": result.get("cotizacion_codigo"),
+                "monto_total": result.get("monto_total"),
+                "provider": result.get("provider"),
+                "pdf_ready": result.get("pdf_ready"),
+            },
+        )
+    except Exception:
+        pass
+
+    return jsonify({"ok": True, "result": result})
+
+
 @lead_workflow_bp.route("/trace/<codigo>", methods=["GET"])
 @login_required
 @role_required(*WORKFLOW_ROLES)

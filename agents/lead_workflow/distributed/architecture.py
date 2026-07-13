@@ -130,6 +130,7 @@ def get_system_architecture(*, probe=False):
             "POST /agents/recovery/attempt",
             "POST /agents/recovery/mark-dead",
             "POST /agents/closing/run",
+            "POST /agents/cotizacion/generate",
         ],
     }
 

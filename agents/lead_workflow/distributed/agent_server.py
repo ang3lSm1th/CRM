@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, request
 
 from agents.lead_workflow.agents.closing_agent import ClosingAgent
 from agents.lead_workflow.agents.commercial_assistant import CommercialAssistantAgent
+from agents.lead_workflow.agents.cotizacion_agent import CotizacionAgent
 from agents.lead_workflow.agents.lead_scoring import LeadScoringAgent
 from agents.lead_workflow.agents.recovery_agent import RecoveryAgent
 from agents.lead_workflow.state_store import LeadWorkflowStateStore
@@ -16,6 +17,7 @@ _scoring = LeadScoringAgent()
 _commercial = CommercialAssistantAgent()
 _recovery = RecoveryAgent()
 _closing = ClosingAgent()
+_cotizacion = CotizacionAgent()
 _store = LeadWorkflowStateStore()
 
 
@@ -143,6 +145,38 @@ def closing_run():
         motivo_no_venta=payload.get("motivo_no_venta"),
     )
     return jsonify({"ok": True, "proposal": proposal, "registration": registration})
+
+
+@agent_services_bp.route("/cotizacion/generate", methods=["POST"])
+def cotizacion_generate():
+    """Genera cotización personalizada a partir de comentarios + scoring multiagente."""
+    auth_err = _check_internal_auth()
+    if auth_err:
+        return auth_err
+    payload = request.get_json(silent=True) or {}
+    lead_id = payload.get("lead_id")
+    score_data = payload.get("score_data") or {}
+    if not lead_id:
+        return jsonify({"ok": False, "error": "lead_id es obligatorio"}), 400
+    lead_row, err = _lead_or_error(lead_id)
+    if err:
+        return err
+    result = _cotizacion.generate(lead_row, score_data)
+    try:
+        _store.log_interaction(
+            int(lead_id),
+            "cotizacion_agent",
+            interaction_type="cotizacion",
+            content=result.get("mensaje_comercial") or result.get("titulo"),
+            metadata={
+                "cotizacion_codigo": result.get("cotizacion_codigo"),
+                "monto_total": result.get("monto_total"),
+                "provider": result.get("provider"),
+            },
+        )
+    except Exception:
+        pass
+    return jsonify({"ok": True, "result": result})
 
 
 def create_agent_service_app():

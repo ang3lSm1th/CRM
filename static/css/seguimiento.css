@@ -312,3 +312,115 @@ ease;
     font-size: 14px;
     transition: background 0.2s;
 }
+
+/* ====== Recuadro Cotización (separado) ====== */
+.seguimiento .cotizacion-card {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  background: #fff;
+  padding: 1.4rem 1.5rem 1.6rem;
+  min-height: auto !important;
+}
+
+.seguimiento .cotizacion-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.9rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.seguimiento .cotizacion-card__header h5 {
+  font-weight: 800;
+  color: #0f1e33;
+  margin: 0;
+}
+
+.seguimiento .cotizacion-card__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(240px, 0.8fr);
+  gap: 1.25rem 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .seguimiento .cotizacion-card__body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.seguimiento .cotizacion-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px auto;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.seguimiento .cotizacion-card .form-control,
+.seguimiento .cotizacion-card .form-select {
+  border-radius: 10px;
+  height: 40px;
+}
+
+.seguimiento .cotizacion-products {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.seguimiento .cotizacion-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.seguimiento .cotizacion-table-scroll #tabla-cotizacion-items {
+  margin-bottom: 0;
+  min-width: 720px;
+  width: max-content;
+  table-layout: auto;
+}
+
+.seguimiento .cotizacion-card #tabla-cotizacion-items thead th {
+  background: #f3f6fb;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #4b5563;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.seguimiento .cotizacion-card #tabla-cotizacion-items td {
+  font-size: 0.88rem;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.seguimiento .cotizacion-card #tabla-cotizacion-items td:nth-child(2) {
+  white-space: normal;
+  min-width: 220px;
+  max-width: 320px;
+}
+
+.seguimiento .cotizacion-meta {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.seguimiento .cotizacion-meta .form-label {
+  font-size: 0.85rem;
+}

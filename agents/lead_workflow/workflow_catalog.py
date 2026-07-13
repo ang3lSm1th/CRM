@@ -5,6 +5,7 @@ AGENT_TO_NODE = {
     "commercial_assistant": "commercial",
     "recovery_agent": "recovery",
     "closing_agent": "completed",
+    "cotizacion_agent": "closing",
     "management_agent": "management",
 }
 
@@ -123,6 +124,9 @@ PIPELINE = [
         "label": "Venta registrada",
         "description": "Registra venta o no venta en CRM.",
         "tools": [
+            "CotizacionAgent.generate() via Cursor/OpenAI",
+            "LeadScoringAgent.analyze() como contexto",
+            "Generate: propuesta + código cotización",
             "INSERT: ventas_concretadas",
             "UPDATE: lead_agent_state → completed",
         ],

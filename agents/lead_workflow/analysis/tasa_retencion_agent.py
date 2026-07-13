@@ -48,10 +48,14 @@ class TasaRetencionAgent:
                 "compras_historicas": 0,
             }
 
+        # Prefer columns that exist across deployments (no s.created_at).
         row = self._run_one(
             """
             SELECT
-                DATEDIFF(CURDATE(), MAX(DATE(s.created_at))) AS dias_inactivo,
+                DATEDIFF(
+                    CURDATE(),
+                    MAX(DATE(COALESCE(s.fecha_guardado, s.fecha_seguimiento, CURDATE())))
+                ) AS dias_inactivo,
                 COUNT(DISTINCT CASE
                     WHEN LOWER(TRIM(COALESCE(p.nombre_proceso, ''))) = 'cerrado' THEN s.id
                     ELSE NULL
